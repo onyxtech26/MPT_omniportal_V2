@@ -15,11 +15,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 1. FIXED PASSWORDS DEFINITION
-USERS_DB = {
-    "shadowblade": "mpt_admin_2024",
-    "rooben": "mpt_staff_2024"
-}
+import mysql.connector
+from mysql.connector import Error
+
+# Remove FIXED PASSWORDS DEFINITION
+# USERS_DB = { ... }
 
 class LoginRequest(BaseModel):
     username: str
@@ -28,24 +28,52 @@ class LoginRequest(BaseModel):
 # Use absolute path to ensure the file is found regardless of where uvicorn starts
 CSV_FILE_PATH = os.path.join(os.path.dirname(__file__), "Sales Profit Report - By Product Group 2024.csv")
 
+# Database connection settings
+DB_CONFIG = {
+    'host': 'localhost',
+    'user': 'root',          # Update with your MariaDB username
+    'password': '',          # Update with your MariaDB password
+    'database': 'mpt_omniportal'
+}
+
 @app.get("/")
 def read_root():
     return {"message": "MPT OmniPortal Backend is running"}
 
 @app.post("/api/login")
 def login(request: LoginRequest):
-    user = request.username.lower()
-    # 2. VALIDATE AGAINST FIXED PASSWORDS
-    if user in USERS_DB and USERS_DB[user] == request.password:
-        return {
-            "message": "Login successful",
-            "user": {
-                "username": user,
-                "role": "admin" if user == "shadowblade" else "manager"
+    try:
+        # Connect to MariaDB
+        conn = mysql.connector.connect(**DB_CONFIG)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check users table
+        query = "SELECT * FROM users WHERE username = %s AND password = %s"
+        cursor.execute(query, (request.username, request.password))
+        user_record = cursor.fetchone()
+        
+        if user_record:
+            return {
+                "message": "Login successful",
+                "token": "mock-jwt-token-778899",
+                "user": {
+                    "id": user_record["id"],
+                    "username": user_record["username"],
+                    "role": "admin"
+                }
             }
-        }
-    else:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        else:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+            
+    except Error as e:
+        print(f"Database error: {e}")
+        raise HTTPException(status_code=500, detail="Database connection error")
+        
+    finally:
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
+            conn.close()
+
 
 @app.get("/api/summary")
 def get_summary():
@@ -57,13 +85,40 @@ def get_summary():
         df = pd.read_csv(CSV_FILE_PATH)
         df['trx_amt'] = pd.to_numeric(df['trx_amt'], errors='coerce').fillna(0)
         df['cost_amt'] = pd.to_numeric(df['cost_amt'], errors='coerce').fillna(0)
-        
+        df['trx_date'] = pd.to_datetime(df['trx_date'], errors='coerce')
+        df['month'] = df['trx_date'].dt.strftime('%Y-%m')
+
         outlets = []
-        # Grouping by 'com_unit' to match your 'OutletSummary' interface
         for outlet_code, outlet_df in df.groupby('com_unit'):
-            # Convert GroupBy objects to standard dictionaries for JSON
             salesmen = outlet_df.groupby('saleman_cd')['trx_amt'].sum().to_dict()
             brands = outlet_df.groupby('inv_desc')['trx_amt'].sum().to_dict()
+
+            # Build full salesman profiles with monthly and brand breakdowns
+            salesman_profiles = {}
+            for salesman_id, salesman_df in outlet_df.groupby('saleman_cd'):
+                salesman_brands = salesman_df.groupby('inv_desc')['trx_amt'].sum().to_dict()
+
+                monthly_data = {}
+                valid_monthly = salesman_df.dropna(subset=['month'])
+                for month_key, month_df in valid_monthly.groupby('month'):
+                    month_brands = month_df.groupby('inv_desc')['trx_amt'].sum().to_dict()
+                    monthly_data[str(month_key)] = {
+                        "revenue": float(month_df['trx_amt'].sum()),
+                        "brands": {str(k): float(v) for k, v in month_brands.items()}
+                    }
+
+                daily_revenue = {}
+                valid_daily = salesman_df.dropna(subset=['trx_date'])
+                for date_val, date_df in valid_daily.groupby(valid_daily['trx_date'].dt.date):
+                    daily_revenue[str(date_val)] = float(date_df['trx_amt'].sum())
+
+                salesman_profiles[str(salesman_id)] = {
+                    "name": str(salesman_id),
+                    "totalRevenue": float(salesman_df['trx_amt'].sum()),
+                    "brands": {str(k): float(v) for k, v in salesman_brands.items()},
+                    "monthlyData": monthly_data,
+                    "dailyRevenue": daily_revenue
+                }
 
             outlets.append({
                 "code": str(outlet_code).strip(),
@@ -73,9 +128,9 @@ def get_summary():
                 "transactionCount": int(len(outlet_df)),
                 "salesmen": {str(k): float(v) for k, v in salesmen.items()},
                 "brands": {str(k): float(v) for k, v in brands.items()},
-                "salesmanProfiles": {} # Initialized empty as per your interface
+                "salesmanProfiles": salesman_profiles
             })
-            
+
         outlets.sort(key=lambda x: x['totalRevenue'], reverse=True)
 
         return {

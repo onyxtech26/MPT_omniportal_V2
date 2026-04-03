@@ -19,9 +19,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Use the Nginx proxy domain without port 8000 to match the dashboard
-      const backendUrl = 'http://103.249.84.244';
-      console.log('DEBUG: Backend URL:', backendUrl);
+      const backendUrl = 'http://103.249.84.244:8000';
       const response = await fetch(`${backendUrl}/api/login`, {
         method: 'POST',
         headers: {

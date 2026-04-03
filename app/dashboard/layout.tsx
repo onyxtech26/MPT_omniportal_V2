@@ -1,14 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
-  Package,
-  Store,
-  FileText,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -26,11 +22,21 @@ import { Logo } from '@/components/logo';
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [user, setUser] = useState<{ username: string } | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const { systemStatus } = useData();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try { setUser(JSON.parse(storedUser)); } catch {}
+    }
+  }, []);
 
   const handleLogout = () => {
-    // In a real app, clear session/tokens here
+    localStorage.removeItem('user');
+    localStorage.removeItem('isLoggedIn');
     router.push('/');
   };
 
@@ -56,11 +62,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             className="flex items-center gap-3 p-1.5 hover:bg-slate-50 rounded-xl transition-colors border border-transparent hover:border-slate-100"
           >
             <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-medium text-sm shadow-sm">
-              SB
+              {user?.username ? user.username.substring(0, 2).toUpperCase() : 'U'}
             </div>
             <div className="hidden md:block text-left mr-1">
-              <p className="text-sm font-bold text-slate-900 leading-tight">Shadow Blade</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Regional Manager</p>
+              <p className="text-sm font-bold text-slate-900 leading-tight">{user?.username || 'User'}</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Administrator</p>
             </div>
             <ChevronDown size={16} className="text-slate-400 hidden md:block" />
           </button>
@@ -75,8 +81,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                 className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 overflow-hidden"
               >
                 <div className="px-4 py-3 border-b border-slate-50 md:hidden bg-slate-50/50">
-                  <p className="text-sm font-bold text-slate-900">Shadow Blade</p>
-                  <p className="text-xs text-slate-500">Regional Manager</p>
+                  <p className="text-sm font-bold text-slate-900">{user?.username || 'User'}</p>
+                  <p className="text-xs text-slate-500">Administrator</p>
                 </div>
                 
                 <div className="p-1">
@@ -101,6 +107,14 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         }`}
       >
         <div className="flex-1 flex flex-col p-4 overflow-y-auto">
+          <div className="flex items-center justify-end mb-1 mt-1 lg:hidden">
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
           <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-4">Main Menu</p>
           <div className="space-y-1">
             {SIDEBAR_ITEMS.map((item) => {
@@ -133,10 +147,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-bold">System Status</p>
             <div className="flex items-center gap-2">
               <div className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${systemStatus?.includes('Error') || systemStatus?.includes('Offline') ? 'bg-red-400' : 'bg-emerald-400'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${systemStatus?.includes('Error') || systemStatus?.includes('Offline') ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
               </div>
-              <span className="text-xs font-medium text-emerald-400">Systems Operational</span>
+              <span className={`text-xs font-medium ${systemStatus?.includes('Error') || systemStatus?.includes('Offline') ? 'text-red-400' : 'text-emerald-400'}`}>
+                {systemStatus || 'Systems Operational'}
+              </span>
             </div>
           </div>
         </div>

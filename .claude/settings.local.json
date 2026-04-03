@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"Filesystem\\\\|Share\\\\|Download\\\\|export\\\\|writeFile\\\\|getUri\" 'D:\\\\project 1\\\\CODE FILES\\\\mpt-omniportal' --include=*.ts --include=*.tsx --include=*.js --include=*.json)",
+      "Bash(npm run:*)",
+      "Bash(./gradlew assembleDebug --info)",
+      "Bash(./gradlew assembleDebug)"
+    ]
+  }
+}

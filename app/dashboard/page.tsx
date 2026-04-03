@@ -3,30 +3,20 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, TrendingUp, Package, ChevronRight, Download, Users, Award, DollarSign, Medal, Calendar, X, Trophy, Zap, Info, LogOut, User } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Package, ChevronRight, Download, Users, Award, DollarSign, Medal, Calendar, X, Trophy, Zap, Info, LogOut } from 'lucide-react';
 import { useData } from './data-context';
 
 export default function DashboardPage() {
-  const { outlets, isLoading, lastUpdated, systemStatus } = useData();
+  const { outlets, isLoading, lastUpdated, systemStatus, refetch } = useData();
   const [selectedOutletCode, setSelectedOutletCode] = useState<string | null>(null);
   const [selectedSalesmanId, setSelectedSalesmanId] = useState<string | null>(null);
-  const [user, setUser] = useState<{ username: string } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Check for logged in user
-    const storedUser = localStorage.getItem('user');
     const isLoggedIn = localStorage.getItem('isLoggedIn');
-
+    const storedUser = localStorage.getItem('user');
     if (!isLoggedIn || !storedUser) {
-      router.push('/');
-      return;
-    }
-
-    try {
-      setUser(JSON.parse(storedUser));
-    } catch (e) {
-      console.error('Failed to parse user data', e);
       router.push('/');
     }
   }, [router]);
@@ -87,9 +77,22 @@ export default function DashboardPage() {
     };
   }, [selectedOutlet]);
 
-  const outletATV = selectedOutlet && selectedOutlet.transactionCount > 0 
-    ? selectedOutlet.totalRevenue / selectedOutlet.transactionCount 
+  const outletATV = selectedOutlet && selectedOutlet.transactionCount > 0
+    ? selectedOutlet.totalRevenue / selectedOutlet.transactionCount
     : 0;
+
+  const networkTopBrands = useMemo(() => {
+    const brandMap: Record<string, number> = {};
+    (outlets || []).forEach(outlet => {
+      Object.entries(outlet.brands).forEach(([brand, revenue]) => {
+        brandMap[brand] = (brandMap[brand] || 0) + (revenue as number);
+      });
+    });
+    return Object.entries(brandMap)
+      .map(([name, sales]) => ({ name, sales }))
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 8);
+  }, [outlets]);
 
   // Salesman Detail Metrics
   const salesmanMetrics = useMemo(() => {
@@ -141,66 +144,247 @@ export default function DashboardPage() {
   }, [selectedSalesman, salesmanLeaderboard]);
 
 
-  const handleDownloadReport = () => {
+  const handleDownloadReport = async () => {
     if (!selectedOutlet) return;
-    
-    let reportContent = '';
-    let filename = '';
+    setIsExporting(true);
 
-    if (selectedSalesman && salesmanMetrics) {
-      filename = `${selectedOutlet.code}_${selectedSalesman.name.replace(/\s+/g, '_')}_Report.txt`;
-      reportContent = `Salesman Performance Report - ${selectedSalesman.name}
-Outlet: ${selectedOutlet.code}
-Generated: ${new Date().toLocaleString()}
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
 
-Summary
--------
-Total Revenue: ${formatCurrencyFull(selectedSalesman.totalRevenue)}
-Outlet Rank: #${salesmanMetrics.rank}
-Best Day: ${salesmanMetrics.bestDay}
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pW = 210;
+      const pH = 297;
+      const mg = 15;
 
-Overall Brand Ranking
----------------------
-${salesmanMetrics.topBrands.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b.sales)}`).join('\n')}
+      // Colour palette
+      const C = {
+        dark:     [15, 23, 42]    as [number, number, number],
+        white:    [255, 255, 255] as [number, number, number],
+        slate50:  [248, 250, 252] as [number, number, number],
+        slate200: [226, 232, 240] as [number, number, number],
+        slate400: [148, 163, 184] as [number, number, number],
+        slate500: [100, 116, 139] as [number, number, number],
+        emerald:  [16, 185, 129]  as [number, number, number],
+        amber:    [245, 158, 11]  as [number, number, number],
+        orange:   [234, 88, 12]   as [number, number, number],
+        green50:  [240, 253, 244] as [number, number, number],
+        amber50:  [255, 251, 235] as [number, number, number],
+        green700: [21, 128, 61]   as [number, number, number],
+        red50:    [255, 241, 242] as [number, number, number],
+        red600:   [220, 38, 38]   as [number, number, number],
+      };
 
-12-Month Performance List
--------------------------
-${salesmanMetrics.monthlyData.map(m => `${m.monthName}: ${formatCurrencyFull(m.revenue)} | Top Brand: ${m.topBrand}`).join('\n')}
-`;
-    } else {
-      filename = `${selectedOutlet.code}_Report.txt`;
-      reportContent = `Daily Report - ${selectedOutlet.code}
-Generated: ${new Date().toLocaleString()}
+      const drawHeader = (title: string, subtitle: string) => {
+        doc.setFillColor(...C.dark);
+        doc.rect(0, 0, pW, 42, 'F');
+        doc.setTextColor(...C.white);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text('MPT OMNIPORTAL', mg, 11);
+        doc.text(`Generated: ${new Date().toLocaleString('en-MY')}`, pW - mg, 11, { align: 'right' });
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, mg, 25);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...C.slate400);
+        doc.text(subtitle, mg, 34);
+      };
 
-Financial Overview
-------------------
-Total Revenue: ${formatCurrencyFull(selectedOutlet.totalRevenue)}
-Total Investment: ${formatCurrencyFull(selectedOutlet.totalInvestment)}
-ATV: ${formatCurrencyFull(outletATV)}
+      const drawFooter = () => {
+        doc.setDrawColor(...C.slate200);
+        doc.setLineWidth(0.3);
+        doc.line(mg, pH - 14, pW - mg, pH - 14);
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...C.slate500);
+        doc.text('Powered by Onyxx Tech Hub', mg, pH - 8);
+        doc.text('MPT OmniPortal — Confidential', pW - mg, pH - 8, { align: 'right' });
+      };
 
-Salesman Leaderboard
---------------------
-${salesmanLeaderboard.map((s, i) => `${i + 1}. ${s.name}: ${formatCurrencyFull(s.sales)}`).join('\n')}
+      const sectionLabel = (label: string, y: number) => {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...C.slate500);
+        doc.text(label, mg, y);
+      };
 
-Brand Performance (Top 3)
--------------------------
-${brandSuccess.top.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b.sales)}`).join('\n')}
+      const metricBox = (x: number, y: number, w: number, label: string, value: string) => {
+        doc.setFillColor(...C.slate50);
+        doc.roundedRect(x, y, w, 24, 2, 2, 'F');
+        doc.setDrawColor(...C.slate200);
+        doc.roundedRect(x, y, w, 24, 2, 2, 'S');
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...C.slate500);
+        doc.text(label, x + 4, y + 8);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...C.dark);
+        doc.text(value, x + 4, y + 19);
+      };
 
-Brand Performance (Bottom 3)
-----------------------------
-${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b.sales)}`).join('\n')}
-`;
+      let filename = '';
+
+      if (selectedSalesman && salesmanMetrics) {
+        // ── SALESMAN REPORT ────────────────────────────────────────────
+        filename = `${selectedOutlet.code}_${selectedSalesman.name.replace(/[\s/\\:*?"<>|]+/g, '_')}_Report.pdf`;
+        drawHeader(
+          'SALESMAN PERFORMANCE REPORT',
+          `${selectedSalesman.name}  •  Outlet: ${selectedOutlet.code}`
+        );
+
+        let y = 52;
+        const bW = (pW - mg * 2 - 10) / 3;
+        metricBox(mg,              y, bW, 'TOTAL REVENUE',  formatCurrencyFull(selectedSalesman.totalRevenue));
+        metricBox(mg + bW + 5,     y, bW, 'OUTLET RANK',    `#${salesmanMetrics.rank}`);
+        metricBox(mg + (bW + 5)*2, y, bW, 'BEST DAY',       salesmanMetrics.bestDay);
+        y += 32;
+
+        doc.setDrawColor(...C.slate200);
+        doc.setLineWidth(0.3);
+        doc.line(mg, y, pW - mg, y);
+        y += 8;
+
+        sectionLabel('12-MONTH PERFORMANCE', y);
+        y += 4;
+        autoTable(doc, {
+          startY: y,
+          head: [['Month', 'Revenue (RM)', 'Top Brand']],
+          body: salesmanMetrics.monthlyData.map(d => [d.monthName, formatCurrencyFull(d.revenue), d.topBrand]),
+          margin: { left: mg, right: mg },
+          headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5, cellPadding: 4 },
+          bodyStyles: { fontSize: 8.5, textColor: C.dark, cellPadding: 3.5 },
+          alternateRowStyles: { fillColor: C.slate50 },
+          columnStyles: { 0: { cellWidth: 35 }, 1: { halign: 'right', cellWidth: 55 } },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+
+        if (y > pH - 70) { doc.addPage(); y = 20; }
+
+        sectionLabel('OVERALL BRAND RANKING', y);
+        y += 4;
+        autoTable(doc, {
+          startY: y,
+          head: [['Rank', 'Brand', 'Revenue (RM)']],
+          body: salesmanMetrics.topBrands.map((b, i) => [`#${i + 1}`, b.name, formatCurrencyFull(b.sales)]),
+          margin: { left: mg, right: mg },
+          headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 8.5, cellPadding: 4 },
+          bodyStyles: { fontSize: 8.5, textColor: C.dark, cellPadding: 3.5 },
+          alternateRowStyles: { fillColor: C.slate50 },
+          columnStyles: { 0: { cellWidth: 20, halign: 'center' }, 2: { halign: 'right' } },
+          didParseCell: (data: any) => {
+            if (data.section === 'body' && data.row.index < 3) {
+              data.cell.styles.fontStyle = 'bold';
+              if (data.column.index === 0)
+                data.cell.styles.textColor = [C.amber, C.slate400, C.orange][data.row.index];
+            }
+          },
+        });
+
+      } else {
+        // ── OUTLET REPORT ──────────────────────────────────────────────
+        filename = `${selectedOutlet.code}_Branch_Report.pdf`;
+        drawHeader('BRANCH PERFORMANCE REPORT', `Outlet: ${selectedOutlet.code}`);
+
+        let y = 52;
+        const bW = (pW - mg * 2 - 10) / 3;
+
+        sectionLabel('FINANCIAL OVERVIEW', y);
+        y += 5;
+        metricBox(mg,              y, bW, 'TOTAL REVENUE',        formatCurrencyFull(selectedOutlet.totalRevenue));
+        metricBox(mg + bW + 5,     y, bW, 'TOTAL INVESTMENT',     formatCurrencyFull(selectedOutlet.totalInvestment));
+        metricBox(mg + (bW + 5)*2, y, bW, 'AVG TRANSACTION VALUE', formatCurrencyFull(outletATV));
+        y += 32;
+
+        // ATV vs network comparison banner
+        const aboveAvg = outletATV >= networkATV;
+        doc.setFillColor(...(aboveAvg ? C.green50 : C.red50));
+        doc.roundedRect(mg, y, pW - mg * 2, 12, 2, 2, 'F');
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...(aboveAvg ? C.green700 : C.red600));
+        doc.text(
+          `${aboveAvg ? 'Above' : 'Below'} Network Average  |  Network ATV: ${formatCurrencyFull(networkATV)}`,
+          mg + 4, y + 8
+        );
+        y += 20;
+
+        sectionLabel('SALESMAN LEADERBOARD', y);
+        y += 4;
+        autoTable(doc, {
+          startY: y,
+          head: [['Rank', 'Salesman', 'Total Revenue (RM)']],
+          body: salesmanLeaderboard.map((s, i) => [`#${i + 1}`, s.name, formatCurrencyFull(s.sales)]),
+          margin: { left: mg, right: mg },
+          headStyles: { fillColor: C.dark, textColor: C.white, fontStyle: 'bold', fontSize: 9, cellPadding: 4 },
+          bodyStyles: { fontSize: 9, textColor: C.dark, cellPadding: 3.5 },
+          alternateRowStyles: { fillColor: C.slate50 },
+          columnStyles: { 0: { cellWidth: 20, halign: 'center' }, 2: { halign: 'right' } },
+          didParseCell: (data: any) => {
+            if (data.section === 'body' && data.row.index < 3 && data.column.index === 0) {
+              data.cell.styles.fontStyle = 'bold';
+              data.cell.styles.textColor = [C.amber, C.slate400, C.orange][data.row.index];
+            }
+          },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+
+        if (y > pH - 80) { doc.addPage(); y = 20; }
+
+        sectionLabel('BRAND PERFORMANCE', y);
+        y += 4;
+        const halfW = (pW - mg * 2 - 5) / 2;
+
+        autoTable(doc, {
+          startY: y, tableWidth: halfW,
+          head: [['TOP 3 BRANDS', 'Revenue (RM)']],
+          body: brandSuccess.top.map((b, i) => [`${i + 1}. ${b.name}`, formatCurrencyFull(b.sales)]),
+          margin: { left: mg },
+          headStyles: { fillColor: C.emerald, textColor: C.white, fontStyle: 'bold', fontSize: 9, cellPadding: 4 },
+          bodyStyles: { fontSize: 8.5, textColor: C.dark, cellPadding: 3.5 },
+          alternateRowStyles: { fillColor: C.green50 },
+          columnStyles: { 1: { halign: 'right' } },
+        });
+        const leftY = (doc as any).lastAutoTable.finalY;
+
+        autoTable(doc, {
+          startY: y, tableWidth: halfW,
+          head: [['BOTTOM 3 BRANDS', 'Revenue (RM)']],
+          body: brandSuccess.bottom.map((b, i) => [`${i + 1}. ${b.name}`, formatCurrencyFull(b.sales)]),
+          margin: { left: mg + halfW + 5 },
+          headStyles: { fillColor: C.amber, textColor: C.white, fontStyle: 'bold', fontSize: 9, cellPadding: 4 },
+          bodyStyles: { fontSize: 8.5, textColor: C.dark, cellPadding: 3.5 },
+          alternateRowStyles: { fillColor: C.amber50 },
+          columnStyles: { 1: { halign: 'right' } },
+        });
+        y = Math.max(leftY, (doc as any).lastAutoTable.finalY) + 10;
+      }
+
+      drawFooter();
+
+      // ── Save: browser or Capacitor native ────────────────────────────
+      const isNative = typeof window !== 'undefined'
+        && !!(window as any)?.Capacitor
+        && ((window as any).Capacitor.isNativePlatform?.() || (window as any).Capacitor.isNative);
+
+      if (isNative) {
+        const { Filesystem, Directory } = await import('@capacitor/filesystem');
+        const { Share } = await import('@capacitor/share');
+        const base64 = doc.output('datauristring').split(',')[1];
+        await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache });
+        const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
+        await Share.share({ title: filename, files: [uri], dialogTitle: 'Save or Share Report' });
+      } else {
+        doc.save(filename);
+      }
+
+    } catch (err) {
+      console.error('PDF export error:', err);
+    } finally {
+      setIsExporting(false);
     }
-
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   if (isLoading || !outlets) {
@@ -212,24 +396,37 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
   }
 
   if (outlets.length === 0) {
+    const hasError = systemStatus?.includes('Error');
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
         <div className="bg-slate-100 p-6 rounded-full mb-4">
           <Package size={48} className="text-slate-400" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">No Data Available</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">
+          {hasError ? 'Connection Failed' : 'No Data Available'}
+        </h2>
         <p className="text-slate-500 max-w-md mb-8">
-          {systemStatus?.includes('Error') 
-            ? 'Unable to connect to the backend server. Please check your connection or try again later.'
+          {hasError
+            ? 'Unable to connect to the backend server. Please check your network connection and try again.'
             : 'Connecting to the backend system...'}
         </p>
-        <button 
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-6 py-3 bg-[#0f172a] text-white rounded-[24px] hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 font-medium"
-        >
-          <LogOut size={18} />
-          Back to Login
-        </button>
+        <div className="flex gap-3">
+          {hasError && (
+            <button
+              onClick={refetch}
+              className="flex items-center gap-2 px-6 py-3 bg-[#0f172a] text-white rounded-[24px] hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 font-medium"
+            >
+              Retry
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-[24px] hover:bg-slate-50 transition-colors shadow-sm font-medium"
+          >
+            <LogOut size={18} />
+            Back to Login
+          </button>
+        </div>
       </div>
     );
   }
@@ -237,43 +434,6 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
   return (
     <>
       <div className="max-w-7xl mx-auto relative pb-12">
-        {/* Top Bar with System Status and User Profile */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            {systemStatus && (
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                systemStatus.includes('Error') || systemStatus.includes('Offline') 
-                  ? 'bg-red-50 border-red-100 text-red-700' 
-                  : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-              }`}>
-                <div className={`w-2 h-2 rounded-full animate-pulse ${
-                  systemStatus.includes('Error') || systemStatus.includes('Offline') ? 'bg-red-500' : 'bg-emerald-500'
-                }`}></div>
-                {systemStatus}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-full border border-slate-100 shadow-sm">
-              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                <User size={16} />
-              </div>
-              <div className="text-sm">
-                <p className="font-bold text-slate-900 leading-none">{user?.username || 'User'}</p>
-                <p className="text-xs text-slate-500">Administrator</p>
-              </div>
-            </div>
-            <button 
-              onClick={handleLogout}
-              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-              title="Logout"
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
-        </div>
-
         <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 flex items-center gap-3 tracking-tight">
@@ -289,12 +449,15 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
           <div className="flex gap-3">
             {selectedOutlet && (
               <>
-                <button 
+                <button
                   onClick={handleDownloadReport}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-[#0f172a] text-white rounded-[18px] hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 font-medium cursor-pointer active:scale-95"
+                  disabled={isExporting}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-[#0f172a] text-white rounded-[18px] hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 font-medium cursor-pointer active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Download size={18} />
-                  Export Report
+                  {isExporting
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <Download size={18} />}
+                  {isExporting ? 'Exporting...' : 'Export PDF'}
                 </button>
                 <button 
                   onClick={() => setSelectedOutletCode(null)}
@@ -337,6 +500,10 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
                         <p className="text-2xl font-bold">{formatCurrencyCompact(totalNetworkInvestment)}</p>
                      </div>
                      <div>
+                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Transactions</p>
+                        <p className="text-2xl font-bold">{totalNetworkTransactions.toLocaleString()}</p>
+                     </div>
+                     <div>
                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Active Outlets</p>
                         <p className="text-2xl font-bold">{outlets.length}</p>
                      </div>
@@ -351,25 +518,49 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
                   Branch Performance
                 </h2>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {outlets.map((outlet) => {
+                  {outlets.map((outlet, i) => {
+                    const topSalesman = Object.entries(outlet.salesmen).sort((a, b) => (b[1] as number) - (a[1] as number))[0]?.[0];
+                    const topBrand = Object.entries(outlet.brands).sort((a, b) => (b[1] as number) - (a[1] as number))[0]?.[0];
                     return (
-                      <div 
+                      <div
                         key={outlet.code}
                         onClick={() => setSelectedOutletCode(outlet.code)}
                         className="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100 hover:border-slate-300 transition-all cursor-pointer group relative overflow-hidden hover:shadow-xl hover:-translate-y-1 flex flex-col h-full"
                       >
+                        {i < 3 && (
+                          <span className={`absolute top-4 left-4 text-xs font-bold px-2 py-0.5 rounded-full ${
+                            i === 0 ? 'bg-amber-100 text-amber-700' :
+                            i === 1 ? 'bg-slate-200 text-slate-600' :
+                            'bg-orange-100 text-orange-700'
+                          }`}>#{i + 1}</span>
+                        )}
                         <div className="flex justify-between items-start mb-4">
-                           <h3 className="font-bold text-slate-900 truncate text-2xl tracking-tight">{outlet.code}</h3>
-                           <div className="p-2 bg-slate-50 rounded-full group-hover:bg-[#0f172a] group-hover:text-white transition-colors duration-300">
+                           <h3 className={`font-bold text-slate-900 truncate text-2xl tracking-tight ${i < 3 ? 'mt-5' : ''}`}>{outlet.code}</h3>
+                           <div className={`p-2 bg-slate-50 rounded-full group-hover:bg-[#0f172a] group-hover:text-white transition-colors duration-300 ${i < 3 ? 'mt-5' : ''}`}>
                               <ChevronRight size={20} />
                            </div>
                         </div>
-                        
-                        <div className="mb-6">
+
+                        <div className="mb-4">
                           <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Revenue</p>
                           <p className="text-3xl font-bold text-slate-900 tracking-tight">
                             {formatCurrencyCompact(outlet.totalRevenue)}
                           </p>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 mb-4">
+                          {topSalesman && (
+                            <div className="flex items-center gap-2">
+                              <Users size={12} className="text-slate-400 shrink-0" />
+                              <span className="text-xs text-slate-500 truncate font-medium">{topSalesman}</span>
+                            </div>
+                          )}
+                          {topBrand && (
+                            <div className="flex items-center gap-2">
+                              <Package size={12} className="text-slate-400 shrink-0" />
+                              <span className="text-xs text-slate-500 truncate font-medium">{topBrand}</span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="mt-auto pt-4 border-t border-slate-50">
@@ -378,8 +569,8 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
                             <span className="text-sm font-semibold text-slate-700">{formatCurrencyCompact(outlet.totalInvestment)}</span>
                           </div>
                           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full rounded-full bg-slate-800" 
+                            <div
+                              className="h-full rounded-full bg-slate-800"
                               style={{ width: `${Math.min((outlet.totalInvestment / outlet.totalRevenue) * 100, 100)}%` }}
                             />
                           </div>
@@ -387,6 +578,40 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Network Top Brands */}
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                  <Award className="text-slate-400" />
+                  Network Top Brands
+                </h2>
+                <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-6 md:p-8">
+                  <div className="space-y-5">
+                    {networkTopBrands.map((brand, i) => {
+                      const pct = networkTopBrands[0] ? (brand.sales / networkTopBrands[0].sales) * 100 : 0;
+                      return (
+                        <div key={i} className="flex items-center gap-4">
+                          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                            i === 0 ? 'bg-amber-100 text-amber-700' :
+                            i === 1 ? 'bg-slate-200 text-slate-600' :
+                            i === 2 ? 'bg-orange-100 text-orange-700' :
+                            'bg-slate-100 text-slate-500'
+                          }`}>{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-sm font-bold text-slate-900 truncate">{brand.name}</span>
+                              <span className="text-sm font-bold text-slate-700 shrink-0 ml-4">{formatCurrencyCompact(brand.sales)}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -408,6 +633,16 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
                   <div className="relative z-10">
                     <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">Total Revenue</p>
                     <h2 className="text-5xl font-bold tracking-tight">{formatCurrencyFull(selectedOutlet.totalRevenue)}</h2>
+                    <div className="flex gap-6 mt-4">
+                      <div>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Transactions</p>
+                        <p className="text-xl font-bold text-slate-200">{selectedOutlet.transactionCount.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Salesmen</p>
+                        <p className="text-xl font-bold text-slate-200">{Object.keys(selectedOutlet.salesmen).length}</p>
+                      </div>
+                    </div>
                   </div>
                   <div className="text-left md:text-right relative z-10">
                     <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">Outlet Code</p>
@@ -437,25 +672,33 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
                       </thead>
                       <tbody className="divide-y divide-slate-50">
                         {salesmanLeaderboard.map((salesman, i) => (
-                          <tr 
-                            key={i} 
-                            onClick={() => setSelectedSalesmanId(salesman.name)}
+                          <tr
+                            key={i}
+                            onClick={() => setSelectedSalesmanId(prev => prev === salesman.name ? null : salesman.name)}
                             className="group hover:bg-slate-50 transition-colors cursor-pointer"
                           >
                             <td className="py-5 font-bold text-slate-400">#{i + 1}</td>
-                            <td className="py-5 font-bold text-slate-900 flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                i === 0 ? 'bg-amber-100 text-amber-700' : 
-                                i === 1 ? 'bg-slate-200 text-slate-600' :
-                                i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500'
-                              }`}>
-                                {salesman.name.substring(0, 2).toUpperCase()}
+                            <td className="py-5">
+                              <div className="flex items-center gap-3 font-bold text-slate-900">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                  i === 0 ? 'bg-amber-100 text-amber-700' :
+                                  i === 1 ? 'bg-slate-200 text-slate-600' :
+                                  i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500'
+                                }`}>
+                                  {salesman.name.substring(0, 2).toUpperCase()}
+                                </div>
+                                <span>{salesman.name}</span>
+                                {i < 3 && <Medal size={16} className={
+                                  i === 0 ? 'text-amber-500' :
+                                  i === 1 ? 'text-slate-400' : 'text-orange-500'
+                                } />}
                               </div>
-                              {salesman.name}
-                              {i < 3 && <Medal size={16} className={
-                                i === 0 ? 'text-amber-500' : 
-                                i === 1 ? 'text-slate-400' : 'text-orange-500'
-                              } />}
+                              <div className="mt-1.5 ml-11 h-1 w-32 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-slate-300 rounded-full transition-all"
+                                  style={{ width: `${salesmanLeaderboard[0] ? (salesman.sales / salesmanLeaderboard[0].sales) * 100 : 0}%` }}
+                                />
+                              </div>
                             </td>
                             <td className="py-5 text-slate-900 font-bold text-right text-lg">
                               {formatCurrencyFull(salesman.sales)}
@@ -617,6 +860,16 @@ ${brandSuccess.bottom.map((b, i) => `${i + 1}. ${b.name}: ${formatCurrencyFull(b
                     <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Total Revenue</p>
                       <p className="text-2xl font-bold text-slate-900 tracking-tight">{formatCurrencyFull(selectedSalesman.totalRevenue)}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100">
+                      <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Outlet Rank</p>
+                      <p className="text-2xl font-bold text-slate-900 tracking-tight">#{salesmanMetrics.rank}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100">
+                      <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Revenue Share</p>
+                      <p className="text-2xl font-bold text-slate-900 tracking-tight">
+                        {selectedOutlet ? ((selectedSalesman.totalRevenue / selectedOutlet.totalRevenue) * 100).toFixed(1) : '0'}%
+                      </p>
                     </div>
                     <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Best Day</p>

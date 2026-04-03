@@ -32,6 +32,7 @@ interface DataContextType {
   isLoading: boolean;
   systemStatus: string | null;
   lastUpdated: string | null;
+  refetch: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -43,30 +44,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [systemStatus, setSystemStatus] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const backendUrl = 'http://103.249.84.244'; // Using your Nginx Proxy
-        const response = await fetch(`${backendUrl}/api/summary`);
-        const data = await response.json();
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const backendUrl = 'http://103.249.84.244'; // Using your Nginx Proxy
+      const response = await fetch(`${backendUrl}/api/summary`);
+      const data = await response.json();
 
-        if (!response.ok) throw new Error(data.detail || 'Integrity Error');
+      if (!response.ok) throw new Error(data.detail || 'Integrity Error');
 
-        setOutlets(data.outlets);
-        setLeaderboard(data.leaderboard || []);
-        setSystemStatus("Verified");
-        setLastUpdated(new Date().toLocaleTimeString());
-      } catch (error: any) {
-        setSystemStatus(`Error: ${error.message}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+      setOutlets(data.outlets);
+      setLeaderboard(data.leaderboard || []);
+      setSystemStatus("Verified");
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (error: any) {
+      setSystemStatus(`Error: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
 
   return (
-    <DataContext.Provider value={{ outlets, leaderboard, isLoading, systemStatus, lastUpdated }}>
+    <DataContext.Provider value={{ outlets, leaderboard, isLoading, systemStatus, lastUpdated, refetch: fetchData }}>
       {children}
     </DataContext.Provider>
   );
