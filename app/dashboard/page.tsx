@@ -14,16 +14,14 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
-    const storedUser = localStorage.getItem('user');
-    if (!isLoggedIn || !storedUser) {
+    if (!localStorage.getItem('token')) {
       router.push('/');
     }
   }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('token');
     router.push('/');
   };
 

@@ -22,12 +22,17 @@ import { Logo } from '@/components/logo';
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [user, setUser] = useState<{ username: string } | null>(null);
+  const [user, setUser] = useState<{ username: string; role?: string } | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { systemStatus } = useData();
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.replace('/');
+      return;
+    }
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try { setUser(JSON.parse(storedUser)); } catch {}
@@ -36,7 +41,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('token');
     router.push('/');
   };
 
@@ -166,8 +171,15 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         />
       )}
 
+      {/* Demo Mode Banner */}
+      {user?.role === 'demo' && (
+        <div className="fixed top-16 left-0 right-0 z-40 bg-orange-500 text-white text-center text-xs font-bold py-1.5 tracking-wide uppercase">
+          Demo Mode — Data shown is for demonstration purposes only
+        </div>
+      )}
+
       {/* Main Content */}
-      <main className="pt-16 lg:pl-64 min-h-screen transition-all duration-300">
+      <main className={`${user?.role === 'demo' ? 'pt-24' : 'pt-16'} lg:pl-64 min-h-screen transition-all duration-300`}>
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
           {children}
         </div>

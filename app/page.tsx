@@ -19,7 +19,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const backendUrl = 'http://103.249.84.244:8000';
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const response = await fetch(`${backendUrl}/api/login`, {
         method: 'POST',
         headers: {
@@ -34,9 +34,8 @@ export default function LoginPage() {
         throw new Error(data.detail || 'Login failed');
       }
 
-      // Successful login
       localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('token', data.token);
       router.push('/dashboard');
     } catch (err) {
       console.error('Login error:', err);

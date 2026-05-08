@@ -1,6 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { DEMO_DATA } from '@/lib/demo-data';
 
 export interface LeaderboardItem {
   id: string;
@@ -43,12 +45,36 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [systemStatus, setSystemStatus] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const router = useRouter();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const backendUrl = 'http://103.249.84.244'; // Using your Nginx Proxy
-      const response = await fetch(`${backendUrl}/api/summary`);
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.role === 'demo') {
+        setOutlets(DEMO_DATA);
+        setLeaderboard([]);
+        setSystemStatus('Demo Mode');
+        setLastUpdated(new Date().toLocaleTimeString());
+        setIsLoading(false);
+        return;
+      }
+
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${backendUrl}/api/summary`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        router.push('/');
+        return;
+      }
+
       const data = await response.json();
 
       if (!response.ok) throw new Error(data.detail || 'Integrity Error');
@@ -57,14 +83,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setLeaderboard(data.leaderboard || []);
       setSystemStatus("Verified");
       setLastUpdated(new Date().toLocaleTimeString());
-    } catch (error: any) {
-      setSystemStatus(`Error: ${error.message}`);
+    } catch {
+      setSystemStatus('Error: Could not reach server');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   return (
     <DataContext.Provider value={{ outlets, leaderboard, isLoading, systemStatus, lastUpdated, refetch: fetchData }}>
