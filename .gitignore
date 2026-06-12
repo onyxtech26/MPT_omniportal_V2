@@ -7,3 +7,17 @@ coverage/
 !.env.example
 out/
 venv/
+
+# Sensitive data — never commit
+backend/users.json
+backend/*.csv
+backend/*.xls
+backend/*.xlsx
+
+# Python cache
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Claude local settings
+.claude/settings.local.json

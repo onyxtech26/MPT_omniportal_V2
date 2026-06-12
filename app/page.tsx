@@ -18,6 +18,14 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
 
+    // Dummy login bypass
+    if (username === 'demo' && password === 'demo') {
+      localStorage.setItem('user', JSON.stringify({ role: 'demo', name: 'Demo Agent' }));
+      localStorage.setItem('token', 'demo-token');
+      router.push('/dashboard');
+      return;
+    }
+
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
       const response = await fetch(`${backendUrl}/api/login`, {

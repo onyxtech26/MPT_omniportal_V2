@@ -15,6 +15,7 @@ export interface SalesmanProfile {
   brands: Record<string, number>;
   monthlyData: Record<string, { revenue: number; brands: Record<string, number> }>;
   dailyRevenue?: Record<string, number>;
+  skills?: string[];
 }
 
 export interface OutletSummary {
@@ -53,7 +54,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       if (user.role === 'demo') {
         setOutlets(DEMO_DATA);
-        setLeaderboard([]);
+        setLeaderboard([
+          { id: 'Michael Chen', revenue: 182000 },
+          { id: 'James Smith', revenue: 167800 },
+          { id: 'Sarah Jenkins', revenue: 156500 },
+          { id: 'Emily Wong', revenue: 145000 },
+          { id: 'Robert Wilson', revenue: 112000 }
+        ]);
         setSystemStatus('Demo Mode');
         setLastUpdated(new Date().toLocaleTimeString());
         setIsLoading(false);

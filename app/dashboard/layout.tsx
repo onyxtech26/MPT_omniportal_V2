@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
+  FileSpreadsheet,
+  TrendingUp,
   LogOut,
   Menu,
   X,
@@ -15,6 +17,8 @@ import { DataProvider, useData } from './data-context';
 
 const SIDEBAR_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Meeting Agenda', href: '/dashboard/agenda', icon: FileSpreadsheet },
+  { name: 'Demand Forecast', href: '/dashboard/forecast', icon: TrendingUp },
 ];
 
 import { Logo } from '@/components/logo';
