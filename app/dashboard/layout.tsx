@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   FileSpreadsheet,
   TrendingUp,
+  Award,
   LogOut,
   Menu,
   X,
@@ -19,6 +20,7 @@ const SIDEBAR_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Meeting Agenda', href: '/dashboard/agenda', icon: FileSpreadsheet },
   { name: 'Demand Forecast', href: '/dashboard/forecast', icon: TrendingUp },
+  { name: 'Brand Performance', href: '/dashboard/brands', icon: Award },
 ];
 
 import { Logo } from '@/components/logo';

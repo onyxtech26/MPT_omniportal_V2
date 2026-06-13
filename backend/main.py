@@ -311,6 +311,69 @@ def get_top_brands(username: str = Depends(verify_token)):
     return data["top_brands"]
 
 
+@app.get("/api/brands/models")
+def get_brand_models(
+    brand: str = "",
+    branch: str | None = None,
+    username: str = Depends(verify_token),
+):
+    if not brand:
+        raise HTTPException(status_code=400, detail="brand parameter is required")
+
+    df = pd.read_csv(CSV_FILE_PATH, dtype=str)
+    df['trx_qty']   = pd.to_numeric(df['trx_qty'],   errors='coerce').fillna(0)
+    df['trx_amt']   = pd.to_numeric(df['trx_amt'],   errors='coerce').fillna(0)
+    df['list_price'] = pd.to_numeric(df['list_price'], errors='coerce').fillna(0)
+
+    # Catch both "CASIO" and "CASIO-Return" rows so returns net out correctly
+    brand_norm = brand.strip().upper()
+    df = df[df['inv_desc'].str.upper().str.startswith(brand_norm, na=False)]
+
+    if branch:
+        df = df[df['com_unit'].str.strip() == branch.strip()]
+
+    # Drop junk model codes (battery services, blanks, etc.)
+    df = df[df['inv_cd'].notna()]
+    df = df[~df['inv_cd'].str.startswith('**', na=False)]
+    df = df[df['inv_cd'].str.strip().ne('')]
+
+    if df.empty:
+        return {"brand": brand, "branch": branch, "models": []}
+
+    # Most common non-zero list price per model code
+    price_df = df[df['list_price'] > 0]
+    prices: dict = {}
+    if not price_df.empty:
+        prices = (
+            price_df.groupby('inv_cd')['list_price']
+            .agg(lambda x: float(x.mode().iloc[0]))
+            .to_dict()
+        )
+
+    result = (
+        df.groupby('inv_cd')
+        .agg(units=('trx_qty', 'sum'), revenue=('trx_amt', 'sum'))
+        .reset_index()
+    )
+    result = result[result['units'] > 0].copy()
+    result['list_price'] = result['inv_cd'].map(prices).fillna(0.0)
+    result = result.sort_values('units', ascending=False)
+
+    return {
+        "brand": brand,
+        "branch": branch,
+        "models": [
+            {
+                "model":      row['inv_cd'],
+                "units":      int(round(float(row['units']))),
+                "revenue":    round(float(row['revenue']), 2),
+                "list_price": round(float(row['list_price']), 2),
+            }
+            for _, row in result.iterrows()
+        ],
+    }
+
+
 @app.get("/api/forecast/comparison")
 def get_model_comparison(username: str = Depends(verify_token)):
     data = _load_forecasts()

@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import { TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
-import { getBrandImageUrl } from '@/lib/brandImages';
+import { BrandImage } from '@/components/BrandImage';
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
 
@@ -16,16 +16,35 @@ const FORECAST_MONTHS = [
   { value: '2025-12', label: 'December 2025' },
 ];
 
-const SEASON_LABELS: Record<string, string> = {
-  '2025-10': 'Q4 (Pre Year-End)',
-  '2025-11': 'Year-End Season',
-  '2025-12': 'Year-End / Christmas',
+const SEASON_CONFIG: Record<string, { label: string; level: 'Medium' | 'High'; note: string }> = {
+  '2025-10': {
+    label: 'Early Year-End Build-Up',
+    level: 'Medium',
+    note: 'Demand is starting to climb toward the year-end peak — a good month to build up stock.',
+  },
+  '2025-11': {
+    label: 'Year-End Season',
+    level: 'High',
+    note: 'Expect noticeably higher demand than a normal month. Prioritise restocking top brands early.',
+  },
+  '2025-12': {
+    label: 'Year-End / Christmas Peak',
+    level: 'High',
+    note: 'The busiest period of the year. Stock heavily, especially gift-friendly brands.',
+  },
 };
 
-const BAR_COLORS = [
-  '#0f172a','#1e3a5f','#1d4ed8','#2563eb','#3b82f6',
-  '#60a5fa','#93c5fd','#bfdbfe','#dbeafe','#eff6ff',
-];
+const TIER_COLORS = {
+  High:   '#10b981', // emerald-500
+  Medium: '#f59e0b', // amber-500
+  Low:    '#94a3b8', // slate-400
+};
+
+function getTier(ratio: number): 'High' | 'Medium' | 'Low' {
+  if (ratio >= 0.66) return 'High';
+  if (ratio >= 0.33) return 'Medium';
+  return 'Low';
+}
 
 interface ForecastRow {
   branch: string;
@@ -43,40 +62,6 @@ interface ComparisonRow {
   'Train Time (s)': number;
 }
 
-// Generic watch SVG shown when no brand logo is available
-function WatchIcon({ size = 32 }: { size?: number }) {
-  return (
-    <svg
-      width={size} height={size} viewBox="0 0 32 32" fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="shrink-0"
-    >
-      <rect x="12" y="2" width="8" height="5" rx="2" fill="#cbd5e1" />
-      <rect x="12" y="25" width="8" height="5" rx="2" fill="#cbd5e1" />
-      <circle cx="16" cy="16" r="11" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1.5" />
-      <circle cx="16" cy="16" r="9" fill="white" stroke="#94a3b8" strokeWidth="1" />
-      <line x1="16" y1="10" x2="16" y2="16" stroke="#1e293b" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="16" y1="16" x2="20" y2="18" stroke="#475569" strokeWidth="1.2" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="1" fill="#1e293b" />
-    </svg>
-  );
-}
-
-function BrandImage({ brand, size = 32 }: { brand: string; size?: number }) {
-  const [src, setSrc] = useState<string | null>(() => getBrandImageUrl(brand));
-  if (!src) return <WatchIcon size={size} />;
-  return (
-    <img
-      src={src}
-      alt={brand}
-      width={size}
-      height={size}
-      className="rounded-md object-contain bg-white border border-slate-100 shrink-0"
-      style={{ minWidth: size, minHeight: size }}
-      onError={() => setSrc(null)}
-    />
-  );
-}
 
 function authHeader() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -149,12 +134,21 @@ export default function ForecastPage() {
     );
   }
 
+  const topBrand = forecasts[0];
+  const top3 = forecasts.slice(0, 3);
+  const totalUnits = forecasts.reduce((sum, r) => sum + r.predicted_units, 0);
+  const top3Units = top3.reduce((sum, r) => sum + r.predicted_units, 0);
+  const top3Share = totalUnits > 0 ? Math.round((top3Units / totalUnits) * 100) : 0;
+  const monthLabel = FORECAST_MONTHS.find(m => m.value === month)?.label ?? month;
+  const season = SEASON_CONFIG[month];
+
   const chartData = forecasts.slice(0, 12).map(r => ({
     brand: r.brand.length > 14 ? r.brand.substring(0, 13) + '…' : r.brand,
     fullBrand: r.brand,
     units: r.predicted_units,
     lower: r.lower,
     upper: r.upper,
+    tier: topBrand ? getTier(r.predicted_units / topBrand.predicted_units) : 'Low' as 'High' | 'Medium' | 'Low',
   }));
 
   return (
@@ -162,8 +156,11 @@ export default function ForecastPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Demand Forecast</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          AI-predicted brand demand by branch — trained on Jan–Sep 2024 &amp; 2025 POS data
+        <p className="text-slate-600 text-sm mt-1">
+          What your customers are likely to buy next month — so you can stock the right brands before they sell out.
+        </p>
+        <p className="text-slate-400 text-xs mt-0.5">
+          Predictions from AI trained on 2024–2025 sales (POS) data.
         </p>
       </div>
 
@@ -208,17 +205,80 @@ export default function ForecastPage() {
         </div>
       )}
 
-      {/* Season badge */}
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full">
-        <span className="text-xs font-semibold text-blue-700">{SEASON_LABELS[month]}</span>
-      </div>
+      {/* Season demand level */}
+      {season && (
+        <div className={`flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border ${
+          season.level === 'High'
+            ? 'bg-emerald-50 border-emerald-100'
+            : 'bg-amber-50 border-amber-100'
+        }`}>
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+            season.level === 'High'
+              ? 'bg-emerald-100 text-emerald-700'
+              : 'bg-amber-100 text-amber-700'
+          }`}>
+            {season.level === 'High' ? 'High Demand Period' : 'Rising Demand Period'}
+          </span>
+          <span className="text-xs font-medium text-slate-600">
+            {season.label} — {season.note}
+          </span>
+        </div>
+      )}
+
+      {/* Restock priority card */}
+      {!loading && top3.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h2 className="text-base font-bold text-slate-900 mb-1">Restock Priority This Month</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Focus your restock on{' '}
+            <span className="font-semibold text-slate-900">
+              {top3.map(r => r.brand).join(', ')}
+            </span>
+            {' '}— together they make up about{' '}
+            <span className="font-semibold text-slate-900">{top3Share}%</span> of expected sales at{' '}
+            <span className="font-semibold text-slate-900">{branch}</span> in{' '}
+            <span className="font-semibold text-slate-900">{monthLabel}</span>.
+          </p>
+          <div className="flex flex-wrap gap-4 mb-4">
+            {top3.map((row, i) => (
+              <div key={row.brand} className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-3 min-w-[160px]">
+                <span className="text-lg font-black text-slate-300">#{i + 1}</span>
+                <BrandImage brand={row.brand} size={36} />
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{row.brand}</p>
+                  <p className="text-xs text-slate-500">{row.predicted_units} units expected</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2.5">
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Action</span>
+            <span className="text-xs text-emerald-800">
+              Make sure these brands are well-stocked before {monthLabel} starts.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Bar chart */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
         <h2 className="text-base font-bold text-slate-900 mb-1">
-          Top Brands — {branch} · {FORECAST_MONTHS.find(m => m.value === month)?.label}
+          Top Brands — {branch} · {monthLabel}
         </h2>
-        <p className="text-xs text-slate-400 mb-6">Predicted units sold (net, D-minus-C)</p>
+        <p className="text-xs text-slate-400 mb-4">Predicted items sold this month</p>
+
+        {/* Legend */}
+        <div className="flex items-center gap-4 mb-6">
+          {(['High', 'Medium', 'Low'] as const).map(tier => (
+            <div key={tier} className="flex items-center gap-1.5">
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: TIER_COLORS[tier] }}
+              />
+              <span className="text-xs text-slate-500">{tier} demand</span>
+            </div>
+          ))}
+        </div>
 
         {loading ? (
           <div className="h-72 flex items-center justify-center text-slate-400 text-sm">Loading forecasts…</div>
@@ -246,15 +306,18 @@ export default function ForecastPage() {
                         <BrandImage brand={d.fullBrand} size={24} />
                         <p className="font-bold text-slate-900">{d.fullBrand}</p>
                       </div>
-                      <p className="text-slate-600">Predicted: <span className="font-semibold text-slate-900">{d.units} units</span></p>
-                      <p className="text-slate-400">Range: {d.lower} – {d.upper}</p>
+                      <p className="text-slate-600">
+                        Predicted: <span className="font-semibold text-slate-900">{d.units} units</span>
+                      </p>
+                      <p className="text-slate-400 mt-1">Likely between {d.lower} and {d.upper} units</p>
+                      <p className="text-slate-300 mt-0.5">Best- and worst-case estimate</p>
                     </div>
                   );
                 }}
               />
               <Bar dataKey="units" radius={[6, 6, 0, 0]}>
-                {chartData.map((_, i) => (
-                  <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                {chartData.map((entry, i) => (
+                  <Cell key={i} fill={TIER_COLORS[entry.tier]} />
                 ))}
               </Bar>
             </BarChart>
@@ -267,34 +330,60 @@ export default function ForecastPage() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
           <h2 className="text-base font-bold text-slate-900 mb-4">Full Brand Rankings</h2>
           <div className="space-y-3">
-            {forecasts.slice(0, 20).map((row, i) => (
-              <div key={row.brand} className="flex items-center gap-3">
-                <span className="w-6 text-right text-xs font-bold text-slate-400 shrink-0">{i + 1}</span>
-                <BrandImage brand={row.brand} size={32} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-slate-900 truncate">{row.brand}</span>
-                    <span className="text-sm font-bold text-slate-900 ml-2 shrink-0">{row.predicted_units} units</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-slate-900 rounded-full"
-                      style={{ width: `${Math.min(100, (row.predicted_units / forecasts[0].predicted_units) * 100)}%` }}
-                    />
+            {forecasts.slice(0, 20).map((row, i) => {
+              const ratio = topBrand ? row.predicted_units / topBrand.predicted_units : 0;
+              const tier = getTier(ratio);
+              const tierStyle = {
+                High:   'bg-emerald-100 text-emerald-700',
+                Medium: 'bg-amber-100 text-amber-700',
+                Low:    'bg-slate-100 text-slate-500',
+              }[tier];
+              return (
+                <div key={row.brand} className="flex items-center gap-3">
+                  <span className="w-6 text-right text-xs font-bold text-slate-400 shrink-0">{i + 1}</span>
+                  <BrandImage brand={row.brand} size={32} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-medium text-slate-900 truncate">{row.brand}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${tierStyle}`}>
+                          {tier}
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold text-slate-900 ml-2 shrink-0">{row.predicted_units} units</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.min(100, ratio * 100)}%`,
+                          backgroundColor: TIER_COLORS[tier],
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Model comparison card */}
+      {/* Model comparison — collapsed by default for analysts */}
       {comparison && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <h2 className="text-base font-bold text-slate-900 mb-1">Model Selection</h2>
-          <p className="text-xs text-slate-400 mb-4">{comparison.winner_reason}</p>
-          <div className="overflow-x-auto">
+        <details className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 group">
+          <summary className="cursor-pointer list-none flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">How We Pick the Forecast Model</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                We tested several AI methods and automatically use the most accurate one —{' '}
+                <span className="font-semibold text-slate-600">{comparison.winner}</span>.
+              </p>
+            </div>
+            <span className="text-xs text-slate-400 group-open:hidden">Show details</span>
+            <span className="text-xs text-slate-400 hidden group-open:inline">Hide</span>
+          </summary>
+          <div className="mt-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
@@ -327,7 +416,7 @@ export default function ForecastPage() {
           <p className="text-xs text-slate-400 mt-3">
             Evaluated on held-out data: months Aug–Sep 2025. MAPE computed on non-zero demand months only.
           </p>
-        </div>
+        </details>
       )}
     </div>
   );

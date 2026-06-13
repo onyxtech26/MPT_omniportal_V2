@@ -163,7 +163,7 @@ export default function AgendaPage() {
 
   const handleGenerate = async () => {
     if (!year25) {
-      setError('The 2025 report file is required.');
+      setError('The previous year report file is required.');
       return;
     }
     setIsGenerating(true);
@@ -276,23 +276,23 @@ export default function AgendaPage() {
       >
         <div className="grid gap-6 md:grid-cols-2">
           <FileSlot
-            label="2025 Report"
-            hint="Full POS export for FY25 (CSV, monthly)."
+            label="Previous Year Report"
+            hint="Full POS export for the previous financial year (CSV)."
             required
             accept=".csv"
             file={year25}
             onPick={setYear25}
           />
           <FileSlot
-            label="2026 Report"
-            hint="Full POS export for FY26, Jan→month (CSV)."
+            label="Current Year Report"
+            hint="POS export for the current year, Jan to the selected month (CSV)."
             accept=".csv"
             file={year26}
             onPick={setYear26}
           />
           <FileSlot
-            label="2025 Accumulated"
-            hint="Jan→month FY25 source — CSV, or the encoded .xls report."
+            label="Previous Year Accumulated"
+            hint="Jan to selected month for the previous year — CSV or encoded .xls report."
             accept=".csv,.xls,.xlsx"
             file={year25Acc}
             onPick={setYear25Acc}
