@@ -39,13 +39,22 @@ AWAITING = "awaiting data input"
 
 # FY26 cells cleared when no 2026 data exists. Keyed by (column, row offset
 # from the branch sales row): 0 = sales row, 1 = profit row beneath it.
+#
+# Sales rows (offset 0) hold formula cells E=D-C and F=E/C for the monthly
+# block, and J=I-H and K=J/H for the accumulated block.  When D and I are
+# cleared those formulas produce #VALUE! / #DIV/0! errors, so we blank them
+# out here too.
 FY26_CELLS = [
     ("D", 0),  # FY26 monthly sales
     ("D", 1),  # FY26 monthly margin
+    ("E", 0),  # monthly sales variance amount (formula =D-C, errors when D is blank)
+    ("F", 0),  # monthly sales variance %    (formula =E/C, errors when E/D are blank)
     ("G", 1),  # FY26 monthly profit amount
     ("E", 1),  # FY26 monthly margin variance (value, not a formula)
     ("I", 0),  # FY26 accumulated sales
     ("I", 1),  # FY26 accumulated margin
+    ("J", 0),  # accumulated sales variance amount (formula =I-H)
+    ("K", 0),  # accumulated sales variance %    (formula =J/H)
     ("L", 1),  # FY26 accumulated profit amount
     ("J", 1),  # FY26 accumulated margin variance (value, not a formula)
 ]

@@ -75,14 +75,6 @@ export default function ForecastPage() {
   const [comparison, setComparison] = useState<{ comparison: ComparisonRow[]; winner: string; winner_reason: string } | null>(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState('');
-  const [isDemo, setIsDemo]         = useState(false);
-
-  useEffect(() => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      try { setIsDemo(JSON.parse(user).role === 'demo'); } catch {}
-    }
-  }, []);
 
   const fetchForecasts = useCallback(async () => {
     setLoading(true);
@@ -114,25 +106,9 @@ export default function ForecastPage() {
   }, []);
 
   useEffect(() => {
-    if (!isDemo) {
-      fetchForecasts();
-      fetchComparison();
-    }
-  }, [fetchForecasts, fetchComparison, isDemo]);
-
-  if (isDemo) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
-          <TrendingUp size={32} className="text-slate-400" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-900">Demand Forecast</h2>
-        <p className="text-slate-500 max-w-sm">
-          Sign in with a real account to access AI-generated sales forecasts.
-        </p>
-      </div>
-    );
-  }
+    fetchForecasts();
+    fetchComparison();
+  }, [fetchForecasts, fetchComparison]);
 
   const topBrand = forecasts[0];
   const top3 = forecasts.slice(0, 3);
@@ -297,7 +273,8 @@ export default function ForecastPage() {
               />
               <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
               <Tooltip
-                content={({ active, payload }: { active?: boolean; payload?: Array<{ payload: typeof chartData[0] }> }) => {
+                content={(props: any) => {
+                  const { active, payload } = props as { active?: boolean; payload?: Array<{ payload: typeof chartData[0] }> };
                   if (!active || !payload?.length) return null;
                   const d = payload[0].payload;
                   return (

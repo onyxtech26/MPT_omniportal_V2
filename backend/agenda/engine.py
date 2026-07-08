@@ -19,7 +19,17 @@ _DECODE_TABLE = str.maketrans("-RAYMONDJE", "0123456789")
 
 def _decode_pos(s: str) -> float:
     """Decode a POS-encoded financial string to float."""
-    return float(str(s).translate(_DECODE_TABLE))
+    s = str(s).strip()
+    is_negative = False
+    if s.startswith("(") and s.endswith(")"):
+        is_negative = True
+        s = s[1:-1]
+    
+    # Remove commas if any (e.g., thousands separators)
+    s = s.replace(",", "")
+    
+    val = float(s.translate(_DECODE_TABLE))
+    return -val if is_negative else val
 
 
 def load_xls_report(path: str) -> dict[str, dict]:
@@ -61,9 +71,14 @@ def load_report_csv(path: str) -> pd.DataFrame:
 
 
 def _net(sub: pd.DataFrame, col: str) -> float:
-    """D-minus-C net: debits add, credits (returns) subtract."""
-    debit = sub.loc[sub["trx_mode"] == "D", col].sum()
-    credit = sub.loc[sub["trx_mode"] == "C", col].sum()
+    """D-minus-C net: debits add, credits (returns) subtract.
+
+    Credit rows (trx_mode='C') are summed as-is (signed). A negative C row
+    is a POS correction entry that cancels the corresponding positive C row
+    when summed — taking .abs() would double-subtract it, which is wrong.
+    """
+    debit  = sub.loc[sub["trx_mode"] == "D", col].sum()
+    credit = sub.loc[sub["trx_mode"] == "C", col].sum()   # signed sum, NOT abs()
     return round(float(debit - credit), 2)
 
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   FileSpreadsheet, Upload, Download, Copy, Check, Calendar,
-  Loader2, AlertCircle, MessageSquare, X, Lock,
+  Loader2, AlertCircle, MessageSquare, X,
 } from 'lucide-react';
 
 interface AgendaMessage {
@@ -141,7 +141,6 @@ function MessageCard({ msg }: { msg: AgendaMessage }) {
 
 export default function AgendaPage() {
   const router = useRouter();
-  const [role, setRole] = useState<string | null>(null);
   const [year25, setYear25] = useState<File | null>(null);
   const [year26, setYear26] = useState<File | null>(null);
   const [year25Acc, setYear25Acc] = useState<File | null>(null);
@@ -153,12 +152,7 @@ export default function AgendaPage() {
   useEffect(() => {
     if (!localStorage.getItem('token')) {
       router.push('/');
-      return;
     }
-    try {
-      const u = JSON.parse(localStorage.getItem('user') || '{}');
-      setRole(u.role || null);
-    } catch { /* ignore */ }
   }, [router]);
 
   const handleGenerate = async () => {
@@ -237,23 +231,6 @@ export default function AgendaPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
-  if (role === 'demo') {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <div className="flex flex-col items-center justify-center text-center bg-white rounded-[32px] border border-slate-100 shadow-sm p-12 mt-8">
-          <div className="bg-slate-100 p-5 rounded-full mb-5">
-            <Lock size={40} className="text-slate-400" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Sign in with a real account</h2>
-          <p className="text-slate-500 max-w-md">
-            The Meeting Agenda generator processes live sales reports and isn&apos;t available in demo mode.
-            Sign in with your manager account to upload reports and generate the agenda.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-5xl mx-auto pb-12">

@@ -169,7 +169,21 @@ def generate_message(
     m26 = branch_figures(df26, branch, months) if df26 is not None else None
 
     sales25 = m25["sales"]
-    sales26 = m26["sales"] if m26 else 0.0
+
+    # When no FY26 data is available, emit a FY25-only summary.
+    if m26 is None:
+        lines: list[str] = [
+            f"Outlets: {branch} {month_name}",
+            "2025 Summary (2026 data awaiting)",
+            "",
+            "2025 Sales",
+            f"RM{sales25:,.2f}",
+            "",
+            f"Profit {m25['margin'] * 100:.2f}%",
+        ]
+        return "\n".join(lines)
+
+    sales26 = m26["sales"]
     var_sales = round(sales26 - sales25, 2)
     direction = "Decreased 📉" if var_sales < 0 else "Increased 📈"
     var_str = (f"(RM{abs(var_sales):,.0f})" if var_sales < 0
@@ -235,7 +249,7 @@ def generate_message(
             else:
                 emoji = "📉" if v < 0 else "📈"
                 word  = "dropped" if v < 0 else "increased"
-                sign  = "-" if v < 0 else "+"
+                sign  = "" if v < 0 else "+"
                 lines.append(
                     f"{name} {word} {emoji} by {sign}RM{abs(v):,.0f} / {q26}pcs"
                 )
@@ -244,7 +258,7 @@ def generate_message(
                 lines.append("")
 
     # Profit footer
-    margin26 = m26["margin"] if m26 else 0.0
+    margin26 = m26["margin"]
     margin25 = m25["margin"]
     m_diff   = round((margin26 - margin25) * 100, 2)
     m_dir    = "increased" if m_diff >= 0 else "decreased"

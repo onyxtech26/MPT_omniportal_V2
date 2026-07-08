@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -11,7 +11,9 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataProvider, useData } from './data-context';
@@ -24,14 +26,52 @@ const SIDEBAR_ITEMS = [
 ];
 
 import { Logo } from '@/components/logo';
+import { canAccess, ROLE_LABELS, type Role } from '@/lib/roles';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState<{ username: string; role?: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { systemStatus } = useData();
+  const { systemStatus, refetch } = useData();
+
+  const handleUploadData = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadMsg(null);
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const token = localStorage.getItem('token');
+      const form = new FormData();
+      form.append('file', file);
+
+      const res = await fetch(`${backendUrl}/api/data/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
+      setUploadMsg({ ok: true, text: 'Data updated.' });
+      refetch();
+    } catch (err) {
+      const text = err instanceof TypeError && err.message === 'Failed to fetch'
+        ? 'Backend is offline.'
+        : err instanceof Error ? err.message : 'Upload failed.';
+      setUploadMsg({ ok: false, text });
+    } finally {
+      setIsUploading(false);
+      setTimeout(() => setUploadMsg(null), 5000);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -44,6 +84,14 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       try { setUser(JSON.parse(storedUser)); } catch {}
     }
   }, []);
+
+  // Redirect if current route is not allowed for this role
+  useEffect(() => {
+    if (!user) return;
+    if (!canAccess(user.role, pathname)) {
+      router.replace('/dashboard');
+    }
+  }, [user, pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -66,8 +114,36 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           <Logo textClassName="text-xl" />
         </div>
 
-        {/* User Profile Dropdown */}
-        <div className="relative">
+        <div className="flex items-center gap-3">
+          {/* Upload sales data — managers/admins only */}
+          {user && user.role !== 'demo' && (
+            <div className="flex items-center gap-2">
+              {uploadMsg && (
+                <span className={`hidden sm:inline text-xs font-medium ${uploadMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {uploadMsg.text}
+                </span>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleUploadData}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                title="Upload sales data (CSV)"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white hover:bg-slate-700 transition-colors disabled:opacity-60"
+              >
+                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                <span className="hidden md:inline">{isUploading ? 'Uploading…' : 'Upload Data'}</span>
+              </button>
+            </div>
+          )}
+
+          {/* User Profile Dropdown */}
+          <div className="relative">
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center gap-3 p-1.5 hover:bg-slate-50 rounded-xl transition-colors border border-transparent hover:border-slate-100"
@@ -77,7 +153,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             </div>
             <div className="hidden md:block text-left mr-1">
               <p className="text-sm font-bold text-slate-900 leading-tight">{user?.username || 'User'}</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Administrator</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{ROLE_LABELS[user?.role as Role] ?? 'User'}</p>
             </div>
             <ChevronDown size={16} className="text-slate-400 hidden md:block" />
           </button>
@@ -108,6 +184,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               </motion.div>
             )}
           </AnimatePresence>
+          </div>
         </div>
       </header>
 
@@ -128,7 +205,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           </div>
           <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-4">Main Menu</p>
           <div className="space-y-1">
-            {SIDEBAR_ITEMS.map((item) => {
+            {SIDEBAR_ITEMS.filter(item => canAccess(user?.role, item.href)).map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
@@ -177,15 +254,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {/* Demo Mode Banner */}
-      {user?.role === 'demo' && (
-        <div className="fixed top-16 left-0 right-0 z-40 bg-orange-500 text-white text-center text-xs font-bold py-1.5 tracking-wide uppercase">
-          Demo Mode — Data shown is for demonstration purposes only
-        </div>
-      )}
-
       {/* Main Content */}
-      <main className={`${user?.role === 'demo' ? 'pt-24' : 'pt-16'} lg:pl-64 min-h-screen transition-all duration-300`}>
+      <main className="pt-16 lg:pl-64 min-h-screen transition-all duration-300">
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
           {children}
         </div>

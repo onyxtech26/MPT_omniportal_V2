@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "clean": "next clean",
     "electron:dev": "electron .",
-    "electron:build": "next build && electron-builder"
+    "electron:build": "next build && electron-builder",
+    "build:backend": "cd backend && pyinstaller backend.spec --noconfirm",
+    "dist:exe": "npm run build:backend && next build && electron-builder"
   },
   "build": {
     "appId": "com.mpt.omniportal",
@@ -23,6 +25,12 @@
       "electron/**/*",
       "assets/icon.png"
     ],
+    "extraResources": [
+      {
+        "from": "backend/dist/backend",
+        "to": "backend"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "assets/icon.png"
@@ -30,8 +38,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "assets/icon.png",
-      "installerHeaderIcon": "assets/icon.png",
+      "installerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "MPT OmniPortal"

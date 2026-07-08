@@ -34,14 +34,8 @@ export default function BrandsPage() {
   const [loading, setLoading]           = useState(false);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [error, setError]               = useState('');
-  const [isDemo, setIsDemo]             = useState(false);
 
   const rankingsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const user = localStorage.getItem('user');
-    if (user) try { setIsDemo(JSON.parse(user).role === 'demo'); } catch {}
-  }, []);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -123,11 +117,11 @@ export default function BrandsPage() {
     }
   }, [viewMode, branch]);
 
-  useEffect(() => { if (!isDemo) fetchLeaderboard(); }, [fetchLeaderboard, isDemo]);
+  useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
 
   useEffect(() => {
-    if (!isDemo && viewMode === 'branch') fetchBranchRanking();
-  }, [fetchBranchRanking, viewMode, isDemo]);
+    if (viewMode === 'branch') fetchBranchRanking();
+  }, [fetchBranchRanking, viewMode]);
 
   const handleBrandClick = (brand: string, scrollToList = false) => {
     if (selectedBrand === brand) {
@@ -148,20 +142,6 @@ export default function BrandsPage() {
     if (viewMode === 'all') fetchLeaderboard();
     else fetchBranchRanking();
   };
-
-  if (isDemo) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
-          <Award size={32} className="text-slate-400" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-900">Brand Performance</h2>
-        <p className="text-slate-500 max-w-sm">
-          Sign in with a real account to access brand and model performance data.
-        </p>
-      </div>
-    );
-  }
 
   const displayList  = viewMode === 'all' ? leaderboard : ranking;
   const topBrand     = displayList[0];

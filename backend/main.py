@@ -7,6 +7,7 @@ from jose import JWTError, jwt
 import bcrypt
 import pandas as pd
 import os
+import sys
 import json
 import time
 import base64
@@ -43,9 +44,29 @@ class LoginRequest(BaseModel):
     username: str = Field(..., min_length=1, max_length=100)
     password: str = Field(..., min_length=1, max_length=128)
 
-CSV_FILE_PATH = os.path.join(os.path.dirname(__file__), "Sales Profit Report - By Product Group 2025.csv")
-USERS_FILE_PATH = os.path.join(os.path.dirname(__file__), "users.json")
-AGENDA_TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), "agenda", "Meeting_Agenda.xlsx")
+if getattr(sys, "frozen", False):
+    BASE_DIR = sys._MEIPASS  # PyInstaller extraction root
+else:
+    BASE_DIR = os.path.dirname(__file__)
+
+
+def _user_data_dir() -> str:
+    """Writable per-user folder for data the manager uploads (survives app updates)."""
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    path = os.path.join(base, "MPT OmniPortal")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+# The sales dataset lives in a writable user folder so the manager can replace it
+# from inside the app. The copy bundled with the build seeds it on first run.
+_SEED_CSV_PATH = os.path.join(BASE_DIR, "Sales Profit Report - By Product Group 2025.csv")
+CSV_FILE_PATH = os.path.join(_user_data_dir(), "sales_data.csv")
+if not os.path.exists(CSV_FILE_PATH) and os.path.exists(_SEED_CSV_PATH):
+    shutil.copy(_SEED_CSV_PATH, CSV_FILE_PATH)
+
+USERS_FILE_PATH = os.path.join(BASE_DIR, "users.json")
+AGENDA_TEMPLATE_PATH = os.path.join(BASE_DIR, "agenda", "Meeting_Agenda.xlsx")
 
 # Cache invalidated automatically when CSV file is modified on disk
 _summary_cache: dict = {"data": None, "mtime": 0.0}
@@ -68,20 +89,33 @@ def _check_rate_limit(ip: str):
     _login_attempts[ip].append(now)
 
 
-def create_access_token(username: str) -> str:
+def create_access_token(username: str, role: str) -> str:
     expire = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS)
-    return jwt.encode({"sub": username, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode({"sub": username, "role": role, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def _decode_token(credentials: HTTPAuthorizationCredentials) -> dict:
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        if not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return payload
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if not username:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return username
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    return _decode_token(credentials)["sub"]
+
+
+def require_role(*allowed: str):
+    def checker(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+        payload = _decode_token(credentials)
+        role = payload.get("role", "admin")
+        if role not in allowed:
+            raise HTTPException(status_code=403, detail="Your account does not have permission for this action")
+        return payload["sub"]
+    return checker
 
 
 def _load_summary_data() -> dict:
@@ -174,7 +208,7 @@ def login(request: LoginRequest, req: Request):
     if not user_record or not password_valid:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    token = create_access_token(user_record["username"])
+    token = create_access_token(user_record["username"], user_record.get("role", "admin"))
     return {
         "message": "Login successful",
         "token": token,
@@ -198,6 +232,42 @@ def get_summary(username: str = Depends(verify_token)):
         raise HTTPException(status_code=500, detail="Failed to process data")
 
 
+@app.post("/api/data/upload")
+def upload_sales_data(
+    file: UploadFile = File(...),
+    username: str = Depends(require_role("manager", "admin")),
+):
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Please upload a .csv sales report.")
+
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".csv")
+    try:
+        with os.fdopen(tmp_fd, "wb") as fh:
+            shutil.copyfileobj(file.file, fh)
+
+        try:
+            sample = pd.read_csv(tmp_path, dtype=str, nrows=5)
+        except Exception:
+            raise HTTPException(status_code=400, detail="That file could not be read as a CSV.")
+
+        required = {"com_unit", "saleman_cd", "inv_desc", "trx_amt", "cost_amt", "trx_date"}
+        missing = required - set(sample.columns)
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"This CSV is missing required columns: {', '.join(sorted(missing))}",
+            )
+
+        shutil.move(tmp_path, CSV_FILE_PATH)
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    _summary_cache["data"] = None
+    _summary_cache["mtime"] = 0.0
+    return {"status": "ok", "message": "Sales data updated."}
+
+
 def _save_upload(upload: UploadFile, tmp_dir: str) -> str:
     """Persist an uploaded file to tmp_dir, keeping its suffix, return the path."""
     suffix = os.path.splitext(upload.filename or "")[1] or ".csv"
@@ -213,7 +283,7 @@ def generate_agenda(
     year25: UploadFile = File(...),
     year26: UploadFile | None = File(None),
     year25_acc: UploadFile | None = File(None),
-    username: str = Depends(verify_token),
+    username: str = Depends(require_role("manager", "admin")),
 ):
     if not 1 <= month <= 12:
         raise HTTPException(status_code=400, detail="month must be between 1 and 12")
@@ -264,9 +334,12 @@ def generate_agenda(
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-FORECAST_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), '..', '..', 'forecasting', 'output')
-)
+if getattr(sys, "frozen", False):
+    FORECAST_DIR = os.path.join(BASE_DIR, 'forecasting_output')
+else:
+    FORECAST_DIR = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), '..', '..', 'forecasting', 'output')
+    )
 _forecast_cache: dict = {"forecasts": None, "top_brands": None, "comparison": None}
 
 
