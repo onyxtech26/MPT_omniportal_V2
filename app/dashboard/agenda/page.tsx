@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   FileSpreadsheet, Upload, Download, Copy, Check, Calendar,
-  Loader2, AlertCircle, MessageSquare, X,
+  Loader2, AlertCircle, MessageSquare, X, FileArchive, Store,
 } from 'lucide-react';
+import { ALL_OUTLETS, DEFAULT_OUTLETS, AGENDA_SLOTS } from '@/lib/branches';
+import { downloadBase64 } from '@/lib/download';
+import { apiErrorMessage } from '@/lib/apiError';
 
 interface AgendaMessage {
   branch: string;
@@ -15,8 +18,12 @@ interface AgendaMessage {
 
 interface AgendaResult {
   month: string;
+  branches: string[];
+  skippedBranches: string[];
   agendaFilename: string;
   agendaBase64: string;
+  zipFilename: string;
+  zipBase64: string;
   messages: AgendaMessage[];
 }
 
@@ -25,15 +32,9 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-function base64ToBlob(b64: string, mime: string): Blob {
-  const bytes = atob(b64);
-  const arr = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  return new Blob([arr], { type: mime });
-}
-
 const XLSX_MIME =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const ZIP_MIME = 'application/zip';
 
 interface FileSlotProps {
   label: string;
@@ -145,6 +146,7 @@ export default function AgendaPage() {
   const [year26, setYear26] = useState<File | null>(null);
   const [year25Acc, setYear25Acc] = useState<File | null>(null);
   const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
+  const [outlets, setOutlets] = useState<string[]>(DEFAULT_OUTLETS);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<AgendaResult | null>(null);
@@ -155,9 +157,21 @@ export default function AgendaPage() {
     }
   }, [router]);
 
+  // Selection keeps toggle order, so "the first six go in the workbook"
+  // is deterministic and visible to the user.
+  const toggleOutlet = (code: string) => {
+    setOutlets((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  };
+
   const handleGenerate = async () => {
     if (!year25) {
       setError('The previous year report file is required.');
+      return;
+    }
+    if (outlets.length === 0) {
+      setError('Select at least one outlet.');
       return;
     }
     setIsGenerating(true);
@@ -169,6 +183,7 @@ export default function AgendaPage() {
       const token = localStorage.getItem('token');
       const form = new FormData();
       form.append('month', String(month));
+      form.append('branches', outlets.join(','));
       form.append('year25', year25);
       if (year26) form.append('year26', year26);
       if (year25Acc) form.append('year25_acc', year25Acc);
@@ -187,7 +202,7 @@ export default function AgendaPage() {
       }
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Generation failed');
+      if (!res.ok) throw new Error(apiErrorMessage(data, 'Generation failed'));
       setResult(data);
     } catch (err) {
       if (err instanceof TypeError && err.message === 'Failed to fetch') {
@@ -202,34 +217,12 @@ export default function AgendaPage() {
 
   const handleDownload = async () => {
     if (!result) return;
-    const blob = base64ToBlob(result.agendaBase64, XLSX_MIME);
-    const filename = result.agendaFilename;
+    await downloadBase64(result.agendaBase64, result.agendaFilename, XLSX_MIME);
+  };
 
-    const isNative = typeof window !== 'undefined'
-      && !!(window as any)?.Capacitor
-      && ((window as any).Capacitor.isNativePlatform?.() || (window as any).Capacitor.isNative);
-
-    if (isNative) {
-      try {
-        const { Filesystem, Directory } = await import('@capacitor/filesystem');
-        const { Share } = await import('@capacitor/share');
-        await Filesystem.writeFile({ path: filename, data: result.agendaBase64, directory: Directory.Cache });
-        const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
-        await Share.share({ title: filename, files: [uri], dialogTitle: 'Save or Share Agenda' });
-        return;
-      } catch {
-        /* fall through to browser download */
-      }
-    }
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleDownloadZip = async () => {
+    if (!result) return;
+    await downloadBase64(result.zipBase64, result.zipFilename, ZIP_MIME);
   };
 
   return (
@@ -296,6 +289,54 @@ export default function AgendaPage() {
           </div>
         </div>
 
+        {/* Outlet picker */}
+        <div className="mt-6">
+          <div className="flex items-center justify-between ml-1">
+            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <Store size={16} className="text-slate-400" />
+              Outlets to compare
+              <span className="text-xs font-medium text-slate-400">
+                {outlets.length} selected
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setOutlets(DEFAULT_OUTLETS)}
+              className="text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+            >
+              Reset to main {AGENDA_SLOTS}
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 font-medium ml-1 mt-0.5 mb-2">
+            Every selected outlet gets a WhatsApp message. Outlets not present in the uploaded report are skipped.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {ALL_OUTLETS.map((code) => {
+              const active = outlets.includes(code);
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => toggleOutlet(code)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer active:scale-95 ${
+                    active
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                  }`}
+                >
+                  {code}
+                </button>
+              );
+            })}
+          </div>
+          {outlets.length > AGENDA_SLOTS && (
+            <p className="mt-2 ml-1 text-xs font-medium text-slate-500">
+              The agenda sheet holds {AGENDA_SLOTS} outlets — it will contain the first {AGENDA_SLOTS} selected.
+              All {outlets.length} messages are still generated.
+            </p>
+          )}
+        </div>
+
         <AnimatePresence>
           {error && (
             <motion.div
@@ -321,15 +362,33 @@ export default function AgendaPage() {
               : <><FileSpreadsheet size={18} /> Generate Agenda</>}
           </button>
           {result && (
-            <button
-              onClick={handleDownload}
-              className="flex items-center justify-center gap-2 px-6 py-3.5 bg-emerald-600 text-white rounded-[20px] hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 font-semibold cursor-pointer active:scale-[0.98]"
-            >
-              <Download size={18} />
-              Download {result.agendaFilename}
-            </button>
+            <>
+              <button
+                onClick={handleDownload}
+                className="flex items-center justify-center gap-2 px-6 py-3.5 bg-emerald-600 text-white rounded-[20px] hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 font-semibold cursor-pointer active:scale-[0.98]"
+              >
+                <Download size={18} />
+                Download {result.agendaFilename}
+              </button>
+              <button
+                onClick={handleDownloadZip}
+                className="flex items-center justify-center gap-2 px-6 py-3.5 bg-white border border-emerald-600 text-emerald-700 rounded-[20px] hover:bg-emerald-50 transition-colors font-semibold cursor-pointer active:scale-[0.98]"
+              >
+                <FileArchive size={18} />
+                Download All (ZIP)
+              </button>
+            </>
           )}
         </div>
+
+        {result && result.skippedBranches?.length > 0 && (
+          <div className="mt-4 p-4 text-sm text-amber-700 bg-amber-50 rounded-[20px] border border-amber-100 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>
+              Not in the uploaded report, skipped: {result.skippedBranches.join(', ')}
+            </span>
+          </div>
+        )}
       </motion.div>
 
       {/* Results */}

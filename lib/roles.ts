@@ -5,6 +5,8 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/dashboard/agenda':   ['manager', 'admin'],
   '/dashboard/forecast': ['boss', 'manager', 'admin'],
   '/dashboard/brands':   ['boss', 'manager', 'admin'],
+  '/dashboard/seasonal': ['boss', 'manager', 'admin'],
+  '/dashboard/assistant': ['boss', 'manager', 'admin'],
 };
 
 export const ROLE_LABELS: Record<Role, string> = {

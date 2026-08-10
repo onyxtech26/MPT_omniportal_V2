@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { Loader2, Lock, User, AlertCircle } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { apiErrorMessage } from '@/lib/apiError';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -31,7 +32,7 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
+        throw new Error(apiErrorMessage(data, 'Login failed'));
       }
 
       localStorage.setItem('user', JSON.stringify(data.user));

@@ -30,3 +30,6 @@ backend/__pycache__/
 .claude/settings.local.json
 
 graphify-out/
+# POS exports live outside git (large, and data not source)
+*.csv
+!backend/tests/**/*.csv

@@ -8,12 +8,14 @@ import {
   FileSpreadsheet,
   TrendingUp,
   Award,
+  CalendarDays,
   LogOut,
   Menu,
   X,
   ChevronDown,
   Upload,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataProvider, useData } from './data-context';
@@ -23,10 +25,15 @@ const SIDEBAR_ITEMS = [
   { name: 'Meeting Agenda', href: '/dashboard/agenda', icon: FileSpreadsheet },
   { name: 'Demand Forecast', href: '/dashboard/forecast', icon: TrendingUp },
   { name: 'Brand Performance', href: '/dashboard/brands', icon: Award },
+  { name: 'Seasonal Insights', href: '/dashboard/seasonal', icon: CalendarDays },
+  { name: 'Ask the Data', href: '/dashboard/assistant', icon: Sparkles },
 ];
 
 import { Logo } from '@/components/logo';
 import { canAccess, ROLE_LABELS, type Role } from '@/lib/roles';
+import { apiErrorMessage } from '@/lib/apiError';
+import { AssistantBot } from '@/components/assistant-bot';
+import { clearChatHistory } from '@/lib/chatStorage';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -58,7 +65,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         body: form,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Upload failed');
+      if (!res.ok) throw new Error(apiErrorMessage(data, 'Upload failed'));
 
       setUploadMsg({ ok: true, text: 'Data updated.' });
       refetch();
@@ -96,6 +103,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    // The assistant conversation can contain business figures — don't leave it
+    // behind for whoever signs in next on this machine.
+    clearChatHistory();
     router.push('/');
   };
 
@@ -260,6 +270,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      {/* Floating shortcut to the AI assistant; hides itself on its own page. */}
+      <AssistantBot />
     </div>
   );
 }

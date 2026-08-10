@@ -30,10 +30,15 @@ def _pct_font(value: float | None):
         return None
     return _RED if value < 0 else _BLUE
 
-# The six target branches sit two rows apart: an even "sales" row and the
-# "Profit" row beneath it. JCI=6/7, KMT=8/9, GPL=10/11, MRT=12/13, MFW=14/15,
-# SAT=16/17 -- see data/reference/Meeting_Agenda.xlsx.
-SALES_ROW = {b: 6 + 2 * i for i, b in enumerate(TARGET_BRANCHES)}
+# The template has six branch slots, two rows apart: an even "sales" row and
+# the "Profit" row beneath it. Slot 0=rows 6/7, slot 1=8/9 ... slot 5=16/17 --
+# see data/reference/Meeting_Agenda.xlsx. Rows 18+ hold unrelated content
+# (random stock checks etc.), so six slots is a hard template limit.
+NUM_SLOTS = 6
+
+
+def _sales_row(slot: int) -> int:
+    return 6 + 2 * slot
 
 AWAITING = "awaiting data input"
 
@@ -65,11 +70,25 @@ def _acc_margin_label(branch: str, margin: float) -> str:
     return f"{branch}        {margin * 100:.2f}%"
 
 
-def _write_branch(ws, branch: str, df25, df26, month: int,
+def _blank_slot(ws, slot: int) -> None:
+    """Clear an unused branch slot entirely (labels, values, and the variance
+    formulas, which would error against blank inputs)."""
+    srow = _sales_row(slot)
+    for row in (srow, srow + 1):
+        for col in "BCDEFGHIJKL":
+            ws[f"{col}{row}"] = None
+
+
+def _write_branch(ws, branch: str, slot: int, df25, df26, month: int,
                   df25_acc=None, acc25: dict | None = None) -> None:
-    srow = SALES_ROW[branch]
+    srow = _sales_row(slot)
     prow = srow + 1
     months = list(range(1, month + 1))
+
+    # Outlet label (static text in the template for the default six; must be
+    # written explicitly when a custom branch occupies this slot).
+    ws[f"B{srow}"] = branch
+    ws[f"B{prow}"] = "Profit"
 
     monthly = branch_figures(df25, branch, [month])
 
@@ -138,7 +157,8 @@ _UNSET = object()
 
 def fill_agenda(template_path: str, out_path: str, df25, df26=None,
                 month: int = 4, df25_acc=_UNSET,
-                acc25: dict | None = None) -> str:
+                acc25: dict | None = None,
+                branches: list[str] | None = None) -> str:
     """Fill a copy of the agenda template and save it to out_path.
 
     df25/df26: DataFrames from load_report_csv. df26 may be None.
@@ -146,10 +166,15 @@ def fill_agenda(template_path: str, out_path: str, df25, df26=None,
                when only a monthly CSV is available and no XLS is provided.
     acc25:     pre-decoded XLS branch totals from load_xls_report(); takes
                priority over df25_acc for the FY25 accumulated cells.
-    The =D6-C6 style variance formulas are never touched.
+    branches:  outlets to place in the template's six slots, in order
+               (defaults to TARGET_BRANCHES). Only the first NUM_SLOTS are
+               written; unused slots are blanked.
+    The =D6-C6 style variance formulas are never touched in occupied slots.
     """
     if df25_acc is _UNSET:
         df25_acc = df25
+    branches = list(branches) if branches is not None else list(TARGET_BRANCHES)
+    branches = branches[:NUM_SLOTS]
 
     wb = openpyxl.load_workbook(template_path)
     ws = wb["Sheet1"]
@@ -163,8 +188,10 @@ def fill_agenda(template_path: str, out_path: str, df25, df26=None,
     ws["H4"] = f"G 1-{month}"
     ws["I4"] = f"H 1-{month}"
 
-    for branch in TARGET_BRANCHES:
-        _write_branch(ws, branch, df25, df26, month, df25_acc, acc25)
+    for slot, branch in enumerate(branches):
+        _write_branch(ws, branch, slot, df25, df26, month, df25_acc, acc25)
+    for slot in range(len(branches), NUM_SLOTS):
+        _blank_slot(ws, slot)
 
     if df26 is None:
         ws["D5"] = f"FY26/ ({AWAITING})"

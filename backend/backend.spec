@@ -2,12 +2,13 @@
 # Build:  pyinstaller backend.spec --noconfirm   (run from this backend/ folder)
 
 datas = [
-    ('Sales Profit Report - By Product Group 2025.csv', '.'),
+    ('Sales Profit Report - By Product Group DEMO 2025-2026.csv', '.'),
     ('users.json', '.'),
     ('agenda/Meeting_Agenda.xlsx', 'agenda'),
     ('../../forecasting/output/forecasts.json', 'forecasting_output'),
     ('../../forecasting/output/top_brands_by_branch.json', 'forecasting_output'),
     ('../../forecasting/output/evaluation_report.json', 'forecasting_output'),
+    ('../../datamining/output/seasonal_restock.json', 'datamining_output'),
 ]
 
 hiddenimports = [

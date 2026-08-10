@@ -12,15 +12,32 @@ import json
 import time
 import base64
 import calendar
+import io
 import shutil
 import tempfile
+import zipfile
 from collections import defaultdict
+
+from dotenv import load_dotenv
 
 from agenda.engine import TARGET_BRANCHES, load_report_csv, load_xls_report
 from agenda.agenda_writer import fill_agenda
 from agenda.message_gen import generate_message
+import assistant
+import datasource
+
+# Settings come from backend/.env in development and from real environment
+# variables in hosted deployments; both paths land in os.environ.
+#
+# The frozen desktop build deliberately skips the .env file. That app is the
+# offline one, and reading a developer's .env — which points at a cloud
+# database — would make it fail on a machine with no network. Real environment
+# variables still apply, so a packaged install can be configured on purpose.
+if not getattr(sys, "frozen", False):
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 SECRET_KEY = os.environ.get("JWT_SECRET", "local-dev-secret-change-in-production")
+DATA_SOURCE = (os.environ.get("DATA_SOURCE") or "file").strip().lower()
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_HOURS = 8
 
@@ -60,16 +77,21 @@ def _user_data_dir() -> str:
 
 # The sales dataset lives in a writable user folder so the manager can replace it
 # from inside the app. The copy bundled with the build seeds it on first run.
-_SEED_CSV_PATH = os.path.join(BASE_DIR, "Sales Profit Report - By Product Group 2025.csv")
+# In database mode there is nothing to seed, so the copy is skipped.
+_SEED_CSV_PATH = os.path.join(
+    BASE_DIR, "Sales Profit Report - By Product Group DEMO 2025-2026.csv"
+)
 CSV_FILE_PATH = os.path.join(_user_data_dir(), "sales_data.csv")
-if not os.path.exists(CSV_FILE_PATH) and os.path.exists(_SEED_CSV_PATH):
-    shutil.copy(_SEED_CSV_PATH, CSV_FILE_PATH)
+if DATA_SOURCE != "supabase":
+    if not os.path.exists(CSV_FILE_PATH) and os.path.exists(_SEED_CSV_PATH):
+        shutil.copy(_SEED_CSV_PATH, CSV_FILE_PATH)
 
 USERS_FILE_PATH = os.path.join(BASE_DIR, "users.json")
 AGENDA_TEMPLATE_PATH = os.path.join(BASE_DIR, "agenda", "Meeting_Agenda.xlsx")
 
-# Cache invalidated automatically when CSV file is modified on disk
-_summary_cache: dict = {"data": None, "mtime": 0.0}
+# Sales reads go through the configured backend (CSV or Postgres); each one
+# owns its own caching strategy.
+datasource.set_source(datasource.build_source(DATA_SOURCE, CSV_FILE_PATH))
 
 
 def _load_users() -> list[dict]:
@@ -119,64 +141,8 @@ def require_role(*allowed: str):
 
 
 def _load_summary_data() -> dict:
-    """Return cached summary, rebuilding only when the CSV file has changed."""
-    mtime = os.path.getmtime(CSV_FILE_PATH)
-    if _summary_cache["data"] is not None and mtime == _summary_cache["mtime"]:
-        return _summary_cache["data"]
-
-    df = pd.read_csv(CSV_FILE_PATH, dtype=str)
-    df['trx_amt'] = pd.to_numeric(df['trx_amt'], errors='coerce').fillna(0)
-    df['cost_amt'] = pd.to_numeric(df['cost_amt'], errors='coerce').fillna(0)
-    df['trx_date'] = pd.to_datetime(df['trx_date'], dayfirst=True, errors='coerce')
-    df['month'] = df['trx_date'].dt.strftime('%Y-%m')
-
-    outlets = []
-    for outlet_code, outlet_df in df.groupby('com_unit'):
-        salesmen = outlet_df.groupby('saleman_cd')['trx_amt'].sum().to_dict()
-        brands = outlet_df.groupby('inv_desc')['trx_amt'].sum().to_dict()
-
-        salesman_profiles = {}
-        for salesman_id, salesman_df in outlet_df.groupby('saleman_cd'):
-            salesman_brands = salesman_df.groupby('inv_desc')['trx_amt'].sum().to_dict()
-
-            monthly_data = {}
-            valid_monthly = salesman_df.dropna(subset=['month'])
-            for month_key, month_df in valid_monthly.groupby('month'):
-                month_brands = month_df.groupby('inv_desc')['trx_amt'].sum().to_dict()
-                monthly_data[str(month_key)] = {
-                    "revenue": float(month_df['trx_amt'].sum()),
-                    "brands": {str(k): float(v) for k, v in month_brands.items()}
-                }
-
-            daily_revenue = {}
-            valid_daily = salesman_df.dropna(subset=['trx_date'])
-            for date_val, date_df in valid_daily.groupby(valid_daily['trx_date'].dt.date):
-                daily_revenue[str(date_val)] = float(date_df['trx_amt'].sum())
-
-            salesman_profiles[str(salesman_id)] = {
-                "name": str(salesman_id),
-                "totalRevenue": float(salesman_df['trx_amt'].sum()),
-                "brands": {str(k): float(v) for k, v in salesman_brands.items()},
-                "monthlyData": monthly_data,
-                "dailyRevenue": daily_revenue
-            }
-
-        outlets.append({
-            "code": str(outlet_code).strip(),
-            "name": f"Branch {outlet_code}",
-            "totalRevenue": float(outlet_df['trx_amt'].sum()),
-            "totalInvestment": float(outlet_df['cost_amt'].sum()),
-            "transactionCount": int(len(outlet_df)),
-            "salesmen": {str(k): float(v) for k, v in salesmen.items()},
-            "brands": {str(k): float(v) for k, v in brands.items()},
-            "salesmanProfiles": salesman_profiles
-        })
-
-    outlets.sort(key=lambda x: x['totalRevenue'], reverse=True)
-    result = {"message": "Data successfully processed", "outlets": outlets}
-    _summary_cache["data"] = result
-    _summary_cache["mtime"] = mtime
-    return result
+    """Dashboard summary from whichever sales backend is configured."""
+    return datasource.get_source().load_summary()
 
 
 @app.get("/")
@@ -186,9 +152,13 @@ def read_root():
 
 @app.get("/health")
 def health():
-    if not os.path.exists(CSV_FILE_PATH):
+    # The desktop shell blocks its window on this probe, so it deliberately
+    # checks only local readiness: a slow or unreachable database must never
+    # stop the app from opening.
+    source = datasource.get_source()
+    if source.name == "file" and not source.is_ready():
         raise HTTPException(status_code=503, detail="Data file missing")
-    return {"status": "ok"}
+    return {"status": "ok", "dataSource": source.name}
 
 
 @app.post("/api/login")
@@ -223,11 +193,11 @@ def login(request: LoginRequest, req: Request):
 @app.get("/api/summary")
 def get_summary(username: str = Depends(verify_token)):
     try:
-        if not os.path.exists(CSV_FILE_PATH):
-            raise HTTPException(status_code=500, detail="Data file not found")
         return _load_summary_data()
     except HTTPException:
         raise
+    except datasource.DataSourceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to process data")
 
@@ -250,21 +220,24 @@ def upload_sales_data(
         except Exception:
             raise HTTPException(status_code=400, detail="That file could not be read as a CSV.")
 
-        required = {"com_unit", "saleman_cd", "inv_desc", "trx_amt", "cost_amt", "trx_date"}
-        missing = required - set(sample.columns)
+        # Checked against every column the app reads, not just the dashboard's:
+        # a CSV missing trx_qty/list_price/inv_cd used to upload cleanly and
+        # then break the brand-model breakdown.
+        missing = datasource.REQUIRED_COLUMNS - set(sample.columns)
         if missing:
             raise HTTPException(
                 status_code=400,
                 detail=f"This CSV is missing required columns: {', '.join(sorted(missing))}",
             )
 
-        shutil.move(tmp_path, CSV_FILE_PATH)
+        try:
+            datasource.get_source().replace_sales_data(tmp_path)
+        except datasource.DataSourceError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
-    _summary_cache["data"] = None
-    _summary_cache["mtime"] = 0.0
     return {"status": "ok", "message": "Sales data updated."}
 
 
@@ -283,6 +256,7 @@ def generate_agenda(
     year25: UploadFile = File(...),
     year26: UploadFile | None = File(None),
     year25_acc: UploadFile | None = File(None),
+    branches: str | None = Form(None),
     username: str = Depends(require_role("manager", "admin")),
 ):
     if not 1 <= month <= 12:
@@ -309,25 +283,67 @@ def generate_agenda(
         except Exception:
             raise HTTPException(status_code=400, detail="Could not read the uploaded report file(s). Check they are the full POS export.")
 
-        out_path = os.path.join(tmp_dir, f"agenda_{calendar.month_name[month]}.xlsx")
+        # Outlet selection: comma-separated codes, defaulting to the six main
+        # branches. Codes absent from the uploaded data are skipped (reported
+        # back) rather than producing RM0.00 junk messages.
+        if branches:
+            requested = [b.strip().upper() for b in branches.split(",") if b.strip()]
+        else:
+            requested = list(TARGET_BRANCHES)
+        seen: set[str] = set()
+        requested = [b for b in requested if not (b in seen or seen.add(b))]
+
+        available = set(df25["com_unit"].dropna().astype(str).str.strip())
+        if df26 is not None:
+            available |= set(df26["com_unit"].dropna().astype(str).str.strip())
+
+        selected = [b for b in requested if b in available]
+        skipped = [b for b in requested if b not in available]
+        if not selected:
+            raise HTTPException(
+                status_code=400,
+                detail="None of the selected outlets appear in the uploaded report(s). "
+                       f"Available outlets: {', '.join(sorted(available))}",
+            )
+
+        month_name = calendar.month_name[month]
+        out_path = os.path.join(tmp_dir, f"agenda_{month_name}.xlsx")
         try:
+            # Template holds six slots; the workbook takes the first six
+            # selected outlets, messages cover all of them.
             fill_agenda(AGENDA_TEMPLATE_PATH, out_path, df25, df26, month,
-                        df25_acc=df25_acc, acc25=acc25)
+                        df25_acc=df25_acc, acc25=acc25, branches=selected[:6])
         except Exception:
             raise HTTPException(status_code=500, detail="Failed to build the agenda spreadsheet")
 
         with open(out_path, "rb") as fh:
-            agenda_b64 = base64.b64encode(fh.read()).decode("ascii")
+            agenda_bytes = fh.read()
+        agenda_b64 = base64.b64encode(agenda_bytes).decode("ascii")
 
         messages = [
             {"branch": b, "text": generate_message(b, month, df25, df26)}
-            for b in TARGET_BRANCHES
+            for b in selected
         ]
 
+        # Bundle everything into one ZIP: a .txt per outlet message, a
+        # combined file, and the agenda workbook itself.
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for m in messages:
+                zf.writestr(f"{m['branch']}_{month_name}.txt", m["text"])
+            separator = "\n\n" + "-" * 40 + "\n\n"
+            zf.writestr("ALL_MESSAGES.txt", separator.join(m["text"] for m in messages))
+            zf.writestr(f"agenda_{month_name}.xlsx", agenda_bytes)
+        zip_b64 = base64.b64encode(zip_buf.getvalue()).decode("ascii")
+
         return {
-            "month": calendar.month_name[month],
-            "agendaFilename": f"agenda_{calendar.month_name[month]}.xlsx",
+            "month": month_name,
+            "branches": selected,
+            "skippedBranches": skipped,
+            "agendaFilename": f"agenda_{month_name}.xlsx",
             "agendaBase64": agenda_b64,
+            "zipFilename": f"agenda_package_{month_name}.zip",
+            "zipBase64": zip_b64,
             "messages": messages,
         }
     finally:
@@ -393,58 +409,63 @@ def get_brand_models(
     if not brand:
         raise HTTPException(status_code=400, detail="brand parameter is required")
 
-    df = pd.read_csv(CSV_FILE_PATH, dtype=str)
-    df['trx_qty']   = pd.to_numeric(df['trx_qty'],   errors='coerce').fillna(0)
-    df['trx_amt']   = pd.to_numeric(df['trx_amt'],   errors='coerce').fillna(0)
-    df['list_price'] = pd.to_numeric(df['list_price'], errors='coerce').fillna(0)
+    try:
+        models = datasource.get_source().brand_models(brand, branch)
+    except datasource.DataSourceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
 
-    # Catch both "CASIO" and "CASIO-Return" rows so returns net out correctly
-    brand_norm = brand.strip().upper()
-    df = df[df['inv_desc'].str.upper().str.startswith(brand_norm, na=False)]
+    return {"brand": brand, "branch": branch, "models": models}
 
-    if branch:
-        df = df[df['com_unit'].str.strip() == branch.strip()]
 
-    # Drop junk model codes (battery services, blanks, etc.)
-    df = df[df['inv_cd'].notna()]
-    df = df[~df['inv_cd'].str.startswith('**', na=False)]
-    df = df[df['inv_cd'].str.strip().ne('')]
+class ChatRequest(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500)
 
-    if df.empty:
-        return {"brand": brand, "branch": branch, "models": []}
 
-    # Most common non-zero list price per model code
-    price_df = df[df['list_price'] > 0]
-    prices: dict = {}
-    if not price_df.empty:
-        prices = (
-            price_df.groupby('inv_cd')['list_price']
-            .agg(lambda x: float(x.mode().iloc[0]))
-            .to_dict()
+# Keeps a single user from exhausting the shared model quota.
+_chat_calls: dict = defaultdict(list)
+_CHAT_LIMIT = 10
+_CHAT_WINDOW = 60
+
+
+@app.get("/api/chat/status")
+def chat_status(username: str = Depends(verify_token)):
+    """Lets the UI show why the assistant is unavailable before a question."""
+    source = datasource.get_source()
+    return {
+        "configured": assistant.is_configured(),
+        "queryable": source.name == "supabase",
+        "model": assistant.model_name() if assistant.is_configured() else None,
+    }
+
+
+@app.post("/api/chat")
+def chat(request: ChatRequest, username: str = Depends(verify_token)):
+    if not assistant.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="The assistant is not configured. Add NVIDIA_API_KEY to backend/.env.",
         )
 
-    result = (
-        df.groupby('inv_cd')
-        .agg(units=('trx_qty', 'sum'), revenue=('trx_amt', 'sum'))
-        .reset_index()
-    )
-    result = result[result['units'] > 0].copy()
-    result['list_price'] = result['inv_cd'].map(prices).fillna(0.0)
-    result = result.sort_values('units', ascending=False)
+    source = datasource.get_source()
+    if source.name != "supabase":
+        raise HTTPException(
+            status_code=503,
+            detail="The assistant answers questions by querying the database. "
+                   "Set DATA_SOURCE=supabase to enable it.",
+        )
 
-    return {
-        "brand": brand,
-        "branch": branch,
-        "models": [
-            {
-                "model":      row['inv_cd'],
-                "units":      int(round(float(row['units']))),
-                "revenue":    round(float(row['revenue']), 2),
-                "list_price": round(float(row['list_price']), 2),
-            }
-            for _, row in result.iterrows()
-        ],
-    }
+    now = time.time()
+    _chat_calls[username] = [t for t in _chat_calls[username] if now - t < _CHAT_WINDOW]
+    if len(_chat_calls[username]) >= _CHAT_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many questions. Try again in a minute.")
+    _chat_calls[username].append(now)
+
+    try:
+        return assistant.answer_question(request.question, source)
+    except assistant.AssistantError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except datasource.DataSourceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
 
 
 @app.get("/api/forecast/comparison")
@@ -461,6 +482,50 @@ def reload_forecasts(username: str = Depends(verify_token)):
     _forecast_cache["top_brands"] = None
     _forecast_cache["comparison"] = None
     _load_forecasts()
+    return {"status": "reloaded"}
+
+
+if getattr(sys, "frozen", False):
+    DATAMINING_DIR = os.path.join(BASE_DIR, 'datamining_output')
+else:
+    DATAMINING_DIR = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), '..', '..', 'datamining', 'output')
+    )
+_seasonal_cache: dict = {"seasonal": None}
+
+
+def _load_seasonal():
+    if _seasonal_cache["seasonal"] is not None:
+        return _seasonal_cache["seasonal"]
+    path = os.path.join(DATAMINING_DIR, 'seasonal_restock.json')
+    if not os.path.exists(path):
+        raise HTTPException(status_code=503, detail="Seasonal data not generated yet. Run datamining/agents/07_seasonal_restock.py first.")
+    with open(path, encoding='utf-8') as f:
+        _seasonal_cache["seasonal"] = json.load(f)
+    return _seasonal_cache["seasonal"]
+
+
+@app.get("/api/insights/seasonal")
+def get_seasonal_insights(
+    month: int | None = None,
+    username: str = Depends(verify_token),
+):
+    data = _load_seasonal()
+    if month is not None:
+        if not 1 <= month <= 12:
+            raise HTTPException(status_code=400, detail="month must be 1-12")
+        return {
+            "meta": data["meta"],
+            "seasons": data["seasons"],
+            "month": data["per_month"][str(month)],
+        }
+    return data
+
+
+@app.post("/api/insights/reload")
+def reload_seasonal(username: str = Depends(verify_token)):
+    _seasonal_cache["seasonal"] = None
+    _load_seasonal()
     return {"status": "reloaded"}
 
 

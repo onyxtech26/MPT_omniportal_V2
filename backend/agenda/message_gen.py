@@ -7,49 +7,85 @@ from __future__ import annotations
 import calendar
 from .engine import branch_figures, product_breakdown
 
-# Display names for inv_category codes
+# Display names for inv_category codes. Descriptions are taken verbatim from
+# the POS "Sales Profit Report - By Product Group (Detail)" printout, so a code
+# added here should be checked against that report rather than guessed.
 CATEGORY_NAMES: dict[str, str] = {
-    "AB":      "Alba",
-    "BGT":     "Bigotti",
-    "BN":      "Bonia",
-    "BUM-EQ":  "Bum Equipment",
-    "CAS":     "Casio",
-    "CAS-BG":  "Baby G",
-    "CAS-CTE": "Edifice",
-    "CAS-GS":  "G-Shock",
-    "CAES":    "Caesar",
-    "CLJ":     "Charles Jourdan",
-    "CM":      "Camel",
-    "CR-WC":   "Crocodile Wall Clock",
-    "CTL":     "Citole",
-    "DK":      "Daniel Klein",
-    "FG":      "Free Gift",
-    "GAR":     "Garmin",
-    "HKW":     "HK Watch",
-    "JBV":     "J. Bovier",
-    "LS":      "Leather Strap",
-    "MF":      "Mini Focus",
-    "MID":     "Mido",
-    "NAV":     "Naviforce",
-    "OH":      "Deposit/EP",
-    "OT":      "Repair Deposit",
-    "PIN":     "Pin",
-    "PS":      "PVC Strap",
-    "R-BAT":   "Renata Battery",
-    "RW":      "Rewards Watch",
-    "S-BAT":   "Sony Battery",
-    "SBP":     "S.B. Polo",
-    "SEI":     "Seiko",
-    "SEI-5":   "Seiko 5",
-    "SEI-SP5": "Seiko Sports 5",
-    "SEI-WC":  "Seiko Wall Clock",
-    "SER":     "Service",
-    "SLO":     "Slo/Pokemon",
-    "SP":      "Spare Parts",
-    "SSS":     "Stainless Strap",
-    "SUB":     "Submarine",
-    "TIS":     "Tissot",
-    "WMB":     "Tokei Mystery Box",
+    "AB":       "Alba",
+    "AD":       "Alain Delon",
+    "AE":       "Alexandre Christie",
+    "BAT-CLK":  "Battery (Clock)",
+    "BGT":      "Bigotti",
+    "BN":       "Bonia",
+    "BUM":      "Bum",
+    "BUM-EQ":   "Bum Equipment",
+    "CA":       "Cluse Accessories",
+    "CAS":      "Casio",
+    "CAS-BG":   "Baby G",
+    "CAS-CTE":  "Edifice",
+    "CAS-GS":   "G-Shock",
+    "CAES":     "Caesar",
+    "CK":       "Calvin Klein",
+    "CLJ":      "Charles Jourdan",
+    "CM":       "Camel",
+    "CR-AC":    "Crocodile Alarm Clock",
+    "CR-WC":    "Crocodile Wall Clock",
+    "CT":       "Chronotech",
+    "CTL":      "Citole",
+    "DGT":      "Digitec Watch",
+    "DIS":      "Disney",
+    "DK":       "Daniel Klein",
+    "DW":       "Daniel Wellington",
+    "ECOD":     "Eco Drive",
+    "FG":       "Free Gift",
+    "FOS":      "Fossil",
+    "GAR":      "Garmin",
+    "GUE":      "Guess",
+    "HAM":      "Hamilton",
+    "HKW":      "HK Watch",
+    "JBV":      "J. Bovier",
+    "JTW":      "JT Warriors",
+    "LM":       "Luminox",
+    "LONG":     "Longines",
+    "LS":       "Leather Strap",
+    "MF":       "Mini Focus",
+    "MH":       "Michel Herbelin",
+    "MID":      "Mido",
+    "MK":       "Michael Kors",
+    "NAV":      "Naviforce",
+    "OH":       "Deposit/EP",
+    "OH-AC":    "Other Alarm Clock",
+    "OH-W":     "Other Watch",
+    "OH-WC":    "Other Wall Clock",
+    "OT":       "Repair Deposit",
+    "PIN":      "Pin",
+    "PS":       "PVC Strap",
+    "Q&Q":      "Q&Q Watch",
+    "R-BAT":    "Renata Battery",
+    "RAD":      "Rado",
+    "RE":       "R&E",
+    "REE":      "Reebok",
+    "RW":       "Rewards Watch",
+    "S-BAT":    "Sony Battery",
+    "SBP":      "S.B. Polo",
+    "SEI":      "Seiko",
+    "SEI-5":    "Seiko 5",
+    "SEI-AC":   "Seiko Alarm Clock",
+    "SEI-SP5":  "Seiko Sports 5",
+    "SEI-WC":   "Seiko Wall Clock",
+    "SER":      "Service",
+    "SKC":      "Skechers",
+    "SLO":      "Slo/Pokemon",
+    "SLO-AC":   "Slo Alarm Clock",
+    "SP":       "Spare Parts",
+    "SSS":      "Stainless Strap",
+    "SUB":      "Submarine",
+    "TBL":      "Timberland",
+    "TF":       "Trofish",
+    "TIS":      "Tissot",
+    "TSO-WC":   "Telesonic Wall Clock",
+    "VSA":      "Victorinox Swiss Army",
+    "WMB":      "Tokei Mystery Box",
 }
 
 # Categories merged into a single display group
@@ -58,11 +94,26 @@ CATEGORY_GROUPS: dict[str, set[str]] = {
     "🔋 Sony + Renata battery": {"S-BAT", "R-BAT"},
 }
 
-# Categories excluded from the product breakdown (operational / non-product)
-SKIP_CATEGORIES: set[str] = {"SER", "FG", "OT", "SP"}
+# Lines the manager hand-totals on the printed report every month — exempt
+# from the min-variance threshold so they always appear, however small the
+# movement (verified against his handwritten July totals: JCI 693/19,805
+# vs 692/19,585, a -RM220 change the threshold used to hide).
+ALWAYS_SHOW: set[str] = {"🔋 Sony + Renata battery"}
 
-# Categories shown as a single deposit/EP line (no qty, special label)
-DEPOSIT_CATEGORIES: set[str] = {"OH"}
+# Categories excluded from the product breakdown (operational / non-product)
+SKIP_CATEGORIES: set[str] = {"SER", "FG", "SP"}
+
+# Deposit accounts reported as labelled summary lines (no qty) rather than
+# product rows, each shown only when it moves by >= min_variance_rm. These are
+# money held/refunded, not merchandise — but they are inside the branch sales
+# totals (both the POS printout's and this message's headline), so a large
+# swing must be surfaced or the "Mainly due to" list cannot add up to the
+# headline (JCI July 2026: OT fell RM21,246 = 30% of the branch's decline).
+DEPOSIT_LINES: dict[str, set[str]] = {
+    "Deposit collection":          {"OH"},
+    "Repair/reservation deposits": {"OT"},
+}
+DEPOSIT_CATEGORIES: set[str] = set().union(*DEPOSIT_LINES.values())
 
 
 def _fmt_k(amount: float) -> str:
@@ -208,15 +259,17 @@ def generate_message(
         bd25 = product_breakdown(df25, branch, months)
         bd26 = product_breakdown(df26, branch, months)
 
-        # Deposit/EP line — shown first, no qty, special label
-        dep25 = sum(bd25.get(c, {}).get("sales", 0.0) for c in DEPOSIT_CATEGORIES)
-        dep26 = sum(bd26.get(c, {}).get("sales", 0.0) for c in DEPOSIT_CATEGORIES)
-        dep_var = round(dep26 - dep25, 2)
-        if abs(dep_var) >= min_variance_rm:
+        # Deposit lines — shown first, no qty, special labels
+        for dep_label, dep_cats in DEPOSIT_LINES.items():
+            dep25 = sum(bd25.get(c, {}).get("sales", 0.0) for c in dep_cats)
+            dep26 = sum(bd26.get(c, {}).get("sales", 0.0) for c in dep_cats)
+            dep_var = round(dep26 - dep25, 2)
+            if abs(dep_var) < min_variance_rm:
+                continue
             dep_dir  = "increased" if dep_var >= 0 else "decreased"
             dep_sign = "+" if dep_var >= 0 else "-"
             lines.append(
-                f"Deposit collection {dep_dir} by "
+                f"{dep_label} {dep_dir} by "
                 f"{dep_sign}RM{abs(dep_var):,.2f}"
             )
             lines.append("")
@@ -231,11 +284,21 @@ def generate_message(
             q26   = item["qty26"]
             q25   = item["qty25"]
 
-            # Skip tiny/zero movements between two present years
-            if abs(v) < min_variance_rm and s25 != 0 and s26 != 0:
+            # Nothing traded in either year. Guarding this first is what keeps
+            # zero-revenue rows (placeholder categories, clock batteries booked
+            # at RM0) out of the variance branch below, where the absent
+            # movement would otherwise print as "increased by +RM0".
+            if s25 == 0 and s26 == 0:
                 continue
-            # Skip anything with nonsensical negative qty (deposit-style rows)
-            if q26 < 0 and q25 < 0:
+            # Skip tiny movements between two present years
+            if (item["name"] not in ALWAYS_SHOW
+                    and abs(v) < min_variance_rm and s25 != 0 and s26 != 0):
+                continue
+            # Skip return/correction artifacts. A negative quantity or negative
+            # net revenue in either year is a POS adjustment rather than a
+            # brand's performance, and _fmt_k would strip the sign and report a
+            # refund as if it were lost sales.
+            if q25 < 0 or q26 < 0 or s25 < 0 or s26 < 0:
                 continue
 
             if s25 == 0 and s26 > 0:

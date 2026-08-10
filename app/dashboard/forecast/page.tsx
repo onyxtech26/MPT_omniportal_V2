@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import { TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
+import { TrendingUp, AlertCircle, RefreshCw, Info } from 'lucide-react';
 import { BrandImage } from '@/components/BrandImage';
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
@@ -140,6 +141,16 @@ export default function ForecastPage() {
         </p>
       </div>
 
+      {/* Cross-link to Seasonal Insights */}
+      <div className="flex items-start gap-2 bg-sky-50 border border-sky-100 rounded-xl px-4 py-3">
+        <Info size={14} className="text-sky-500 mt-0.5 shrink-0" />
+        <p className="text-xs text-sky-800">
+          This page gives a specific number for <span className="font-semibold">one branch, one month</span> — treat it as a rough estimate, not an exact count (see the range on each brand below).
+          For which months a brand <span className="font-semibold">typically</span> peaks across the whole business, based on two years of history, see{' '}
+          <Link href="/dashboard/seasonal" className="font-semibold underline underline-offset-2 hover:text-sky-900">Seasonal Insights</Link>.
+        </p>
+      </div>
+
       {/* Controls */}
       <div className="flex flex-wrap gap-3">
         <div className="flex flex-col gap-1">
@@ -222,7 +233,8 @@ export default function ForecastPage() {
                 <BrandImage brand={row.brand} size={36} />
                 <div>
                   <p className="text-sm font-bold text-slate-900">{row.brand}</p>
-                  <p className="text-xs text-slate-500">{row.predicted_units} units expected</p>
+                  <p className="text-xs text-slate-500">~{row.predicted_units} units expected</p>
+                  <p className="text-[10px] text-slate-400">likely {row.lower}–{row.upper}</p>
                 </div>
               </div>
             ))}
@@ -327,7 +339,10 @@ export default function ForecastPage() {
                           {tier}
                         </span>
                       </div>
-                      <span className="text-sm font-bold text-slate-900 ml-2 shrink-0">{row.predicted_units} units</span>
+                      <div className="text-right ml-2 shrink-0">
+                        <span className="text-sm font-bold text-slate-900">~{row.predicted_units} units</span>
+                        <span className="block text-[10px] text-slate-400">range {row.lower}–{row.upper}</span>
+                      </div>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div

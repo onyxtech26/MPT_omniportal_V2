@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DEMO_DATA } from '@/lib/demo-data';
+import { apiErrorMessage } from '@/lib/apiError';
 
 export interface LeaderboardItem {
   id: string;
@@ -84,7 +85,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.detail || 'Integrity Error');
+      if (!response.ok) throw new Error(apiErrorMessage(data, 'Integrity Error'));
 
       setOutlets(data.outlets);
       setLeaderboard(data.leaderboard || []);
