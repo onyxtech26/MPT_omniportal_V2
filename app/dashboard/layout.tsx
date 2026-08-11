@@ -113,18 +113,18 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-slate-50 font-sans">
       {/* Top Navigation Bar */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 px-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg lg:hidden text-slate-600"
+            className="p-2 hover:bg-slate-100 rounded-lg lg:hidden text-slate-600 shrink-0"
           >
             <Menu size={24} />
           </button>
-          
-          <Logo textClassName="text-xl" />
+
+          <Logo className="min-w-0" textClassName="text-base sm:text-xl truncate" />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Upload sales data — managers/admins only */}
           {user && user.role !== 'demo' && (
             <div className="flex items-center gap-2">

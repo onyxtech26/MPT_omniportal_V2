@@ -444,7 +444,7 @@ export default function DashboardPage() {
             </p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             {selectedOutlet && (
               <>
                 <button
@@ -479,16 +479,18 @@ export default function DashboardPage() {
               className="space-y-8"
             >
               {/* Network Revenue Hero Card */}
-              <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] p-8 md:p-10 rounded-[32px] shadow-2xl shadow-slate-900/20 text-white relative overflow-hidden">
+              <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] p-6 sm:p-8 md:p-10 rounded-[32px] shadow-2xl shadow-slate-900/20 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5 transform translate-x-1/4 -translate-y-1/4">
                   <DollarSign size={300} />
                 </div>
                 <div className="relative z-10">
                   <h3 className="text-sm font-bold text-slate-300 mb-2 uppercase tracking-widest">Total Network Revenue</h3>
-                  <div className="flex items-baseline gap-4">
-                    <p className="text-5xl md:text-7xl font-bold tracking-tight">{formatCurrencyFull(totalNetworkRevenue)}</p>
+                  <div className="flex items-baseline gap-4 min-w-0">
+                    {/* An 8-figure amount at text-5xl is wider than a 390px phone,
+                        so the type steps down rather than pushing the page sideways. */}
+                    <p className="text-3xl sm:text-5xl md:text-7xl font-bold tracking-tight break-words min-w-0">{formatCurrencyFull(totalNetworkRevenue)}</p>
                   </div>
-                  <div className="mt-8 flex flex-wrap gap-8 md:gap-16">
+                  <div className="mt-8 flex flex-wrap gap-x-6 gap-y-5 sm:gap-8 md:gap-16">
                      <div>
                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Network ATV</p>
                         <p className="text-2xl font-bold">{formatCurrencyFull(networkATV)}</p>
@@ -624,14 +626,14 @@ export default function DashboardPage() {
               {/* Main Content - Salesman Leaderboard */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Hero Header for Detail View */}
-                <div className="bg-[#0f172a] p-8 rounded-[32px] shadow-lg text-white flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+                <div className="bg-[#0f172a] p-6 sm:p-8 rounded-[32px] shadow-lg text-white flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
                   <div className="absolute -right-10 -bottom-10 opacity-10">
                     <TrendingUp size={200} />
                   </div>
-                  <div className="relative z-10">
+                  <div className="relative z-10 min-w-0">
                     <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-1">Total Revenue</p>
-                    <h2 className="text-5xl font-bold tracking-tight">{formatCurrencyFull(selectedOutlet.totalRevenue)}</h2>
-                    <div className="flex gap-6 mt-4">
+                    <h2 className="text-3xl sm:text-5xl font-bold tracking-tight break-words">{formatCurrencyFull(selectedOutlet.totalRevenue)}</h2>
+                    <div className="flex flex-wrap gap-x-6 gap-y-4 mt-4">
                       <div>
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Transactions</p>
                         <p className="text-xl font-bold text-slate-200">{selectedOutlet.transactionCount.toLocaleString()}</p>
@@ -720,7 +722,7 @@ export default function DashboardPage() {
                      <Zap className="text-amber-500" size={24} />
                      Efficiency (ATV)
                    </h2>
-                   <p className="text-4xl font-bold text-slate-900 mb-2 tracking-tight">{formatCurrencyFull(outletATV)}</p>
+                   <p className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2 tracking-tight break-words">{formatCurrencyFull(outletATV)}</p>
                    <p className="text-sm text-slate-500 font-medium">Average Transaction Value</p>
                    <div className="mt-6 pt-6 border-t border-slate-50 flex justify-between items-center text-xs">
                       <span className="text-slate-500 font-medium">Network Avg: {formatCurrencyCompact(networkATV)}</span>
@@ -828,12 +830,12 @@ export default function DashboardPage() {
                 transition={{ type: 'spring', damping: 30, stiffness: 300 }}
                 className="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-50 overflow-y-auto border-l border-slate-100"
               >
-                <div className="p-8">
+                <div className="p-6 sm:p-8">
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-10">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h2 className="text-3xl font-bold text-slate-900">
+                  <div className="flex items-start justify-between gap-3 mb-10">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-2">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 break-words min-w-0">
                           {selectedSalesman.name}
                         </h2>
                         {salesmanMetrics.isTop1 && (
@@ -845,33 +847,35 @@ export default function DashboardPage() {
                       </div>
                       <p className="text-slate-500 font-medium">Salesman Performance Drill-Down</p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setSelectedSalesmanId(null)}
-                      className="p-2 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                      className="p-2 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
                     >
                       <X size={24} className="text-slate-400" />
                     </button>
                   </div>
 
-                  {/* Key Metrics Grid */}
-                  <div className="grid grid-cols-2 gap-4 mb-10">
-                    <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100">
+                  {/* Key Metrics Grid — the panel is only 326px wide inside its
+                      padding on a phone, so both the padding and the figure size
+                      step down rather than forcing the cells apart. */}
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-10">
+                    <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Total Revenue</p>
-                      <p className="text-2xl font-bold text-slate-900 tracking-tight">{formatCurrencyFull(selectedSalesman.totalRevenue)}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight break-words">{formatCurrencyFull(selectedSalesman.totalRevenue)}</p>
                     </div>
-                    <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100">
+                    <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Outlet Rank</p>
-                      <p className="text-2xl font-bold text-slate-900 tracking-tight">#{salesmanMetrics.rank}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">#{salesmanMetrics.rank}</p>
                     </div>
-                    <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100">
+                    <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Revenue Share</p>
-                      <p className="text-2xl font-bold text-slate-900 tracking-tight">
+                      <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                         {selectedOutlet ? ((selectedSalesman.totalRevenue / selectedOutlet.totalRevenue) * 100).toFixed(1) : '0'}%
                       </p>
                     </div>
-                    <div className="p-6 bg-slate-50 rounded-[24px] border border-slate-100">
+                    <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Best Day</p>
-                      <p className="text-2xl font-bold text-slate-900 tracking-tight">{salesmanMetrics.bestDay}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight break-words">{salesmanMetrics.bestDay}</p>
                     </div>
                   </div>
 

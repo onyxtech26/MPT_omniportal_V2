@@ -250,8 +250,8 @@ export default function BrandsPage() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2.5">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Action</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2.5">
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide shrink-0">Action</span>
             <span className="text-xs text-emerald-800">
               {viewMode === 'all'
                 ? 'These brands are strong across all outlets — safe to run company-wide promotions or bulk orders.'

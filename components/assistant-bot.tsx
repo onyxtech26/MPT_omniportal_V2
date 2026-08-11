@@ -100,7 +100,9 @@ export function AssistantBot() {
       // pointer-events-none on the wrapper so the empty space around the robot
       // never swallows clicks meant for the page beneath it; the interactive
       // parts re-enable it individually.
-      className="fixed bottom-6 right-6 z-40 flex items-end gap-2 pointer-events-none print:hidden"
+      // Smaller and tighter to the corner on a phone: at full desktop size the
+      // bubble plus robot span ~306px, which covers most of a 390px screen.
+      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex items-end gap-2 pointer-events-none print:hidden"
       // No fade-in, and no `initial` to get stuck at. Animation frames stop in
       // a background tab, so anything whose visibility depends on an entrance
       // animation completing can be left permanently invisible. The robot is
@@ -121,7 +123,7 @@ export function AssistantBot() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.95 }}
             onClick={() => router.push(ASSISTANT_HREF)}
-            className="pointer-events-auto relative mb-4 max-w-[210px] rounded-[18px] rounded-br-sm bg-white px-4 py-2.5 text-left text-xs font-semibold leading-snug text-slate-700 shadow-lg shadow-slate-900/10 border border-slate-200 cursor-pointer hover:border-slate-400 transition-colors"
+            className="pointer-events-auto relative mb-4 max-w-[150px] sm:max-w-[210px] rounded-[18px] rounded-br-sm bg-white px-4 py-2.5 text-left text-xs font-semibold leading-snug text-slate-700 shadow-lg shadow-slate-900/10 border border-slate-200 cursor-pointer hover:border-slate-400 transition-colors"
           >
             {LINES[lineIndex]}
           </motion.button>
@@ -139,7 +141,7 @@ export function AssistantBot() {
           // Ring + strong shadow so it reads clearly against the light
           // dashboard; slightly transparent at rest so whatever it passes over
           // stays legible, opaque once you reach for it.
-          className="w-16 h-16 rounded-full bg-white ring-2 ring-slate-900/10 shadow-xl shadow-slate-900/25 p-2.5 cursor-pointer opacity-90 hover:opacity-100 transition-opacity"
+          className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white ring-2 ring-slate-900/10 shadow-xl shadow-slate-900/25 p-2 sm:p-2.5 cursor-pointer opacity-90 hover:opacity-100 transition-opacity"
         >
           <Robot />
         </motion.button>

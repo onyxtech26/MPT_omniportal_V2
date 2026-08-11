@@ -291,9 +291,9 @@ export default function AgendaPage() {
 
         {/* Outlet picker */}
         <div className="mt-6">
-          <div className="flex items-center justify-between ml-1">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 ml-1">
             <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <Store size={16} className="text-slate-400" />
+              <Store size={16} className="text-slate-400 shrink-0" />
               Outlets to compare
               <span className="text-xs font-medium text-slate-400">
                 {outlets.length} selected
@@ -365,10 +365,12 @@ export default function AgendaPage() {
             <>
               <button
                 onClick={handleDownload}
-                className="flex items-center justify-center gap-2 px-6 py-3.5 bg-emerald-600 text-white rounded-[20px] hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 font-semibold cursor-pointer active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 min-w-0 px-6 py-3.5 bg-emerald-600 text-white rounded-[20px] hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 font-semibold cursor-pointer active:scale-[0.98]"
               >
-                <Download size={18} />
-                Download {result.agendaFilename}
+                <Download size={18} className="shrink-0" />
+                {/* Generated filenames have no spaces to break on, so they are
+                    truncated rather than allowed to widen the page. */}
+                <span className="truncate">Download {result.agendaFilename}</span>
               </button>
               <button
                 onClick={handleDownloadZip}
