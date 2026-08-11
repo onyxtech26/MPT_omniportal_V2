@@ -289,11 +289,31 @@ def test_capped_wraps_any_statement_shape(inner):
     "update sales_transactions set trx_amt = 0",
     "select 1; delete from sales_transactions",
     "select 1 -- sneaky",
+    "with x as (select 1) insert into sales_transactions values (1)",
 ])
 def test_sql_validator_rejects_writes_and_injection(bad):
     from assistant import AssistantError, clean_sql, validate_sql
     with pytest.raises(AssistantError):
         validate_sql(clean_sql(bad))
+
+
+def test_sql_validator_allows_cte():
+    from assistant import clean_sql, validate_sql
+    sql = validate_sql(clean_sql("WITH t AS (SELECT 1 AS n) SELECT n FROM t LIMIT 5"))
+    assert sql.lower().startswith("with")
+
+
+@pytest.mark.parametrize("prose", [
+    "I'm sorry, but I can't help with that.",       # a refusal containing "with"
+    "I cannot answer that from the sales data.",
+])
+def test_prose_reply_gives_a_human_message(prose):
+    # Regression: clean_sql used to match the "with" inside ordinary prose and
+    # hand the validator a fragment, surfacing "Only SELECT queries are allowed".
+    from assistant import AssistantError, clean_sql, validate_sql
+    assert clean_sql(prose) == ""
+    with pytest.raises(AssistantError, match="only answer questions about the sales data"):
+        validate_sql(clean_sql(prose))
 
 
 def test_chat_requires_auth():

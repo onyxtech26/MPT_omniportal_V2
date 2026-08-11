@@ -417,8 +417,16 @@ def get_brand_models(
     return {"brand": brand, "branch": branch, "models": models}
 
 
+class ChatTurn(BaseModel):
+    question: str = Field("", max_length=500)
+    answer: str = Field("", max_length=2000)
+
+
 class ChatRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=500)
+    # Recent turns, so a follow-up like "what about JCI?" makes sense. The
+    # client sends these because the backend keeps no session state.
+    history: list[ChatTurn] = Field(default_factory=list, max_length=8)
 
 
 # Keeps a single user from exhausting the shared model quota.
@@ -461,7 +469,10 @@ def chat(request: ChatRequest, username: str = Depends(verify_token)):
     _chat_calls[username].append(now)
 
     try:
-        return assistant.answer_question(request.question, source)
+        return assistant.answer_question(
+            request.question, source,
+            [t.model_dump() for t in request.history],
+        )
     except assistant.AssistantError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except datasource.DataSourceError as exc:

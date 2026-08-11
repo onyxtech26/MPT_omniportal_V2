@@ -36,6 +36,51 @@ const SUGGESTIONS = [
   'Which month had the most transactions?',
 ];
 
+const SQL_CLAUSES =
+  /\s+(FROM|WHERE|GROUP BY|ORDER BY|HAVING|LIMIT|OFFSET|UNION ALL|UNION|LEFT JOIN|INNER JOIN|JOIN|WITH)\b/gi;
+
+/** Lay a one-line query out over several lines so it can be read without
+ *  scrolling sideways. Commas are only broken at the top level — splitting
+ *  inside round(sum(...), 2) would mangle the expression. */
+function formatSql(sql: string): string {
+  const oneLine = sql.replace(/\s+/g, ' ').trim();
+  const clauses = oneLine.replace(SQL_CLAUSES, '\n$1');
+
+  return clauses
+    .split('\n')
+    .map((line) => {
+      let depth = 0;
+      let out = '';
+      for (const ch of line) {
+        if (ch === '(') depth++;
+        else if (ch === ')') depth--;
+        out += ch;
+        if (ch === ',' && depth === 0) out += '\n  ';
+      }
+      return out;
+    })
+    .join('\n')
+    .replace(/\n\s*\n/g, '\n')
+    .replace(/,\n\s+$/g, ',');
+}
+
+/** Render **bold** rather than printing the asterisks.
+ *  The model is told to write plain text, but it reaches for markdown anyway,
+ *  and raw ** in an answer looks like a bug to whoever is reading it. */
+function RichText({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+        part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
+          <strong key={i} className="font-bold text-slate-900">{part.slice(2, -2)}</strong>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
 /** Shows the query the assistant wrote and the rows it read. */
 function Evidence({ turn }: { turn: Turn }) {
   const [open, setOpen] = useState(false);
@@ -60,34 +105,44 @@ function Evidence({ turn }: { turn: Turn }) {
 
       {open && (
         <div className="mt-3 space-y-3">
-          <pre className="text-xs bg-slate-900 text-slate-100 rounded-[16px] p-4 overflow-x-auto font-mono leading-relaxed">
-            {turn.sql}
+          {/* Wrapped, not side-scrolled: a query you have to drag to read is
+              no use in a demo. */}
+          <pre className="text-xs bg-slate-900 text-slate-100 rounded-[16px] p-4 font-mono leading-relaxed whitespace-pre-wrap break-words">
+            {formatSql(turn.sql)}
           </pre>
           {columns.length > 0 && (
-            <div className="overflow-x-auto rounded-[16px] border border-slate-100">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50">
-                  <tr>
-                    {columns.map((c) => (
-                      <th key={c} className="text-left font-bold text-slate-600 px-3 py-2 whitespace-nowrap">
-                        {c}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {turn.rows!.slice(0, 10).map((row, i) => (
-                    <tr key={i} className="border-t border-slate-50">
+            <>
+              {/* Bounded so a long result set cannot push the page away. */}
+              <div className="overflow-auto max-h-64 rounded-[16px] border border-slate-100">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 sticky top-0">
+                    <tr>
                       {columns.map((c) => (
-                        <td key={c} className="px-3 py-2 text-slate-700 whitespace-nowrap">
-                          {String(row[c] ?? '')}
-                        </td>
+                        <th key={c} className="text-left font-bold text-slate-600 px-3 py-2 whitespace-nowrap">
+                          {c}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {turn.rows!.slice(0, 25).map((row, i) => (
+                      <tr key={i} className="border-t border-slate-50">
+                        {columns.map((c) => (
+                          <td key={c} className="px-3 py-2 text-slate-700 whitespace-nowrap">
+                            {String(row[c] ?? '')}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {(turn.rowCount ?? 0) > Math.min(turn.rows!.length, 25) && (
+                <p className="text-xs text-slate-400 font-medium">
+                  Showing {Math.min(turn.rows!.length, 25)} of {turn.rowCount} rows.
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
@@ -155,10 +210,16 @@ export default function AssistantPage() {
     setTurns((prev) => [...prev, { question: q }]);
 
     try {
+      // Send the recent exchange so follow-ups resolve ("what about JCI?").
+      const history = turns
+        .filter((t) => t.answer)
+        .slice(-4)
+        .map((t) => ({ question: t.question, answer: t.answer ?? '' }));
+
       const res = await fetch(`${BACKEND}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ question: q }),
+        body: JSON.stringify({ question: q, history }),
       });
 
       if (res.status === 401) {
@@ -266,7 +327,7 @@ export default function AssistantPage() {
                     <Sparkles size={15} />
                   </span>
                   <div
-                    className={`rounded-[24px] px-5 py-4 flex-1 border ${
+                    className={`rounded-[24px] px-5 py-4 flex-1 min-w-0 border ${
                       turn.error
                         ? 'bg-red-50 border-red-100'
                         : 'bg-white border-slate-100 shadow-sm'
@@ -277,7 +338,7 @@ export default function AssistantPage() {
                     ) : (
                       <>
                         <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-                          {turn.answer}
+                          <RichText text={turn.answer ?? ''} />
                         </p>
                         <Evidence turn={turn} />
                       </>
