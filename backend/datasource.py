@@ -163,7 +163,11 @@ class FileSource:
         )
         result = result[result['units'] > 0].copy()
         result['list_price'] = result['inv_cd'].map(prices).fillna(0.0)
-        result = result.sort_values('units', ascending=False)
+        # Model code breaks ties. Without it the order among equal unit counts
+        # is whatever each backend happens to produce -- pandas' stable sort
+        # keeps groupby order, Postgres makes no guarantee at all -- so the two
+        # disagree on the ranking even though the numbers are identical.
+        result = result.sort_values(['units', 'inv_cd'], ascending=[False, True])
 
         return [
             {
@@ -361,6 +365,16 @@ class SupabaseSource:
         self._cache["at"] = now
         return result
 
+    def coverage(self) -> dict:
+        """What period the data spans — so the assistant can answer questions
+        about the data itself, not only questions answered from it."""
+        rows = self.query(
+            f"select to_char(min(trx_date), 'Mon YYYY') as first_month, "
+            f"to_char(max(trx_date), 'Mon YYYY') as last_month, "
+            f"count(*) as rows from {self.TABLE} where trx_date is not null"
+        )
+        return rows[0] if rows else {}
+
     def brand_models(self, brand: str, branch: str | None = None) -> list[dict]:
         brand_norm = _sql_literal(brand.strip().upper() + "%")
         branch_clause = ""
@@ -384,7 +398,7 @@ class SupabaseSource:
               {branch_clause}
             group by inv_cd
             having sum(trx_qty) > 0
-            order by units desc
+            order by units desc, model asc
         """)
         return [
             {
