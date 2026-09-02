@@ -76,13 +76,34 @@ browser. Nothing is sent back.
 "Load your sales CSV" screen — no company data is exposed — but access protection
 (Vercel password protection, or an in-app passcode) is worth offering the Director.
 
+### Agenda decision (2026-09-02)
+
+The Meeting Agenda was **removed from the web app** rather than ported. It was the
+only feature needing a running Python backend, and none is deployed with the static
+site. Options considered: port to the browser (ExcelJS), run it as a Vercel
+serverless function (rejected — the CSV would leave the user's machine, breaking the
+Director's requirement), simplify the output, or keep the desktop build.
+
+**Chosen:** keep the desktop build for the Manager, and make the website the
+Director's dashboard. The Manager already uses the `.exe` monthly and is unaffected.
+
+⚠️ **`backend/` is deliberately KEPT in the repo** — it is the source of the Agenda
+logic the Manager's desktop build depends on, and would be needed to rebuild or fix
+that build. Do not delete it while the `.exe` is in use.
+> Note: the Electron packaging was removed in the cleanup, so a *new* `.exe` cannot
+> be produced without restoring it from git history. The Manager's installed copy
+> still works.
+
 **Pre-deploy checklist:**
-- [ ] **Port the Meeting Agenda to run in-browser — BLOCKING.** `app/dashboard/agenda/page.tsx:182` is the last `NEXT_PUBLIC_BACKEND_URL` reference in the app.
-- [ ] Delete the now-unused `backend/` folder (do this with the agenda port)
+- [x] **Meeting Agenda resolved** — removed from the web app (2026-09-02). The web app now has **no backend reference of any kind**.
 - [x] Remove stale `public/api_dashboard.php` — done 2026-09-02
 - [x] **Strip desktop/mobile packaging — done 2026-09-02.** Removed `electron/`, `android/`, `dist-electron/` (~1.3 GB), `capacitor.config.ts`, `generate-assets.js`, `build.log`; dropped `main`, the electron-builder `build` block, the `electron:*` / `dist:exe` scripts, and the `@capacitor/*` + `electron` + `electron-builder` dependencies. Also removed the Capacitor native-save branches from `lib/download.ts` and the dashboard PDF export — browser download is now the only path.
 - [x] **`npm run build` verified** — all 5 routes prerender as **Static**; `out/` produced correctly.
+- [x] `npm run build` re-verified after removal — 5 static routes, no agenda
 - [ ] Decide on access protection (public Vercel URL vs password)
+
+**Audience (clarified 2026-09-02):** the Dashboard is for the **Director only**. Two
+further systems are planned for other staff — scope to be defined.
 
 > Note: `output: 'export'` in `next.config.ts` is **kept**. Its comment says "for mobile",
 > but it is now wanted for a different reason: it produces the static site Vercel serves.
@@ -99,7 +120,8 @@ browser. Nothing is sent back.
 
 ## Features
 
-**Keep:** Dashboard, Meeting Agenda (most useful for manager), **Brand Performance** (`/brands`).
+**Keep:** Dashboard, **Brand Performance** (`/brands`), **Leaderboards** (`/leaderboard`).
+**Removed 2026-09-02:** Meeting Agenda — see the Agenda decision below.
 **Remove (delete):** Demand Forecast (`/forecast`), Seasonal Insights (`/seasonal`).
 > Decided 2026-09-01: Brand Performance stays; Forecast + Seasonal deleted.
 

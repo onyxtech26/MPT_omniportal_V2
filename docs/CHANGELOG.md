@@ -14,6 +14,26 @@ Format:
 
 ---
 
+## 2026-09-02 — Meeting Agenda removed from the web app
+
+- **Why:** the Agenda was the only feature still requiring the Python backend, and
+  no backend is deployed with the static Vercel site, so it could not work there.
+- **Options weighed:** port to the browser with ExcelJS; run it as a Vercel
+  serverless function (**rejected** — the CSV would travel to Vercel, breaking the
+  Director's "data never leaves my machine" requirement); simplify the output and
+  drop the template; or keep the existing desktop build.
+- **Decision:** remove it from the website. The Manager already uses the `.exe`
+  monthly for his agenda and is unaffected; the website is the Director's dashboard.
+- **Removed:** `app/dashboard/agenda/`, plus `lib/branches.ts`, `lib/download.ts`
+  and `lib/apiError.ts` (all agenda-only); the nav entry and its `ROUTE_ACCESS`
+  rule; `.env.example` rewritten — the app needs no environment variables at all.
+- **`backend/` deliberately kept** — it is the source of the Agenda logic the
+  Manager's desktop build depends on. Note the Electron packaging was already
+  removed, so a *new* `.exe` would need it restored from git history.
+- Build re-verified: 5 static routes, no backend reference anywhere in the app.
+- Also noted: the Dashboard is for the **Director only**; two further systems are
+  planned for other staff.
+
 ## 2026-09-02 — Reconciled to the Director's own tool, Brand Performance rebuilt, Leaderboards, deploy prep
 
 - **Found the Director's reference app** (`Boss mpt Project/sales-pulse/`, 26 Aug):
