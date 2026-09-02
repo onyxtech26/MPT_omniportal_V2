@@ -14,6 +14,52 @@ Format:
 
 ---
 
+## 2026-09-02 — Reconciled to the Director's own tool, Brand Performance rebuilt, Leaderboards, deploy prep
+
+- **Found the Director's reference app** (`Boss mpt Project/sales-pulse/`, 26 Aug):
+  a working browser-only analytics tool of his own, tagline *"Files never leave
+  this browser"* — independent confirmation of the V2 architecture. He gave it to
+  us as a reference ("build something like this, or better"), so its logic is the
+  authority on how MPT counts things.
+- **Counting rules adopted** (`lib/salesData.ts`) so both apps agree:
+  - a sale is `trx_type` PS/NI; a `CN` credit note counts only when matched to a
+    real sale (same `inv_cd` + amount) — orphan returns dropped
+  - **transactions = distinct `trx_no`, not rows** (43,676 → 32,774; ATV
+    RM 132.65 → RM 176.78) — our figure had been ~33% overstated
+  - Service = the company's **13** category codes, not 3. `S-BAT` alone is
+    RM 512k; ~RM 726k had been showing as watch brands
+  - **NOT adopted:** his `cost × qty`. Verified across products at varying
+    quantities that `cost_amt` is already a line total, so multiplying
+    double-counts. His margin boards overstate cost — raise with him.
+- **Brand Performance rebuilt on actual sales** (`app/dashboard/brands/page.tsx`).
+  It had been ranking brands by an **AI forecast for Oct–Dec 2025** — a prediction
+  of a period that has since passed — with real model figures underneath, under a
+  name implying history. Now: outlet scope, Sales/Units toggle, expandable model
+  breakdown, all from the loaded CSV. Removes the last forecast dependency.
+- **New Leaderboards page** (`app/dashboard/leaderboard/page.tsx`): Vendor /
+  Salesperson / Brand / Outlet × Sales / Units / Margin, modelled on his boards.
+  Engine gained `vendors`, `vendorUnits`, `vendorCost`, `brandCost`,
+  `salesmenUnits`, `salesmenCost`.
+- **"SW" finally identified.** It is also a vendor code — the largest supplier at
+  RM 1.78M — selling TISSOT, LONGINES, RADO, MIDO, i.e. **Swatch Group**. So
+  `SW ROGER` = Roger on the Swatch concession counter. Answers the open question
+  behind "SW and other sales put together, add option to separate".
+- **Business findings worth showing the Director:**
+  - Service is **71.9% of all units sold but only 13.9% of revenue**
+  - `MPT SB` (in-house service) is the **2nd-largest profit generator**
+    (RM 413,362 at 95.6% margin) — nearly matching Swatch Group on far less revenue
+- **Deploy prep (target: Vercel).** Stripped desktop/mobile packaging: removed
+  `electron/`, `android/`, `dist-electron/` (~1.3 GB), `capacitor.config.ts`,
+  `generate-assets.js`, plus the Electron/Capacitor deps and scripts. Removed the
+  Capacitor native-save branches from `lib/download.ts` and the dashboard PDF
+  export. `npm run build` verified: all 5 routes prerender as **Static**.
+  `output: 'export'` kept — now for Vercel rather than Capacitor.
+- **Also:** "Upload Data" renamed **"Load Data"** (it never uploaded — clearer for
+  the Director); added `start-omniportal.bat` to run it locally.
+- **Still blocking deploy:** the **Meeting Agenda** is the only remaining caller of
+  `NEXT_PUBLIC_BACKEND_URL` (`app/dashboard/agenda/page.tsx:182`). No backend is
+  deployed to Vercel, so it must be ported to run in-browser (ExcelJS) first.
+
 ## 2026-09-01 — V2 kickoff: go server-less (client-side), boss/manager feedback
 - **Context:** New internship direction. Boss wants the portal to run with **no
   server** — "don't connect to my server, just upload the CSV and look inside."
