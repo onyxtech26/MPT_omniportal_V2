@@ -14,6 +14,32 @@ Format:
 
 ---
 
+## 2026-09-02 — Returns now deducted, and a shared period filter
+
+- 🐛 **Returns were inflating revenue.** The Director asked us to check this and he
+  was right. Returns are marked by a `-Return` description (or `trx_type = CN`), but
+  **the POS records about half of them with POSITIVE amounts and quantities**, so
+  they were being added instead of subtracted. Examples from one outlet:
+  a correct return reads `qty −1, amt −239`; a wrong one reads `qty +1, amt +129`.
+  The engine now forces amount, quantity and cost negative for every return, exactly
+  as the Director's own tool does.
+  - 2025 file: RM 5,793,679 → **RM 5,692,813** (229 bad rows, RM 100,866 swing)
+  - 2026 file: RM 5,639,309 → **RM 5,511,300** (291 bad rows, RM 128,010 swing)
+  - About 2% of revenue in both years.
+- **New period filter.** A bar under the navigation lets you pick a **month** or a
+  **custom date range** after loading a report. Month shortcuts are built from the
+  months actually in the file, so you cannot select a period with no data.
+  - It lives in the layout and is read from the data context, so **one choice applies
+    to every page** — verified: March 2025 shows RM 913,677.45 on both the dashboard
+    and Brand Performance, with product lines dropping from 150 to 73.
+  - `data-context.tsx` now keeps the parsed rows and re-aggregates on filter change,
+    rather than re-reading and re-parsing megabytes of CSV each time.
+- **Category meanings confirmed by the Director:** `OH` = voucher, `OT` = deposit.
+  Both remain inside the Service group to match his tool, but `OH` is heavily negative
+  (~−RM 114k), which depresses the Service total — worth asking if they should be
+  separate lines.
+- Noted: the 2026 file contains **14 outlets** (2025 has 13).
+
 ## 2026-09-02 — Dashboard shows sales and units together (+ drill-down bug fixed)
 
 - **Monthly Performance** is now a dual-axis chart: **bars = sales** (ringgit, left

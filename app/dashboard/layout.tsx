@@ -28,6 +28,7 @@ const NAV_ITEMS = [
 ];
 
 import { Logo } from '@/components/logo';
+import { PeriodFilter } from '@/components/period-filter';
 import { canAccess, ROLE_LABELS, type Role } from '@/lib/roles';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -262,6 +263,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="pt-16 min-h-screen">
+        {/* One period choice, shared by every page via the data context. */}
+        <PeriodFilter />
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
           {children}
         </div>

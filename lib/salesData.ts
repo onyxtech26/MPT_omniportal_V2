@@ -75,6 +75,7 @@ interface Row {
   inv_desc: string;
   inv_category: string;   // POS category code, e.g. PIN / BAT-CLK / SEI-WC
   trx_no: string;         // transaction number — several rows share one sale
+  trx_type: string;       // PS / NI = sale, CN = credit note (return)
   inv_cd: string;         // model/stock code, e.g. TS-SRPK13K1-4R3
   vendor_no: string;      // supplier code, e.g. TS / WT / TMY
   trx_amt: number;        // sales value
@@ -120,9 +121,15 @@ export interface GroupingOptions {
   mergeSW?: boolean;
   /** Roll pin / battery / labour / service items into a single "Service" group. */
   groupService?: boolean;
+  /** Only count rows on/after this date, 'YYYY-MM-DD'. */
+  dateFrom?: string | null;
+  /** Only count rows on/before this date, 'YYYY-MM-DD'. */
+  dateTo?: string | null;
 }
 
-const DEFAULT_GROUPING: Required<GroupingOptions> = { mergeSW: true, groupService: true };
+const DEFAULT_GROUPING: Required<GroupingOptions> = {
+  mergeSW: true, groupService: true, dateFrom: null, dateTo: null,
+};
 
 /** The label all service-type items collapse to. */
 export const SERVICE_LABEL = 'Service';
@@ -169,6 +176,18 @@ function normalizeRow(row: Row, opts: Required<GroupingOptions>): Row {
 
   // Product: tidy whitespace, net returns into the base product, group service.
   let desc = row.inv_desc.trim().replace(/\s+/g, ' ');
+
+  // A return must reduce the totals. The POS is inconsistent about this: roughly
+  // half of "-Return" rows carry POSITIVE amounts and quantities, which would
+  // otherwise be added to revenue instead of deducted (~RM 100k on one year's
+  // file). Force the sign, exactly as the Director's own tool does.
+  const isReturn = /-return$/i.test(desc) || row.trx_type === RETURN_TYPE;
+  if (isReturn) {
+    row.trx_amt = -Math.abs(row.trx_amt);
+    row.trx_qty = -Math.abs(row.trx_qty);
+    row.cost_amt = -Math.abs(row.cost_amt);
+  }
+
   desc = desc.replace(/-Return$/i, ''); // a return nets against the base product
   if (opts.groupService && isServiceItem(row.inv_category)) {
     desc = SERVICE_LABEL;
@@ -236,6 +255,7 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
       inv_desc: (rec.inv_desc ?? '').toString(),
       inv_category: (rec.inv_category ?? '').toString(),
       trx_no: (rec.trx_no ?? '').toString().trim(),
+      trx_type: (rec.trx_type ?? '').toString().trim().toUpperCase(),
       inv_cd: (rec.inv_cd ?? '').toString().trim(),
       vendor_no: (rec.vendor_no ?? '').toString().trim(),
       trx_amt: toNumber(rec.trx_amt),
@@ -245,6 +265,14 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
       day,
     }, opts);
     if (!row.com_unit) continue; // pandas groupby('com_unit') drops null outlet
+    // Date window. 'YYYY-MM-DD' sorts lexically, so string compare is safe.
+    // Rows whose date could not be parsed are excluded once a window is set,
+    // since there is no way to know whether they belong in it.
+    if (opts.dateFrom || opts.dateTo) {
+      if (!row.day) continue;
+      if (opts.dateFrom && row.day < opts.dateFrom) continue;
+      if (opts.dateTo && row.day > opts.dateTo) continue;
+    }
     const bucket = byOutlet.get(row.com_unit);
     if (bucket) bucket.push(row);
     else byOutlet.set(row.com_unit, [row]);
@@ -349,14 +377,23 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
 
 // ---- Public entry points ----------------------------------------------------
 
-/** Parse CSV text (already in memory) into a dashboard summary. */
-export function parseCsvText(text: string, options?: GroupingOptions): SalesSummary {
-  const result = Papa.parse<Record<string, string>>(text, {
+/**
+ * Parse CSV text into raw records, without aggregating.
+ *
+ * The app keeps these so it can re-aggregate cheaply when the user changes the
+ * date range, instead of re-reading and re-parsing the whole file each time.
+ */
+export function parseCsvRecords(text: string): Record<string, string>[] {
+  return Papa.parse<Record<string, string>>(text, {
     header: true,
     skipEmptyLines: true,
     dynamicTyping: false, // keep everything as strings; we coerce explicitly
-  });
-  return aggregate(result.data, options);
+  }).data;
+}
+
+/** Parse CSV text (already in memory) into a dashboard summary. */
+export function parseCsvText(text: string, options?: GroupingOptions): SalesSummary {
+  return aggregate(parseCsvRecords(text), options);
 }
 
 /**
@@ -376,6 +413,19 @@ export function parseCsvFile(file: File, options?: GroupingOptions): Promise<Sal
       error: (err) => reject(err),
     });
   });
+}
+
+/**
+ * The months present in a report, as 'YYYY-MM', oldest first. Used to offer
+ * month shortcuts in the period picker rather than guessing a calendar.
+ */
+export function listMonths(records: Record<string, string>[]): string[] {
+  const seen = new Set<string>();
+  for (const r of records) {
+    const { month } = parseDate(r.trx_date);
+    if (month) seen.add(month);
+  }
+  return [...seen].sort();
 }
 
 /** Quick header check so we can warn the user on a wrong file. */

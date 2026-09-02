@@ -156,7 +156,9 @@ codes are inconsistent — `ROGER SW`, `SW ROGER`, `SW NINA AT`, trailing spaces
 ### D. New feature
 | # | Request | Interpretation | Status |
 |---|---|---|---|
-| 5 | Vendor leaderboard | Rank vendors (`vendor_no`) by sales/units, big→small | Clear (confirm vendor name source) |
+| 5 | Vendor leaderboard | Rank vendors (`vendor_no`) by sales/units, big→small | ✅ done (Leaderboards page) |
+| 11 | **Date range / specific month filter** | After loading, choose a date range or a single month | ✅ done 2026-09-02 — shared `PeriodFilter` in the layout; one choice applies to every page via the data context |
+| 12 | **Returns (CN / goods return) must be deducted** | Returns were being added, not subtracted | ✅ fixed 2026-09-02 — see Dataset reference |
 
 ---
 
@@ -277,4 +279,6 @@ elsewhere on the same screen.
 - **Outlets in file:** JCI, SAT, AM, KMT, GPL, TBT, KLT, MRT, WZ, JKL, MFW, TSB + HQ.
 - **Vendors:** 54 distinct. `SW` = Swatch Group (Tissot/Longines/Rado/Mido), largest by revenue. `MPT SB` = MPT's own service entity (battery + labour), ~19k units at 95.6% margin.
 - **Business insight (2026-09-02):** in-house service (`MPT SB`) is the **2nd-largest profit generator** (RM 413,362) despite far lower revenue, because its margin is 95.6% vs Swatch Group's 26.4%. Separately, Service is **71.9% of all units sold but only 13.9% of revenue**.
-- **Returns** = negative `trx_qty`/`trx_amt` (desc suffix `-Return`) → net out.
+- **Returns** = desc suffix `-Return`, or `trx_type == 'CN'`. ⚠️ **The POS is inconsistent about the sign:** roughly half of `-Return` rows carry POSITIVE amounts and quantities. Left as-is they are *added* to revenue instead of deducted — RM 100,866 on the 2025 file, RM 128,010 on 2026 (~2% of revenue). The engine now forces amount, quantity and cost negative for any return, matching the Director's tool. Corrected totals: **2025 RM 5,692,813** (was 5,793,679), **2026 RM 5,511,300** (was 5,639,309).
+- **Category meanings (from the Director, 2026-09-02):** `OH` = **voucher**, `OT` = **deposit**. Both sit in his Service list, so we group them as Service to match — but note `OH` carries a large *negative* total (about −RM 114k on the 2025 file), which drags the Service figure down. ❓ Worth asking whether vouchers and deposits should be their own line rather than inside Service.
+- **Outlets:** the 2025 file has 13; the **2026 file has 14**.
