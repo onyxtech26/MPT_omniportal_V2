@@ -14,6 +14,19 @@ Format:
 
 ---
 
+## 2026-09-02 — Leaderboards show sales, units and profit together
+
+- Same change as Brand Performance, applied to the ranking boards: every row now
+  shows **Sales**, **Units** and **Profit** (with margin %) as columns, each with
+  its share of the total. The summary card shows all three totals. The metric
+  buttons became a **"Rank by"** control that only sets the ordering.
+- Why it matters: the comparison across measures *is* the insight. `MPT SB` reads
+  in one line as RM 432,517 (7.5% of sales) · 19,019 units (42.2% of units) ·
+  RM 413,362 profit (95.6% margin) — fifth by revenue but nearly the top vendor by
+  profit. Previously that needed three separate views.
+- `app/dashboard/leaderboard/page.tsx`. Table scrolls horizontally on narrow
+  screens rather than squashing the columns. Verified in-browser.
+
 ## 2026-09-02 — Brand Performance shows sales and units together
 
 - Requested: stop making the user toggle between sales and units — show both.

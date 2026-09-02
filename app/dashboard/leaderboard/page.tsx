@@ -87,7 +87,12 @@ export default function LeaderboardPage() {
   }, [outlets, board, metric, scope]);
 
   const top = rows.length ? Math.max(...rows.map((r) => Math.abs(r.value))) : 0;
-  const grand = rows.reduce((s, r) => s + r.value, 0);
+  // Sales, units and profit are all shown; `metric` only decides the ordering.
+  const grand = rows.reduce(
+    (a, r) => ({ sales: a.sales + r.sales, units: a.units + r.units, profit: a.profit + r.profit }),
+    { sales: 0, units: 0, profit: 0 },
+  );
+  const grandMargin = grand.sales ? (grand.profit / grand.sales) * 100 : 0;
 
   if (isLoading) {
     return (
@@ -153,41 +158,60 @@ export default function LeaderboardPage() {
           </select>
         </div>
 
-        <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
-          {(['sales', 'units', 'margin'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMetric(m)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
-                metric === m ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >{m}</button>
-          ))}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Rank by</label>
+          <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
+            {(['sales', 'units', 'margin'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMetric(m)}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
+                  metric === m ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >{m}</button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Scope summary */}
       <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] p-6 rounded-[24px] text-white">
-        <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-1">
-          {activeBoard.label} board — {metric === 'margin' ? 'total profit' : `total ${metric}`}
-          {board !== 'outlet' && scope !== 'ALL' ? ` · ${scope}` : ''}
+        <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">
+          {activeBoard.label} board{board !== 'outlet' && scope !== 'ALL' ? ` · ${scope}` : ''} —
+          {' '}{rows.length} {activeBoard.label.toLowerCase()}{rows.length === 1 ? '' : 's'}
         </p>
-        <p className="text-3xl md:text-4xl font-bold tracking-tight">
-          {metric === 'units' ? `${grand.toLocaleString()} units` : money(grand)}
-        </p>
-        <p className="text-slate-400 text-sm font-medium mt-1">
-          {rows.length} {activeBoard.label.toLowerCase()}
-          {rows.length === 1 ? '' : 's'} · {activeBoard.hint}
-        </p>
+        <div className="flex flex-wrap gap-x-10 gap-y-4">
+          <div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total sales</p>
+            <p className="text-2xl md:text-3xl font-bold tracking-tight">{money(grand.sales)}</p>
+          </div>
+          <div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total units</p>
+            <p className="text-2xl md:text-3xl font-bold tracking-tight">{Math.round(grand.units).toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total profit</p>
+            <p className="text-2xl md:text-3xl font-bold tracking-tight">{money(grand.profit)}</p>
+            <p className="text-slate-400 text-xs font-medium mt-0.5">{grandMargin.toFixed(1)}% margin</p>
+          </div>
+        </div>
+        <p className="text-slate-400 text-xs font-medium mt-4">{activeBoard.hint}</p>
       </div>
 
-      {/* Ranking */}
-      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+      {/* Ranking — sales, units and profit all shown; "Rank by" sets the order */}
+      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-x-auto">
+        <div className="flex items-center gap-4 px-4 py-2.5 bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider min-w-[640px]">
+          <span className="w-7 shrink-0" />
+          <span className="flex-1">{activeBoard.label}</span>
+          <span className="w-32 text-right shrink-0">Sales</span>
+          <span className="w-20 text-right shrink-0">Units</span>
+          <span className="w-32 text-right shrink-0">Profit</span>
+        </div>
         {rows.map((r, i) => {
           const width = top ? (Math.abs(r.value) / top) * 100 : 0;
           const negative = r.value < 0;
           return (
-            <div key={r.name} className={`flex items-center gap-4 p-4 ${i ? 'border-t border-slate-50' : ''}`}>
+            <div key={r.name} className={`flex items-center gap-4 p-4 min-w-[640px] ${i ? 'border-t border-slate-50' : ''}`}>
               <span className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 ${
                 i < 3 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
               }`}>{i + 1}</span>
@@ -202,25 +226,23 @@ export default function LeaderboardPage() {
                 </div>
               </div>
 
-              <div className="text-right shrink-0">
-                {metric === 'units' ? (
-                  <>
-                    <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{r.units.toLocaleString()} units</p>
-                    <p className="text-xs text-slate-400 font-medium">{money(r.sales)}</p>
-                  </>
-                ) : metric === 'margin' ? (
-                  <>
-                    <p className={`font-bold text-sm whitespace-nowrap ${negative ? 'text-rose-600' : 'text-slate-900'}`}>
-                      {money(r.profit)}
-                    </p>
-                    <p className="text-xs text-slate-400 font-medium">{r.marginPct.toFixed(1)}% margin</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{money(r.sales)}</p>
-                    <p className="text-xs text-slate-400 font-medium">{r.units.toLocaleString()} units</p>
-                  </>
-                )}
+              <div className="w-32 text-right shrink-0">
+                <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{money(r.sales)}</p>
+                <p className="text-xs text-slate-400 font-medium">
+                  {grand.sales ? ((r.sales / grand.sales) * 100).toFixed(1) : '0.0'}%
+                </p>
+              </div>
+              <div className="w-20 text-right shrink-0">
+                <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{r.units.toLocaleString()}</p>
+                <p className="text-xs text-slate-400 font-medium">
+                  {grand.units ? ((r.units / grand.units) * 100).toFixed(1) : '0.0'}%
+                </p>
+              </div>
+              <div className="w-32 text-right shrink-0">
+                <p className={`font-bold text-sm whitespace-nowrap ${r.profit < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                  {money(r.profit)}
+                </p>
+                <p className="text-xs text-slate-400 font-medium">{r.marginPct.toFixed(1)}% margin</p>
               </div>
             </div>
           );
