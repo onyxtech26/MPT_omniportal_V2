@@ -245,7 +245,17 @@ model figures below it, mixing two kinds of number on one screen under a name th
 history. Rebuilt 2026-09-02 on actual sales from the loaded CSV (`brands`, `brandUnits`,
 `brandModels` from `salesData.ts`); no backend, no predictions.
 
-**6. Minor build friction (for reference).**
+**6. ⚠️ A chart silently broke the outlet drill-down (2026-09-02).**
+After adding the Recharts monthly chart to the overview, clicking an outlet changed the
+page heading but **not** the content — the detail view never appeared. Cause:
+`<AnimatePresence mode="wait">` waits for the exiting view's animation to finish before
+mounting the next one, and the chart's `ResponsiveContainer` (a resize observer) kept the
+exiting view re-rendering so that animation never completed.
+*Resolved:* dropped `mode="wait"`. **Lesson:** verifying the thing you changed is not
+enough — the chart itself worked perfectly. Check what the change might have broken
+elsewhere on the same screen.
+
+**7. Minor build friction (for reference).**
 - Recharts v3 types `Tooltip`'s `formatter` value as possibly-`undefined`; annotating the
   param as `number` fails typecheck — coerce inside the callback instead.
 - Deleting a page folder leaves stale generated types in `.next/`; clear `.next` before

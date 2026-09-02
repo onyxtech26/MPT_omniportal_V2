@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, TrendingUp, Package, ChevronRight, ChevronDown, Download, Users, Award, DollarSign, Medal, Calendar, X, Trophy, Zap, Info, Upload } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { useData } from './data-context';
 
 export default function DashboardPage() {
@@ -12,7 +12,6 @@ export default function DashboardPage() {
   const [selectedOutletCode, setSelectedOutletCode] = useState<string | null>(null);
   const [selectedSalesmanId, setSelectedSalesmanId] = useState<string | null>(null);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
-  const [monthlyMetric, setMonthlyMetric] = useState<'sales' | 'units'>('sales');
   const [isExporting, setIsExporting] = useState(false);
   const router = useRouter();
 
@@ -80,14 +79,22 @@ export default function DashboardPage() {
   const salesmanLeaderboard = useMemo(() => {
     if (!selectedOutlet) return [];
     return Object.entries(selectedOutlet.salesmen)
-      .map(([name, sales]) => ({ name, sales }))
+      .map(([name, sales]) => ({
+        name,
+        sales,
+        units: Math.round(selectedOutlet.salesmenUnits?.[name] ?? 0),
+      }))
       .sort((a, b) => b.sales - a.sales);
   }, [selectedOutlet]);
 
   const brandSuccess = useMemo(() => {
     if (!selectedOutlet) return { top: [], bottom: [] };
     const sortedBrands = Object.entries(selectedOutlet.brands)
-      .map(([name, sales]) => ({ name, sales }))
+      .map(([name, sales]) => ({
+        name,
+        sales,
+        units: Math.round(selectedOutlet.brandUnits?.[name] ?? 0),
+      }))
       .sort((a, b) => b.sales - a.sales);
     
     return {
@@ -102,14 +109,17 @@ export default function DashboardPage() {
     : 0;
 
   const networkTopBrands = useMemo(() => {
-    const brandMap: Record<string, number> = {};
+    const brandMap: Record<string, { sales: number; units: number }> = {};
     (outlets || []).forEach(outlet => {
       Object.entries(outlet.brands).forEach(([brand, revenue]) => {
-        brandMap[brand] = (brandMap[brand] || 0) + (revenue as number);
+        (brandMap[brand] ??= { sales: 0, units: 0 }).sales += revenue as number;
+      });
+      Object.entries(outlet.brandUnits ?? {}).forEach(([brand, units]) => {
+        (brandMap[brand] ??= { sales: 0, units: 0 }).units += units as number;
       });
     });
     return Object.entries(brandMap)
-      .map(([name, sales]) => ({ name, sales }))
+      .map(([name, v]) => ({ name, sales: v.sales, units: Math.round(v.units) }))
       .sort((a, b) => b.sales - a.sales)
       .slice(0, 8);
   }, [outlets]);
@@ -120,7 +130,11 @@ export default function DashboardPage() {
 
     // Top Brands
     const topBrands = Object.entries(selectedSalesman.brands)
-      .map(([name, sales]) => ({ name, sales }))
+      .map(([name, sales]) => ({
+        name,
+        sales,
+        units: Math.round(selectedSalesman.brandUnits?.[name] ?? 0),
+      }))
       .sort((a, b) => b.sales - a.sales)
       .slice(0, 10); // Show top 10 for overall ranking
 
@@ -476,7 +490,12 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        <AnimatePresence mode="wait">
+        {/* NOTE: no `mode="wait"` here. The overview contains a Recharts
+            ResponsiveContainer, whose resize observer keeps the exiting view
+            re-rendering so its exit animation never completes — with mode="wait"
+            that left the detail view permanently unmounted (clicking an outlet
+            changed the heading but not the content). */}
+        <AnimatePresence>
           {!selectedOutlet ? (
             <motion.div 
               key="global"
@@ -521,48 +540,54 @@ export default function DashboardPage() {
               {/* Monthly Performance */}
               {monthlyNetwork.length > 0 && (
                 <div className="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100">
-                  <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+                  <div className="mb-6">
                     <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                       <TrendingUp className="text-slate-400" />
                       Monthly Performance
                     </h2>
-                    <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
-                      {(['sales', 'units'] as const).map((k) => (
-                        <button
-                          key={k}
-                          onClick={() => setMonthlyMetric(k)}
-                          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
-                            monthlyMetric === k ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
-                          }`}
-                        >
-                          {k}
-                        </button>
-                      ))}
-                    </div>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5 ml-1">
+                      Sales (bars, left) and units (line, right) — different scales, shown together.
+                    </p>
                   </div>
                   <div className="h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={monthlyNetwork} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                      <ComposedChart data={monthlyNetwork} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                         <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
+                        {/* Sales in ringgit and units as a count cannot share one scale,
+                            so each gets its own axis: money left, quantity right. */}
                         <YAxis
+                          yAxisId="sales"
                           tick={{ fill: '#94a3b8', fontSize: 12 }}
                           axisLine={false}
                           tickLine={false}
                           width={70}
-                          tickFormatter={(v: number) => (monthlyMetric === 'sales' ? formatCurrencyCompact(v) : v.toLocaleString())}
+                          tickFormatter={(v: number) => formatCurrencyCompact(v)}
+                        />
+                        <YAxis
+                          yAxisId="units"
+                          orientation="right"
+                          tick={{ fill: '#10b981', fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={55}
+                          tickFormatter={(v: number) => v.toLocaleString()}
                         />
                         <Tooltip
                           cursor={{ fill: '#f8fafc' }}
-                          formatter={(v) => {
+                          formatter={(v, name) => {
                             const n = Number(v);
-                            return [monthlyMetric === 'sales' ? formatCurrencyFull(n) : `${n.toLocaleString()} units`, monthlyMetric === 'sales' ? 'Sales' : 'Units'];
+                            return name === 'Units'
+                              ? [`${n.toLocaleString()} units`, 'Units']
+                              : [formatCurrencyFull(n), 'Sales'];
                           }}
                           labelStyle={{ color: '#0f172a', fontWeight: 700 }}
                           contentStyle={{ borderRadius: 16, border: '1px solid #e2e8f0' }}
                         />
-                        <Bar dataKey={monthlyMetric} radius={[8, 8, 0, 0]} fill="#0f172a" />
-                      </BarChart>
+                        <Legend wrapperStyle={{ fontSize: 12, fontWeight: 600, paddingTop: 8 }} />
+                        <Bar yAxisId="sales" dataKey="sales" name="Sales" radius={[8, 8, 0, 0]} fill="#0f172a" />
+                        <Line yAxisId="units" dataKey="units" name="Units" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
+                      </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
@@ -598,11 +623,19 @@ export default function DashboardPage() {
                            </div>
                         </div>
 
-                        <div className="mb-4">
-                          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Revenue</p>
-                          <p className="text-3xl font-bold text-slate-900 tracking-tight">
-                            {formatCurrencyCompact(outlet.totalRevenue)}
-                          </p>
+                        <div className="mb-4 flex items-end gap-6">
+                          <div>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Revenue</p>
+                            <p className="text-3xl font-bold text-slate-900 tracking-tight">
+                              {formatCurrencyCompact(outlet.totalRevenue)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Units</p>
+                            <p className="text-xl font-bold text-slate-700 tracking-tight">
+                              {Math.round(outlet.totalUnits ?? 0).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
 
                         <div className="flex flex-col gap-1.5 mb-4">
@@ -659,7 +692,10 @@ export default function DashboardPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-center mb-1.5">
                               <span className="text-sm font-bold text-slate-900 truncate">{brand.name}</span>
-                              <span className="text-sm font-bold text-slate-700 shrink-0 ml-4">{formatCurrencyCompact(brand.sales)}</span>
+                              <span className="shrink-0 ml-4 text-right">
+                                <span className="block text-sm font-bold text-slate-700">{formatCurrencyCompact(brand.sales)}</span>
+                                <span className="block text-xs font-medium text-slate-400">{brand.units.toLocaleString()} units</span>
+                              </span>
                             </div>
                             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                               <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${pct}%` }} />
@@ -759,6 +795,7 @@ export default function DashboardPage() {
                             </td>
                             <td className="py-5 text-slate-900 font-bold text-right text-lg">
                               {formatCurrencyFull(salesman.sales)}
+                              <span className="block text-xs font-medium text-slate-400">{salesman.units.toLocaleString()} units</span>
                             </td>
                             <td className="py-5 text-slate-400 text-right">
                               <ChevronRight size={20} className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
@@ -806,7 +843,10 @@ export default function DashboardPage() {
                             <div key={i}>
                               <div className="flex justify-between items-center mb-2">
                                 <span className="text-sm font-bold text-slate-900 truncate max-w-[120px]">{brand.name}</span>
-                                <span className="text-sm font-bold text-slate-900">{formatCurrencyFull(brand.sales)}</span>
+                                <span className="text-right">
+                                  <span className="block text-sm font-bold text-slate-900">{formatCurrencyFull(brand.sales)}</span>
+                                  <span className="block text-xs font-medium text-slate-400">{brand.units.toLocaleString()} units</span>
+                                </span>
                               </div>
                               <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                                 <div 
@@ -826,7 +866,10 @@ export default function DashboardPage() {
                         {brandSuccess.bottom.map((brand, i) => (
                           <div key={i} className="flex justify-between items-center p-2 hover:bg-slate-50 rounded-lg transition-colors">
                             <span className="text-sm font-medium text-slate-500 truncate max-w-[120px]">{brand.name}</span>
-                            <span className="text-sm font-bold text-slate-500">{formatCurrencyFull(brand.sales)}</span>
+                            <span className="text-right">
+                              <span className="block text-sm font-bold text-slate-500">{formatCurrencyFull(brand.sales)}</span>
+                              <span className="block text-xs font-medium text-slate-400">{brand.units.toLocaleString()} units</span>
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -919,6 +962,7 @@ export default function DashboardPage() {
                     <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Total Revenue</p>
                       <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight break-words">{formatCurrencyFull(selectedSalesman.totalRevenue)}</p>
+                      <p className="text-xs font-medium text-slate-400 mt-0.5">{Math.round(selectedSalesman.totalUnits ?? 0).toLocaleString()} units</p>
                     </div>
                     <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Outlet Rank</p>
@@ -1028,7 +1072,10 @@ export default function DashboardPage() {
                             </span>
                             <span className="text-sm font-bold text-slate-900">{brand.name}</span>
                           </div>
-                          <span className="text-sm font-bold text-slate-900">{formatCurrencyFull(brand.sales)}</span>
+                          <span className="text-right">
+                            <span className="block text-sm font-bold text-slate-900">{formatCurrencyFull(brand.sales)}</span>
+                            <span className="block text-xs font-medium text-slate-400">{brand.units.toLocaleString()} units</span>
+                          </span>
                         </div>
                       ))}
                     </div>

@@ -14,6 +14,23 @@ Format:
 
 ---
 
+## 2026-09-02 — Dashboard shows sales and units together (+ drill-down bug fixed)
+
+- **Monthly Performance** is now a dual-axis chart: **bars = sales** (ringgit, left
+  axis), **line = units** (count, right axis). The two cannot share a scale, so each
+  gets its own. The Sales/Units toggle is gone — both are always visible.
+- **Units added alongside revenue** on: branch cards, Network Top Brands, the Salesman
+  Leaderboard, Brand Success (top and bottom), the salesperson's headline total and
+  their Overall Brand Ranking. Engine gained `OutletSummary.totalUnits`.
+- 🐛 **Fixed a regression I introduced with the chart.** Clicking an outlet changed the
+  heading but not the content — the detail view never mounted.
+  `<AnimatePresence mode="wait">` waits for the exiting view's animation to complete,
+  and the chart's `ResponsiveContainer` resize observer kept that view re-rendering so
+  it never finished. Dropped `mode="wait"`. The chart had been verified in isolation
+  and looked fine; the breakage was on the same screen, one interaction away.
+- Data note: the "Bottom 3 brands" panel surfaces junk `inv_desc` values (e.g. `CN`,
+  `CHIT NO: 53384`) rather than genuinely weak brands — worth filtering later.
+
 ## 2026-09-02 — Leaderboards show sales, units and profit together
 
 - Same change as Brand Performance, applied to the ranking boards: every row now

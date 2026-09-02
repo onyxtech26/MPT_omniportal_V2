@@ -37,6 +37,7 @@ export interface OutletSummary {
   code: string;
   name: string;
   totalRevenue: number;
+  totalUnits: number;          // units sold across the outlet
   totalInvestment: number;
   transactionCount: number;
   salesmen: Record<string, number>;        // revenue per salesperson
@@ -266,6 +267,7 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
     const vendorCost: Record<string, number> = {};
     const brandModels: Record<string, Record<string, { units: number; revenue: number }>> = {};
     let totalRevenue = 0;
+    let totalUnits = 0;
     let totalInvestment = 0;
 
     // Per-salesperson accumulators
@@ -273,6 +275,7 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
 
     for (const r of rows) {
       totalRevenue += r.trx_amt;
+      totalUnits += r.trx_qty;
       totalInvestment += r.cost_amt;   // already a line total; do NOT multiply by qty
       if (r.trx_no) txnNumbers.add(r.trx_no);
       addTo(salesmen, r.saleman_cd, r.trx_amt);
@@ -323,6 +326,7 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
       code: outletCode.trim(),
       name: `Branch ${outletCode}`,
       totalRevenue,
+      totalUnits,
       totalInvestment,
       transactionCount: txnNumbers.size,
       salesmen,
