@@ -14,6 +14,18 @@ Format:
 
 ---
 
+## 2026-09-02 — Brand Performance shows sales and units together
+
+- Requested: stop making the user toggle between sales and units — show both.
+- Each row now has **Sales** and **Units** columns, each with its own share of the
+  total; the summary card shows both totals; the old metric toggle became a
+  **"Rank by"** control that only changes the ordering.
+- Why it matters: the contrast is the insight, and it is now visible at a glance
+  without switching views — TISSOT is 20.3% of sales but 1.3% of units, while
+  Service is 13.9% of sales and 71.9% of units.
+- `app/dashboard/brands/page.tsx`. Verified in-browser; ranking by either measure
+  reorders correctly while both figures stay visible.
+
 ## 2026-09-02 — Meeting Agenda removed from the web app
 
 - **Why:** the Agenda was the only feature still requiring the Python backend, and

@@ -28,7 +28,7 @@ export default function BrandsPage() {
     : `RM ${n.toFixed(0)}`;
 
   // Roll the loaded report up to the chosen scope: one outlet, or all of them.
-  const { rows, grandTotal, models } = useMemo(() => {
+  const { rows, totalSales, totalUnits, models } = useMemo(() => {
     const scope = outletCode === 'ALL' ? outlets : outlets.filter((o) => o.code === outletCode);
 
     const totals: Record<string, { sales: number; units: number }> = {};
@@ -56,13 +56,14 @@ export default function BrandsPage() {
       .filter((r) => r.sales !== 0 || r.units !== 0)
       .sort((a, b) => (metric === 'sales' ? b.sales - a.sales : b.units - a.units));
 
-    const total = list.reduce((s, r) => s + (metric === 'sales' ? r.sales : r.units), 0);
-    return { rows: list, grandTotal: total, models: modelMap };
+    const totalSales = list.reduce((s, r) => s + r.sales, 0);
+    const totalUnits = list.reduce((s, r) => s + r.units, 0);
+    return { rows: list, totalSales, totalUnits, models: modelMap };
   }, [outlets, outletCode, metric]);
 
-  const valueOf = (r: { sales: number; units: number }) => (metric === 'sales' ? r.sales : r.units);
-  const label = (v: number) => (metric === 'sales' ? money(v) : `${v.toLocaleString()} units`);
-  const top = rows.length ? valueOf(rows[0]) : 0;
+  // `metric` now only controls the ranking order — sales and units are both shown.
+  const sortValue = (r: { sales: number; units: number }) => (metric === 'sales' ? r.sales : r.units);
+  const top = rows.length ? sortValue(rows[0]) : 0;
 
   if (isLoading) {
     return (
@@ -110,38 +111,53 @@ export default function BrandsPage() {
           </select>
         </div>
 
-        <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
-          {(['sales', 'units'] as const).map((k) => (
-            <button
-              key={k}
-              onClick={() => setMetric(k)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
-                metric === k ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >{k}</button>
-          ))}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Rank by</label>
+          <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
+            {(['sales', 'units'] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setMetric(k)}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
+                  metric === k ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >{k}</button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Scope total */}
       <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] p-6 rounded-[24px] text-white">
-        <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-1">
-          {outletCode === 'ALL' ? 'All outlets' : `Outlet ${outletCode}`} — total {metric}
+        <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">
+          {outletCode === 'ALL' ? 'All outlets' : `Outlet ${outletCode}`} — across {rows.length} product line{rows.length === 1 ? '' : 's'}
         </p>
-        <p className="text-3xl md:text-4xl font-bold tracking-tight">
-          {metric === 'sales' ? money(grandTotal) : `${grandTotal.toLocaleString()} units`}
-        </p>
-        <p className="text-slate-400 text-sm font-medium mt-1">
-          across {rows.length} product line{rows.length === 1 ? '' : 's'}
-        </p>
+        <div className="flex flex-wrap gap-x-12 gap-y-4">
+          <div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total sales</p>
+            <p className="text-2xl md:text-3xl font-bold tracking-tight">{money(totalSales)}</p>
+          </div>
+          <div>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total units</p>
+            <p className="text-2xl md:text-3xl font-bold tracking-tight">{totalUnits.toLocaleString()}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Ranking, biggest first */}
+      {/* Ranking, biggest first — sales AND units shown together */}
       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+        <div className="flex items-center gap-4 px-4 py-2.5 bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+          <span className="w-7 shrink-0" />
+          <span className="w-8 shrink-0" />
+          <span className="flex-1">Product line</span>
+          <span className="w-32 text-right shrink-0">Sales</span>
+          <span className="w-24 text-right shrink-0">Units</span>
+          <span className="w-4 shrink-0" />
+        </div>
         {rows.map((r, i) => {
           const open = openBrand === r.brand;
-          const v = valueOf(r);
-          const share = grandTotal ? (v / grandTotal) * 100 : 0;
+          const salesShare = totalSales ? (r.sales / totalSales) * 100 : 0;
+          const unitShare = totalUnits ? (r.units / totalUnits) * 100 : 0;
           const brandModels = Object.entries(models[r.brand] ?? {})
             .map(([code, m]) => ({ code, units: Math.round(m.units), revenue: m.revenue }))
             .sort((a, b) => (metric === 'sales' ? b.revenue - a.revenue : b.units - a.units));
@@ -159,12 +175,16 @@ export default function BrandsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-slate-900 text-sm truncate">{r.brand}</p>
                   <div className="h-1.5 bg-slate-100 rounded-full mt-1.5 overflow-hidden max-w-xs">
-                    <div className="h-full bg-slate-900 rounded-full" style={{ width: `${top ? (v / top) * 100 : 0}%` }} />
+                    <div className="h-full bg-slate-900 rounded-full" style={{ width: `${top ? (sortValue(r) / top) * 100 : 0}%` }} />
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{label(v)}</p>
-                  <p className="text-xs text-slate-400 font-medium">{share.toFixed(1)}%</p>
+                <div className="w-32 text-right shrink-0">
+                  <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{money(r.sales)}</p>
+                  <p className="text-xs text-slate-400 font-medium">{salesShare.toFixed(1)}%</p>
+                </div>
+                <div className="w-24 text-right shrink-0">
+                  <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{r.units.toLocaleString()}</p>
+                  <p className="text-xs text-slate-400 font-medium">{unitShare.toFixed(1)}%</p>
                 </div>
                 <ChevronDown size={16} className={`text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
               </button>

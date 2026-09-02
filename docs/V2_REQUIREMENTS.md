@@ -150,7 +150,7 @@ codes are inconsistent — `ROGER SW`, `SW ROGER`, `SW NINA AT`, trailing spaces
 |---|---|---|---|
 | 4 | Big to small | Default sort descending on all rankings/tables | Clear |
 | 6 | Monthly performance on overview | Add monthly trend chart to dashboard overview | Clear |
-| 8 | Unit vs Sales separate | Toggle/split units (`trx_qty`) vs sales value (`trx_amt`) | ✅ data engine now tracks both |
+| 8 | Unit vs Sales separate | Toggle/split units (`trx_qty`) vs sales value (`trx_amt`) | ✅ engine tracks both. Overview chart has a Sales/Units toggle; **Brand Performance shows both side by side** (2026-09-02) with a "Rank by" control for ordering — the contrast is the point (e.g. TISSOT 20.3% of sales but 1.3% of units; Service 13.9% of sales but 71.9% of units) |
 | 10 | **Salesperson performance, month by month, with what they sold (sales + units)** | Per-salesperson: monthly revenue+units, and each month's per-product breakdown in both sales and units | ✅ data engine ready; needs the UI view (Phase 3) |
 
 ### D. New feature
