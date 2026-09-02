@@ -14,6 +14,21 @@ Format:
 
 ---
 
+## 2026-09-02 — Seiko watch variants counted as one line
+
+- Decision: **keep grouping product lines by description** (they read better than
+  category codes), and merge only where management asks.
+- Seiko watches arrive under three category codes (`SEI`, `SEI-5`, `SEI-SP5`) and
+  several spellings ("SEIKO SPORT 5", "SEIKO SPORTS 5", "SEIKO-SPORTS 5"). All now
+  report as a single **SEIKO** line: RM 351,255 / 268 units on the 2026 file.
+- **Seiko clocks stay separate**, as originally requested — `SEI-WC` →
+  SEIKO WALL CLOCK (RM 13,536), `SEI-AC` → SEIKO ALARM CLOCK (RM 1,214). Fixed
+  labels also fold away a typo in the data ("SEIKO ALRAM CLOCK").
+- Keyed on category code rather than description text, so spelling differences cannot
+  split the line. It also keeps stray rows off screen — some `SEI` rows carry a staff
+  name or a discount note instead of a product.
+- Integrity check: grand revenue unchanged at RM 5,511,300; product lines 125 → 121.
+
 ## 2026-09-02 — Validated against the official POS report; Voucher and Deposit split out
 
 - **Reconciled to the company's printed report.** The Director provided the *Sales

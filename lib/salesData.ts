@@ -143,18 +143,33 @@ const SERVICE_CATEGORIES = new Set([
 ]);
 
 /**
- * Categories that get their own line rather than being folded into Service.
- * Confirmed with the Director: `OH` is voucher, `OT` is deposit. Neither is a
- * sale of goods, and both are large enough to distort the Service figure —
- * vouchers run to about −RM 114k a year, deposits to +RM 167k.
+ * Fixed labels for particular category codes. Product lines are otherwise named
+ * by their description; this map overrides that in two situations.
  *
- * Labelling them by category also keeps their raw descriptions off the screen:
- * voucher rows carry staff names (e.g. "EPJ 174 <name>") and deposit rows carry
- * transaction references, none of which belong in a product ranking.
+ * 1. Lines that are not sales of goods. Confirmed with the Director: `OH` is
+ *    voucher, `OT` is deposit. Both are kept out of Service and given their own
+ *    line — each is large enough to distort it (vouchers about −RM 114k a year,
+ *    deposits up to +RM 167k).
+ *
+ * 2. Variants of one brand that management wants counted together. Seiko watches
+ *    arrive under three codes (`SEI`, `SEI-5`, `SEI-SP5`) and several spellings
+ *    ("SEIKO SPORT 5", "SEIKO SPORTS 5", "SEIKO-SPORTS 5"); all become one SEIKO
+ *    line. Seiko **clocks** stay separate, as management asked — wall clocks and
+ *    alarm clocks keep their own labels, which also folds away a typo in the data
+ *    ("SEIKO ALRAM CLOCK").
+ *
+ * Keying on the category rather than the text makes this robust to those
+ * spellings, and keeps stray descriptions off the screen — some rows carry staff
+ * names (e.g. "EPJ045 <name>") or discount notes rather than a product.
  */
 const CATEGORY_LABELS: Record<string, string> = {
   OH: 'Voucher',
   OT: 'Deposit',
+  SEI: 'SEIKO',
+  'SEI-5': 'SEIKO',
+  'SEI-SP5': 'SEIKO',
+  'SEI-AC': 'SEIKO ALARM CLOCK',
+  'SEI-WC': 'SEIKO WALL CLOCK',
 };
 
 // Transaction types that represent a completed sale, and the credit-note type

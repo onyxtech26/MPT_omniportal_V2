@@ -140,7 +140,7 @@ further systems are planned for other staff — scope to be defined.
 |---|---|---|---|
 | 2 | Pin under Service | `inv_category == 'PIN'` (O-rings, spring bars, small parts) rolls into a **Service** group with battery (`BAT-CLK`) + labour | ✅ confirmed |
 | 3 | SW separable (Roger / Roger SW) | **"SW" is a salesperson-code prefix/channel**, NOT a brand. Merge `ROGER` + `ROGER SW` + `SW ROGER` → one "Roger" by default; toggle to split out the SW channel | ✅ confirmed (❓ what does SW stand for — Swatch counter?) |
-| 7 | Seiko vs Seiko wall clock | Wall clocks = desc `OTHER WALL CLOCK` / category `OH-AC` / vendor `WT`; Seiko watches = `SEI`/`TS`. Keep separate | ✅ confirmed (❓ do Seiko-branded wall clocks exist separately, or all under WT?) |
+| 7 | Seiko vs Seiko wall clock | **Seiko watches counted as one line, clocks separate.** `SEI` + `SEI-5` + `SEI-SP5` (and every spelling — "SEIKO SPORT 5", "SEIKO SPORTS 5", "SEIKO-SPORTS 5") merge into **SEIKO**; `SEI-WC` stays **SEIKO WALL CLOCK** and `SEI-AC` stays **SEIKO ALARM CLOCK** | ✅ done 2026-09-02 via `CATEGORY_LABELS` |
 
 **Salesperson normalization (data-quality task, feeds #3 and vendor/salesperson views):**
 codes are inconsistent — `ROGER SW`, `SW ROGER`, `SW NINA AT`, trailing spaces (`SW ALIFAH `). Need a normalizer: trim, strip the `SW` token, unify order, so one person = one identity (with SW flag retained for the toggle).
@@ -182,8 +182,10 @@ returns, and so do we.**
 Also learned from it: the report groups by **`inv_category`** and is titled *"By
 Product Group"* — confirming that the company's own view of a "brand" is the category
 code, as the Director's `sales-pulse` also assumes.
-> ❓ Open: our app still groups by `inv_desc`. Switching to group by category (labelled
-> with its name) would match the official report exactly.
+> **Decided 2026-09-02:** keep grouping by `inv_desc` (descriptions are readable), and
+> merge only where management asks — currently the Seiko variants. `CATEGORY_LABELS`
+> handles those cases by category code, which is robust to the spelling differences in
+> the descriptions.
 
 ---
 
