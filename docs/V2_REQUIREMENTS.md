@@ -162,6 +162,31 @@ codes are inconsistent — `ROGER SW`, `SW ROGER`, `SW NINA AT`, trailing spaces
 
 ---
 
+## ✅ Validated against the company's official report (2026-09-02)
+
+The Director supplied a printed **Sales Profit Report — By Product Group (Detail)**
+for **1–30 April 2026**, produced by the POS from the same data. Our figures were
+checked against it line by line:
+
+| Branch | Official report | Our figures |
+|---|---|---|
+| **KLT** | RM 26,456.00 | **RM 26,456.00** ✓ exact, all 20 categories |
+| **KMT** | RM 35,824.75 | **RM 35,824.75** ✓ exact |
+
+**This is what proved the returns fix.** KMT April contains 8 return rows. Before the
+fix our totals were RM 36,060.55 — `S-BAT` read 393 units / RM 9,542 against the
+report's 389 / RM 9,466, and `SUB` 17 / RM 1,704.90 against 15 / RM 1,545.10. After
+forcing returns negative, every line matches exactly. **The official report deducts
+returns, and so do we.**
+
+Also learned from it: the report groups by **`inv_category`** and is titled *"By
+Product Group"* — confirming that the company's own view of a "brand" is the category
+code, as the Director's `sales-pulse` also assumes.
+> ❓ Open: our app still groups by `inv_desc`. Switching to group by category (labelled
+> with its name) would match the official report exactly.
+
+---
+
 ## Reference implementation — the Director's `sales-pulse`
 
 `Boss mpt Project/sales-pulse/` (26 Aug 2026) is a working browser-only analytics tool the
@@ -280,5 +305,7 @@ elsewhere on the same screen.
 - **Vendors:** 54 distinct. `SW` = Swatch Group (Tissot/Longines/Rado/Mido), largest by revenue. `MPT SB` = MPT's own service entity (battery + labour), ~19k units at 95.6% margin.
 - **Business insight (2026-09-02):** in-house service (`MPT SB`) is the **2nd-largest profit generator** (RM 413,362) despite far lower revenue, because its margin is 95.6% vs Swatch Group's 26.4%. Separately, Service is **71.9% of all units sold but only 13.9% of revenue**.
 - **Returns** = desc suffix `-Return`, or `trx_type == 'CN'`. ⚠️ **The POS is inconsistent about the sign:** roughly half of `-Return` rows carry POSITIVE amounts and quantities. Left as-is they are *added* to revenue instead of deducted — RM 100,866 on the 2025 file, RM 128,010 on 2026 (~2% of revenue). The engine now forces amount, quantity and cost negative for any return, matching the Director's tool. Corrected totals: **2025 RM 5,692,813** (was 5,793,679), **2026 RM 5,511,300** (was 5,639,309).
-- **Category meanings (from the Director, 2026-09-02):** `OH` = **voucher**, `OT` = **deposit**. Both sit in his Service list, so we group them as Service to match — but note `OH` carries a large *negative* total (about −RM 114k on the 2025 file), which drags the Service figure down. ❓ Worth asking whether vouchers and deposits should be their own line rather than inside Service.
+- **`OH` = Voucher, `OT` = Deposit — shown as their own lines (decided 2026-09-02).** Confirmed by the Director. Removed from the Service group because neither is a sale of goods and both distort it: vouchers ≈ −RM 114k (2025) / −RM 57k (2026); deposits ≈ +RM 61k / +RM 167k. `CATEGORY_LABELS` in `salesData.ts` maps them to fixed labels — which also keeps their raw descriptions off screen, since voucher rows carry **staff names** (`EPJ 174 <name>`) and deposit rows carry transaction references.
+  - Note: the printed POS report prints `OH:OTHER`, but the Director confirmed it is used for vouchers. His meaning wins.
+- **Category code → name** (from the printed *Sales Profit Report — By Product Group*): CAS=Casio, CM=Camel, CR-AC=Crocodile alarm clock, CR-WC=Crocodile wall clock, DGT=Digitec, DK=Daniel Klein, LS=Leather strap, MF=Mini Focus, NAV=Navi Force, PIN=Pin, PS=P.V.C strap, R-BAT=Renata battery, ROS=Roscani, RW=Rewards watch, S-BAT=Sony battery, SBP=S.B. Polo, SP=Spare parts, SUB=Submarine, BN=Bonia, BUM=Bum, CAES=Caesar, JBV=J.Bovier, SLO=Slo/Pokemon, SER=Service, FG=Free gift, HAM=Hamilton, LM=Luminox, LONG=Longines, MID=Mido, RAD=Rado.
 - **Outlets:** the 2025 file has 13; the **2026 file has 14**.

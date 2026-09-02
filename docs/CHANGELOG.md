@@ -14,6 +14,25 @@ Format:
 
 ---
 
+## 2026-09-02 — Validated against the official POS report; Voucher and Deposit split out
+
+- **Reconciled to the company's printed report.** The Director provided the *Sales
+  Profit Report — By Product Group (Detail)* for 1–30 April 2026. Checked line by line:
+  **KLT RM 26,456.00** and **KMT RM 35,824.75** — both exact, every category matching.
+- **This confirmed the returns fix.** KMT April has 8 returns. Before the fix we read
+  RM 36,060.55 (S-BAT 393 units vs the report's 389; SUB 17 vs 15). After it, exact.
+  The official report deducts returns; now so do we.
+- **`OH` = Voucher and `OT` = Deposit are now their own lines**, out of the Service
+  group — neither is a sale of goods and both distorted it (vouchers ≈ −RM 114k a year,
+  deposits up to +RM 167k). Fixed labels also keep their raw descriptions off screen:
+  voucher rows contain **staff names**, deposit rows contain transaction references.
+  (The printed report labels `OH` as "OTHER"; the Director confirmed it is vouchers.)
+- Recorded the full **category code → name** list from the report (CAS=Casio,
+  S-BAT=Sony battery, SUB=Submarine, …) in `V2_REQUIREMENTS.md`.
+- Noted: the report groups by `inv_category` under the title "By Product Group",
+  confirming the company treats the category code as the product grouping. Our app
+  still groups by description — switching would match the official report exactly.
+
 ## 2026-09-02 — Returns now deducted, and a shared period filter
 
 - 🐛 **Returns were inflating revenue.** The Director asked us to check this and he

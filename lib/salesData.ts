@@ -139,8 +139,23 @@ export const SERVICE_LABEL = 'Service';
 // `sales-pulse` tool so both applications classify rows identically.
 const SERVICE_CATEGORIES = new Set([
   'LS', 'S-BAT', 'SP', 'PS', 'R-BAT', 'SER',
-  'BAT-CLK', 'PIN', 'OH', 'FG', 'OT', 'OTS', 'SSS',
+  'BAT-CLK', 'PIN', 'FG', 'OTS', 'SSS',
 ]);
+
+/**
+ * Categories that get their own line rather than being folded into Service.
+ * Confirmed with the Director: `OH` is voucher, `OT` is deposit. Neither is a
+ * sale of goods, and both are large enough to distort the Service figure —
+ * vouchers run to about −RM 114k a year, deposits to +RM 167k.
+ *
+ * Labelling them by category also keeps their raw descriptions off the screen:
+ * voucher rows carry staff names (e.g. "EPJ 174 <name>") and deposit rows carry
+ * transaction references, none of which belong in a product ranking.
+ */
+const CATEGORY_LABELS: Record<string, string> = {
+  OH: 'Voucher',
+  OT: 'Deposit',
+};
 
 // Transaction types that represent a completed sale, and the credit-note type
 // used for returns. Anything else is not a sale and is excluded.
@@ -189,7 +204,11 @@ function normalizeRow(row: Row, opts: Required<GroupingOptions>): Row {
   }
 
   desc = desc.replace(/-Return$/i, ''); // a return nets against the base product
-  if (opts.groupService && isServiceItem(row.inv_category)) {
+
+  const category = row.inv_category.trim().toUpperCase();
+  if (CATEGORY_LABELS[category]) {
+    desc = CATEGORY_LABELS[category];          // Voucher / Deposit — their own lines
+  } else if (opts.groupService && isServiceItem(row.inv_category)) {
     desc = SERVICE_LABEL;
   }
   row.inv_desc = desc;
