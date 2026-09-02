@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
-  FileSpreadsheet,
   Award,
   Trophy,
   LogOut,
@@ -18,11 +17,12 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { DataProvider, useData } from './data-context';
 
-// Top-bar navigation. Forecast + Seasonal + Ask-the-Data removed (V2); nav moved
-// from the old left sidebar into the header so every page stays one click away.
+// Top-bar navigation. V2 removed Forecast, Seasonal, Ask-the-Data and the Meeting
+// Agenda; nav moved from the old left sidebar into the header so every page stays
+// one click away. (The Agenda needs a server, so it cannot run on the deployed
+// site — the Manager continues to use the desktop build for it.)
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Meeting Agenda', href: '/dashboard/agenda', icon: FileSpreadsheet },
   { name: 'Brand Performance', href: '/dashboard/brands', icon: Award },
   { name: 'Leaderboards', href: '/dashboard/leaderboard', icon: Trophy },
 ];

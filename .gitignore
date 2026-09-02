@@ -33,3 +33,6 @@ graphify-out/
 # POS exports live outside git (large, and data not source)
 *.csv
 !backend/tests/**/*.csv
+
+# TypeScript incremental build cache
+*.tsbuildinfo
