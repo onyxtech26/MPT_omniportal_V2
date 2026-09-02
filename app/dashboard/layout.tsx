@@ -6,37 +6,32 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   FileSpreadsheet,
-  TrendingUp,
   Award,
-  CalendarDays,
+  Trophy,
   LogOut,
   Menu,
   X,
   ChevronDown,
   Upload,
-  Loader2,
-  Sparkles
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataProvider, useData } from './data-context';
 
-const SIDEBAR_ITEMS = [
+// Top-bar navigation. Forecast + Seasonal + Ask-the-Data removed (V2); nav moved
+// from the old left sidebar into the header so every page stays one click away.
+const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Meeting Agenda', href: '/dashboard/agenda', icon: FileSpreadsheet },
-  { name: 'Demand Forecast', href: '/dashboard/forecast', icon: TrendingUp },
   { name: 'Brand Performance', href: '/dashboard/brands', icon: Award },
-  { name: 'Seasonal Insights', href: '/dashboard/seasonal', icon: CalendarDays },
-  { name: 'Ask the Data', href: '/dashboard/assistant', icon: Sparkles },
+  { name: 'Leaderboards', href: '/dashboard/leaderboard', icon: Trophy },
 ];
 
 import { Logo } from '@/components/logo';
 import { canAccess, ROLE_LABELS, type Role } from '@/lib/roles';
-import { apiErrorMessage } from '@/lib/apiError';
-import { AssistantBot } from '@/components/assistant-bot';
-import { clearChatHistory } from '@/lib/chatStorage';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState<{ username: string; role?: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -44,7 +39,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { systemStatus, refetch } = useData();
+  const { systemStatus, loadFromFile } = useData();
+
+  const statusBad = systemStatus?.includes('Error') || systemStatus?.includes('Offline');
 
   const handleUploadData = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,25 +51,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     setIsUploading(true);
     setUploadMsg(null);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const token = localStorage.getItem('token');
-      const form = new FormData();
-      form.append('file', file);
-
-      const res = await fetch(`${backendUrl}/api/data/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(apiErrorMessage(data, 'Upload failed'));
-
-      setUploadMsg({ ok: true, text: 'Data updated.' });
-      refetch();
+      // Parsed in the browser — the file never leaves this machine.
+      await loadFromFile(file);
+      setUploadMsg({ ok: true, text: 'Data loaded.' });
     } catch (err) {
-      const text = err instanceof TypeError && err.message === 'Failed to fetch'
-        ? 'Backend is offline.'
-        : err instanceof Error ? err.message : 'Upload failed.';
+      const text = err instanceof Error ? err.message : 'Could not read file.';
       setUploadMsg({ ok: false, text });
     } finally {
       setIsUploading(false);
@@ -100,31 +83,65 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     }
   }, [user, pathname]);
 
+  // Close the mobile nav whenever the route changes (avoids it lingering open).
+  useEffect(() => { setIsMobileNavOpen(false); }, [pathname]);
+
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    // The assistant conversation can contain business figures — don't leave it
-    // behind for whoever signs in next on this machine.
-    clearChatHistory();
     router.push('/');
   };
+
+  const navItems = NAV_ITEMS.filter(item => canAccess(user?.role, item.href));
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       {/* Top Navigation Bar */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 px-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg lg:hidden text-slate-600 shrink-0"
-          >
-            <Menu size={24} />
-          </button>
+      <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 px-4 flex items-center gap-4 shadow-sm">
+        {/* Mobile menu toggle */}
+        <button
+          onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+          className="p-2 hover:bg-slate-100 rounded-lg lg:hidden text-slate-600 shrink-0"
+          aria-label="Toggle navigation"
+        >
+          {isMobileNavOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
 
-          <Logo className="min-w-0" textClassName="text-base sm:text-xl truncate" />
-        </div>
+        <Logo className="min-w-0 shrink-0" textClassName="text-base sm:text-xl truncate" />
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Desktop horizontal nav */}
+        <nav className="hidden lg:flex items-center gap-1 ml-4">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm transition-all duration-200 ${
+                  isActive
+                    ? 'bg-[#0f172a] text-white font-semibold shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium'
+                }`}
+              >
+                <item.icon size={18} className={isActive ? 'text-white' : 'text-slate-400'} />
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+          {/* System status pill */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100">
+            <span className="relative flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${statusBad ? 'bg-red-400' : 'bg-emerald-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${statusBad ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+            </span>
+            <span className={`text-xs font-medium ${statusBad ? 'text-red-500' : 'text-emerald-600'}`}>
+              {systemStatus || 'Operational'}
+            </span>
+          </div>
+
           {/* Upload sales data — managers/admins only */}
           {user && user.role !== 'demo' && (
             <div className="flex items-center gap-2">
@@ -143,11 +160,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                title="Upload sales data (CSV)"
+                title="Load sales data (CSV) — stays on this computer"
                 className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white hover:bg-slate-700 transition-colors disabled:opacity-60"
               >
                 {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                <span className="hidden md:inline">{isUploading ? 'Uploading…' : 'Upload Data'}</span>
+                <span className="hidden md:inline">{isUploading ? 'Loading…' : 'Load Data'}</span>
               </button>
             </div>
           )}
@@ -179,9 +196,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               >
                 <div className="px-4 py-3 border-b border-slate-50 md:hidden bg-slate-50/50">
                   <p className="text-sm font-bold text-slate-900">{user?.username || 'User'}</p>
-                  <p className="text-xs text-slate-500">Administrator</p>
+                  <p className="text-xs text-slate-500">{ROLE_LABELS[user?.role as Role] ?? 'User'}</p>
                 </div>
-                
+
                 <div className="p-1">
                   <button
                     onClick={handleLogout}
@@ -198,81 +215,57 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-16 left-0 bottom-0 z-40 w-64 bg-[#0f172a] text-white transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-          <div className="flex items-center justify-end mb-1 mt-1 lg:hidden">
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+      {/* Mobile nav dropdown */}
+      <AnimatePresence>
+        {isMobileNavOpen && (
+          <>
+            <motion.nav
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="fixed top-16 left-0 right-0 z-40 bg-white border-b border-slate-200 shadow-lg p-3 lg:hidden"
             >
-              <X size={20} />
-            </button>
-          </div>
-          <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-4">Main Menu</p>
-          <div className="space-y-1">
-            {SIDEBAR_ITEMS.filter(item => canAccess(user?.role, item.href)).map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setIsSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                    isActive
-                      ? 'bg-white text-[#0f172a] font-bold shadow-md'
-                      : 'text-slate-400 hover:bg-white/10 hover:text-white font-medium'
-                  }`}
-                >
-                  <item.icon size={20} className={isActive ? 'text-[#0f172a]' : 'text-slate-400 group-hover:text-white'} />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="mt-auto pt-8 px-4">
-            {/* Sidebar Footer Actions could go here */}
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-slate-800 bg-[#0f172a] shrink-0">
-          <div className="px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-bold">System Status</p>
-            <div className="flex items-center gap-2">
-              <div className="relative flex h-2 w-2">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${systemStatus?.includes('Error') || systemStatus?.includes('Offline') ? 'bg-red-400' : 'bg-emerald-400'}`}></span>
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${systemStatus?.includes('Error') || systemStatus?.includes('Offline') ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+              <div className="space-y-1">
+                {navItems.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-[#0f172a] text-white font-semibold'
+                          : 'text-slate-600 hover:bg-slate-100 font-medium'
+                      }`}
+                    >
+                      <item.icon size={20} className={isActive ? 'text-white' : 'text-slate-400'} />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
               </div>
-              <span className={`text-xs font-medium ${systemStatus?.includes('Error') || systemStatus?.includes('Offline') ? 'text-red-400' : 'text-emerald-400'}`}>
-                {systemStatus || 'Systems Operational'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Overlay for mobile sidebar */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+              <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-2 px-4 py-2">
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${statusBad ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                <span className={`text-xs font-medium ${statusBad ? 'text-red-500' : 'text-emerald-600'}`}>
+                  {systemStatus || 'Systems Operational'}
+                </span>
+              </div>
+            </motion.nav>
+            <div
+              className="fixed inset-0 top-16 bg-slate-900/40 backdrop-blur-sm z-30 lg:hidden"
+              onClick={() => setIsMobileNavOpen(false)}
+            />
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
-      <main className="pt-16 lg:pl-64 min-h-screen transition-all duration-300">
+      <main className="pt-16 min-h-screen">
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
           {children}
         </div>
       </main>
-
-      {/* Floating shortcut to the AI assistant; hides itself on its own page. */}
-      <AssistantBot />
     </div>
   );
 }

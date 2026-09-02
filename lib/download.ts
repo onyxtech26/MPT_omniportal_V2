@@ -1,5 +1,5 @@
-// Shared "save a base64 payload as a file" helper: native share sheet on
-// Capacitor (Android/desktop shell), anchor-click download in the browser.
+// Save a base64 payload as a file. V2 is a web app, so this is a plain browser
+// download; the old Capacitor/native share path was removed with the mobile build.
 
 function base64ToBlob(b64: string, mime: string): Blob {
   const bytes = atob(b64);
@@ -9,23 +9,6 @@ function base64ToBlob(b64: string, mime: string): Blob {
 }
 
 export async function downloadBase64(b64: string, filename: string, mime: string) {
-  const isNative = typeof window !== 'undefined'
-    && !!(window as any)?.Capacitor
-    && ((window as any).Capacitor.isNativePlatform?.() || (window as any).Capacitor.isNative);
-
-  if (isNative) {
-    try {
-      const { Filesystem, Directory } = await import('@capacitor/filesystem');
-      const { Share } = await import('@capacitor/share');
-      await Filesystem.writeFile({ path: filename, data: b64, directory: Directory.Cache });
-      const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
-      await Share.share({ title: filename, files: [uri], dialogTitle: 'Save or Share' });
-      return;
-    } catch {
-      /* fall through to browser download */
-    }
-  }
-
   const url = URL.createObjectURL(base64ToBlob(b64, mime));
   const a = document.createElement('a');
   a.href = url;

@@ -3,10 +3,8 @@ export type Role = 'boss' | 'manager' | 'admin';
 export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/dashboard':          ['boss', 'manager', 'admin'],
   '/dashboard/agenda':   ['manager', 'admin'],
-  '/dashboard/forecast': ['boss', 'manager', 'admin'],
   '/dashboard/brands':   ['boss', 'manager', 'admin'],
-  '/dashboard/seasonal': ['boss', 'manager', 'admin'],
-  '/dashboard/assistant': ['boss', 'manager', 'admin'],
+  '/dashboard/leaderboard': ['boss', 'manager', 'admin'],
 };
 
 export const ROLE_LABELS: Record<Role, string> = {

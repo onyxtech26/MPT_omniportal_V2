@@ -3,27 +3,27 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, TrendingUp, Package, ChevronRight, Download, Users, Award, DollarSign, Medal, Calendar, X, Trophy, Zap, Info, LogOut } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Package, ChevronRight, ChevronDown, Download, Users, Award, DollarSign, Medal, Calendar, X, Trophy, Zap, Info, Upload } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useData } from './data-context';
 
 export default function DashboardPage() {
-  const { outlets, isLoading, lastUpdated, systemStatus, refetch } = useData();
+  const { outlets, isLoading, lastUpdated, systemStatus, loadFromFile } = useData();
   const [selectedOutletCode, setSelectedOutletCode] = useState<string | null>(null);
   const [selectedSalesmanId, setSelectedSalesmanId] = useState<string | null>(null);
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  const [monthlyMetric, setMonthlyMetric] = useState<'sales' | 'units'>('sales');
   const [isExporting, setIsExporting] = useState(false);
   const router = useRouter();
+
+  // Collapse any open month when switching salesperson.
+  useEffect(() => { setExpandedMonth(null); }, [selectedSalesmanId]);
 
   useEffect(() => {
     if (!localStorage.getItem('token')) {
       router.push('/');
     }
   }, [router]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    router.push('/');
-  };
 
   const selectedOutlet = useMemo(() => 
     outlets?.find(o => o.code === selectedOutletCode) || null, 
@@ -53,6 +53,28 @@ export default function DashboardPage() {
   const totalNetworkInvestment = (outlets || []).reduce((acc, curr) => acc + curr.totalInvestment, 0);
   const totalNetworkTransactions = (outlets || []).reduce((acc, curr) => acc + (curr.transactionCount || 0), 0);
   const networkATV = totalNetworkTransactions > 0 ? totalNetworkRevenue / totalNetworkTransactions : 0;
+
+  // Network-wide month-by-month totals (sales + units), summed across every
+  // salesperson in every outlet — powers the Monthly Performance chart on the
+  // Global Overview. Rows whose date didn't parse are naturally excluded.
+  const monthlyNetwork = useMemo(() => {
+    const rev: Record<string, number> = {};
+    const units: Record<string, number> = {};
+    for (const o of outlets || []) {
+      for (const p of Object.values(o.salesmanProfiles || {})) {
+        for (const [m, d] of Object.entries(p.monthlyData || {})) {
+          rev[m] = (rev[m] ?? 0) + d.revenue;
+          units[m] = (units[m] ?? 0) + d.units;
+        }
+      }
+    }
+    return Object.keys(rev).sort().map((m) => ({
+      month: m,
+      label: new Date(`${m}-01`).toLocaleString('default', { month: 'short', year: '2-digit' }),
+      sales: rev[m],
+      units: Math.round(units[m]),
+    }));
+  }, [outlets]);
 
   // Detail View Metrics
   const salesmanLeaderboard = useMemo(() => {
@@ -102,13 +124,16 @@ export default function DashboardPage() {
       .sort((a, b) => b.sales - a.sales)
       .slice(0, 10); // Show top 10 for overall ranking
 
-    // Monthly Breakdown
+    // Monthly Breakdown — newest first (big-picture months at the top), each with
+    // the full per-product list for that month in BOTH sales and units.
     const monthlyData = Object.entries(selectedSalesman.monthlyData)
-      .sort((a, b) => a[0].localeCompare(b[0])) // Sort by YYYY-MM
+      .sort((a, b) => b[0].localeCompare(a[0])) // Sort by YYYY-MM, newest first
       .map(([month, data]) => {
-        // Find top brand for this month
-        const topBrandEntry = Object.entries(data.brands).sort((a, b) => b[1] - a[1])[0];
-        
+        // What they sold this month: sales + units per product, biggest sales first.
+        const products = Object.entries(data.brands)
+          .map(([name, sales]) => ({ name, sales, units: data.brandUnits?.[name] ?? 0 }))
+          .sort((a, b) => b.sales - a.sales);
+
         // Convert YYYY-MM to Month Name
         const date = new Date(`${month}-01`);
         const monthName = date.toLocaleString('default', { month: 'short', year: 'numeric' });
@@ -117,8 +142,10 @@ export default function DashboardPage() {
           month,
           monthName,
           revenue: data.revenue,
-          topBrand: topBrandEntry ? topBrandEntry[0] : 'None',
-          topBrandRevenue: topBrandEntry ? topBrandEntry[1] : 0
+          units: data.units ?? 0,
+          topBrand: products[0]?.name ?? 'None',
+          topBrandRevenue: products[0]?.sales ?? 0,
+          products,
         };
       });
 
@@ -362,21 +389,8 @@ export default function DashboardPage() {
 
       drawFooter();
 
-      // ── Save: browser or Capacitor native ────────────────────────────
-      const isNative = typeof window !== 'undefined'
-        && !!(window as any)?.Capacitor
-        && ((window as any).Capacitor.isNativePlatform?.() || (window as any).Capacitor.isNative);
-
-      if (isNative) {
-        const { Filesystem, Directory } = await import('@capacitor/filesystem');
-        const { Share } = await import('@capacitor/share');
-        const base64 = doc.output('datauristring').split(',')[1];
-        await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache });
-        const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
-        await Share.share({ title: filename, files: [uri], dialogTitle: 'Save or Share Report' });
-      } else {
-        doc.save(filename);
-      }
+      // V2 is a web app, so this is always a browser download.
+      doc.save(filename);
 
     } catch (err) {
       console.error('PDF export error:', err);
@@ -398,33 +412,26 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
         <div className="bg-slate-100 p-6 rounded-full mb-4">
-          <Package size={48} className="text-slate-400" />
+          <Upload size={48} className="text-slate-400" />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">
-          {hasError ? 'Connection Failed' : 'No Data Available'}
+          {hasError ? 'Could not read data' : 'Load your sales CSV'}
         </h2>
         <p className="text-slate-500 max-w-md mb-8">
           {hasError
-            ? 'Unable to connect to the backend server. Please check your network connection and try again.'
-            : 'Connecting to the backend system...'}
+            ? 'Something went wrong reading the stored data. Try uploading the sales CSV again.'
+            : 'Choose your POS sales export (.csv). It is read right here on your computer — nothing is uploaded to any server.'}
         </p>
-        <div className="flex gap-3">
-          {hasError && (
-            <button
-              onClick={refetch}
-              className="flex items-center gap-2 px-6 py-3 bg-[#0f172a] text-white rounded-[24px] hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 font-medium"
-            >
-              Retry
-            </button>
-          )}
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-[24px] hover:bg-slate-50 transition-colors shadow-sm font-medium"
-          >
-            <LogOut size={18} />
-            Back to Login
-          </button>
-        </div>
+        <label className="flex items-center gap-2 px-6 py-3 bg-[#0f172a] text-white rounded-[24px] hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 font-medium cursor-pointer">
+          <Upload size={18} />
+          Choose CSV file
+          <input
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) loadFromFile(f); }}
+          />
+        </label>
       </div>
     );
   }
@@ -510,6 +517,56 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Monthly Performance */}
+              {monthlyNetwork.length > 0 && (
+                <div className="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100">
+                  <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                      <TrendingUp className="text-slate-400" />
+                      Monthly Performance
+                    </h2>
+                    <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1">
+                      {(['sales', 'units'] as const).map((k) => (
+                        <button
+                          key={k}
+                          onClick={() => setMonthlyMetric(k)}
+                          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
+                            monthlyMetric === k ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          {k}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthlyNetwork} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
+                        <YAxis
+                          tick={{ fill: '#94a3b8', fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={70}
+                          tickFormatter={(v: number) => (monthlyMetric === 'sales' ? formatCurrencyCompact(v) : v.toLocaleString())}
+                        />
+                        <Tooltip
+                          cursor={{ fill: '#f8fafc' }}
+                          formatter={(v) => {
+                            const n = Number(v);
+                            return [monthlyMetric === 'sales' ? formatCurrencyFull(n) : `${n.toLocaleString()} units`, monthlyMetric === 'sales' ? 'Sales' : 'Units'];
+                          }}
+                          labelStyle={{ color: '#0f172a', fontWeight: 700 }}
+                          contentStyle={{ borderRadius: 16, border: '1px solid #e2e8f0' }}
+                        />
+                        <Bar dataKey={monthlyMetric} radius={[8, 8, 0, 0]} fill="#0f172a" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
 
               {/* Outlet Grid */}
               <div>
@@ -879,29 +936,78 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* 12-Month Performance List */}
+                  {/* Month-by-month: sales + units, expand to see what was sold */}
                   <div className="mb-10">
-                    <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2 text-lg">
+                    <h3 className="font-bold text-slate-900 mb-1 flex items-center gap-2 text-lg">
                       <Calendar size={20} className="text-slate-400" />
-                      12-Month Performance
+                      Month-by-Month Performance
                     </h3>
+                    <p className="text-xs text-slate-500 mb-6 ml-1 font-medium">
+                      Click a month to see what was sold — sales and units.
+                    </p>
                     <div className="space-y-3">
-                      {salesmanMetrics.monthlyData.map((data, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-[20px] transition-colors border border-transparent hover:border-slate-100 group">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 group-hover:bg-white group-hover:shadow-sm transition-all">
-                              {data.month.split('-')[1]}
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 text-sm">{data.monthName}</p>
-                              <p className="text-xs text-slate-500 truncate max-w-[120px]">Top: {data.topBrand}</p>
-                            </div>
+                      {salesmanMetrics.monthlyData.map((data) => {
+                        const open = expandedMonth === data.month;
+                        return (
+                          <div key={data.month} className={`rounded-[20px] border transition-colors ${open ? 'border-slate-200 bg-slate-50/40' : 'border-slate-100'}`}>
+                            <button
+                              onClick={() => setExpandedMonth(open ? null : data.month)}
+                              className="w-full flex items-center justify-between p-4 hover:bg-slate-50 rounded-[20px] transition-colors group text-left cursor-pointer"
+                            >
+                              <div className="flex items-center gap-4 min-w-0">
+                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 group-hover:bg-white group-hover:shadow-sm transition-all shrink-0">
+                                  {data.month.split('-')[1]}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-slate-900 text-sm">{data.monthName}</p>
+                                  <p className="text-xs text-slate-500 truncate max-w-[160px]">Top: {data.topBrand}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+                                <div className="text-right">
+                                  <p className="font-bold text-slate-900 text-sm">{formatCurrencyFull(data.revenue)}</p>
+                                  <p className="text-xs text-slate-500 font-medium">{Math.round(data.units).toLocaleString()} units</p>
+                                </div>
+                                <ChevronDown size={18} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+                              </div>
+                            </button>
+                            <AnimatePresence initial={false}>
+                              {open && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="px-4 pb-4">
+                                    <div className="rounded-[16px] border border-slate-100 bg-white overflow-x-auto">
+                                      <table className="w-full text-sm">
+                                        <thead>
+                                          <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                                            <th className="text-left font-bold px-4 py-2.5">Product</th>
+                                            <th className="text-right font-bold px-4 py-2.5 whitespace-nowrap">Sales</th>
+                                            <th className="text-right font-bold px-4 py-2.5 whitespace-nowrap">Units</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {data.products.map((p, idx) => (
+                                            <tr key={idx} className="border-t border-slate-50">
+                                              <td className="px-4 py-2.5 font-medium text-slate-700">{p.name}</td>
+                                              <td className="px-4 py-2.5 text-right font-semibold text-slate-900 whitespace-nowrap">{formatCurrencyFull(p.sales)}</td>
+                                              <td className="px-4 py-2.5 text-right font-medium text-slate-600 whitespace-nowrap">{Math.round(p.units).toLocaleString()}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-slate-900 text-sm">{formatCurrencyFull(data.revenue)}</p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
