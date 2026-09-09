@@ -68,10 +68,20 @@ export const REQUIRED_COLUMNS = [
 
 // ---- Row-level helpers ------------------------------------------------------
 
+/**
+ * What a row is, once normalised. `Watch` is anything sold as a product;
+ * `Service` is the after-sales group; `Voucher` and `Deposit` are the two lines
+ * that are not sales of goods at all. See `CATEGORY_LABELS` and
+ * `SERVICE_CATEGORIES` — this is a read-out of decisions already made there, not
+ * a second classification.
+ */
+export type RowCategory = 'Watch' | 'Service' | 'Voucher' | 'Deposit';
+
 /** A single parsed transaction, with the fields the aggregation needs. */
-interface Row {
+export interface Row {
   com_unit: string;
   saleman_cd: string;
+  cust_no: string;        // customer code; '0' means a walk-in
   inv_desc: string;
   inv_category: string;   // POS category code, e.g. PIN / BAT-CLK / SEI-WC
   trx_no: string;         // transaction number — several rows share one sale
@@ -81,6 +91,7 @@ interface Row {
   trx_amt: number;        // sales value
   trx_qty: number;        // units
   cost_amt: number;
+  category: RowCategory;  // set by normalizeRow, from the grouping already applied
   month: string | null;   // 'YYYY-MM' or null when the date won't parse
   day: string | null;     // 'YYYY-MM-DD' or null
 }
@@ -227,6 +238,17 @@ function normalizeRow(row: Row, opts: Required<GroupingOptions>): Row {
     desc = SERVICE_LABEL;
   }
   row.inv_desc = desc;
+
+  // The Watch/Service split the Director filters by. Read it back off the label
+  // just assigned rather than re-testing the category codes: one classification,
+  // one place to change it, and the two can never drift apart. Note `groupService`
+  // is respected for free — with it off, service items stay individual products
+  // and correctly read as Watch.
+  row.category =
+    desc === SERVICE_LABEL ? 'Service'
+    : category === 'OH' ? 'Voucher'
+    : category === 'OT' ? 'Deposit'
+    : 'Watch';
   return row;
 }
 
@@ -275,17 +297,31 @@ export function filterCompletedSales(records: Record<string, string>[]): Record<
   });
 }
 
-/** Build the dashboard summary from raw parsed CSV records. */
-export function aggregate(records: Record<string, string>[], options?: GroupingOptions): SalesSummary {
+/**
+ * Clean the raw CSV records into rows, once.
+ *
+ * This is everything `aggregate()` used to do before the totals loop: keep only
+ * completed sales, parse the date, apply the grouping rules. It is split out so
+ * the rows can be *reused* — the Explorer slices the same rows by outlet,
+ * salesperson, brand, model, vendor, customer and category without paying for
+ * `filterCompletedSales()`'s two-pass return matching on every click.
+ *
+ * Deliberately does NOT apply the date window: dates are just one more filter,
+ * handled by `applyFilters` alongside the rest.
+ */
+export function normalizeRecords(
+  records: Record<string, string>[],
+  options?: GroupingOptions,
+): Row[] {
   const opts = { ...DEFAULT_GROUPING, ...options };
-  // Bucket rows by outlet in a single pass, over completed sales only.
-  const byOutlet = new Map<string, Row[]>();
+  const rows: Row[] = [];
 
   for (const rec of filterCompletedSales(records)) {
     const { month, day } = parseDate(rec.trx_date);
     const row = normalizeRow({
       com_unit: (rec.com_unit ?? '').toString(),
       saleman_cd: (rec.saleman_cd ?? '').toString(),
+      cust_no: (rec.cust_no ?? '').toString().trim(),
       inv_desc: (rec.inv_desc ?? '').toString(),
       inv_category: (rec.inv_category ?? '').toString(),
       trx_no: (rec.trx_no ?? '').toString().trim(),
@@ -295,18 +331,22 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
       trx_amt: toNumber(rec.trx_amt),
       trx_qty: toNumber(rec.trx_qty),
       cost_amt: toNumber(rec.cost_amt),
+      category: 'Watch',   // replaced by normalizeRow
       month,
       day,
     }, opts);
     if (!row.com_unit) continue; // pandas groupby('com_unit') drops null outlet
-    // Date window. 'YYYY-MM-DD' sorts lexically, so string compare is safe.
-    // Rows whose date could not be parsed are excluded once a window is set,
-    // since there is no way to know whether they belong in it.
-    if (opts.dateFrom || opts.dateTo) {
-      if (!row.day) continue;
-      if (opts.dateFrom && row.day < opts.dateFrom) continue;
-      if (opts.dateTo && row.day > opts.dateTo) continue;
-    }
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+/** Build the dashboard summary from rows already cleaned by `normalizeRecords`. */
+export function aggregateRows(rows: Row[]): SalesSummary {
+  // Bucket rows by outlet in a single pass.
+  const byOutlet = new Map<string, Row[]>();
+  for (const row of rows) {
     const bucket = byOutlet.get(row.com_unit);
     if (bucket) bucket.push(row);
     else byOutlet.set(row.com_unit, [row]);
@@ -314,7 +354,7 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
 
   const outlets: OutletSummary[] = [];
 
-  for (const [outletCode, rows] of byOutlet) {
+  for (const [outletCode, outletRows] of byOutlet) {
     const salesmen: Record<string, number> = {};
     const brands: Record<string, number> = {};
     // One sale spans several rows (one per item), so a transaction is a distinct
@@ -335,7 +375,7 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
     // Per-salesperson accumulators
     const profiles: Record<string, SalesmanProfile> = {};
 
-    for (const r of rows) {
+    for (const r of outletRows) {
       totalRevenue += r.trx_amt;
       totalUnits += r.trx_qty;
       totalInvestment += r.cost_amt;   // already a line total; do NOT multiply by qty
@@ -409,7 +449,140 @@ export function aggregate(records: Record<string, string>[], options?: GroupingO
   return { message: 'Data successfully processed', outlets };
 }
 
+// ---- Row-level filtering ----------------------------------------------------
+
+/** The dimensions a row can be sliced by on the Explorer. */
+export type Dimension =
+  | 'outlet' | 'salesman' | 'brand' | 'model' | 'vendor' | 'customer' | 'category';
+
+/** How each dimension reads its value off a row. One place, so nothing drifts. */
+export const DIMENSION_VALUE: Record<Dimension, (r: Row) => string> = {
+  outlet:   (r) => r.com_unit,
+  salesman: (r) => r.saleman_cd,
+  brand:    (r) => r.inv_desc,
+  model:    (r) => r.inv_cd,
+  vendor:   (r) => r.vendor_no || 'Unspecified',
+  customer: (r) => r.cust_no,
+  category: (r) => r.category,
+};
+
+export const DIMENSION_LABELS: Record<Dimension, string> = {
+  outlet: 'Outlet', salesman: 'Salesperson', brand: 'Brand', model: 'Model',
+  vendor: 'Vendor', customer: 'Customer', category: 'Sales category',
+};
+
+/** Selected values per dimension. An absent or empty list means "no constraint". */
+export type Selection = Partial<Record<Dimension, string[]>>;
+
+export interface RowFilters {
+  /** 'YYYY-MM-DD'; null means no limit on that end. */
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  /**
+   * Year ('2026') and month ('0'–'11', JS-style) chips. Multi-select, and NOT
+   * expressible as a range — "January and March" is two windows, not one — so
+   * they are matched per row rather than folded into dateFrom/dateTo.
+   *
+   * An explicit date range takes precedence and these are ignored while one is
+   * set, matching the Director's tool (`sales-pulse` app.js:53). Doing it the
+   * other way round silently intersects two date rules and produces empty
+   * screens nobody can explain.
+   */
+  years?: string[];
+  months?: string[];
+  selected?: Selection;
+}
+
+/**
+ * Narrow rows to the current selection.
+ *
+ * `skip` leaves one dimension unconstrained. That is what makes the chip lists
+ * behave: when drawing the Brand chips we skip `brand`, so every brand the
+ * *other* filters still allow stays visible and clickable — otherwise picking one
+ * brand would hide all the others and you could never pick a second.
+ */
+export function applyFilters(rows: Row[], filters: RowFilters, skip?: Dimension): Row[] {
+  const { dateFrom, dateTo, years, months, selected } = filters;
+  // Pre-build the active constraints so the hot loop does Set lookups, not
+  // array scans — this runs over tens of thousands of rows on every click.
+  const active: [Dimension, Set<string>][] = [];
+  for (const [dim, values] of Object.entries(selected ?? {}) as [Dimension, string[]][]) {
+    if (dim === skip || !values?.length) continue;
+    active.push([dim, new Set(values)]);
+  }
+  const hasWindow = Boolean(dateFrom || dateTo);
+  // Year/month only apply when no explicit range is set — see RowFilters.
+  const yearSet = !hasWindow && years?.length ? new Set(years) : null;
+  const monthSet = !hasWindow && months?.length ? new Set(months) : null;
+  const hasDateRule = hasWindow || yearSet || monthSet;
+
+  return rows.filter((r) => {
+    // Rows whose date could not be parsed are excluded once any date rule is
+    // set, since there is no way to know whether they belong in it.
+    if (hasDateRule && !r.day) return false;
+    if (hasWindow) {
+      // 'YYYY-MM-DD' sorts lexically, so string compare is safe.
+      if (dateFrom && r.day! < dateFrom) return false;
+      if (dateTo && r.day! > dateTo) return false;
+    } else {
+      // r.month is 'YYYY-MM'; month chips are JS 0-11 to match a Date's getMonth.
+      if (yearSet && !yearSet.has(r.month!.slice(0, 4))) return false;
+      if (monthSet && !monthSet.has(String(Number(r.month!.slice(5, 7)) - 1))) return false;
+    }
+    for (const [dim, set] of active) {
+      if (!set.has(DIMENSION_VALUE[dim](r))) return false;
+    }
+    return true;
+  });
+}
+
+/** Distinct years present in the rows, newest first. Feeds the year chips. */
+export function listYears(rows: Row[]): string[] {
+  const seen = new Set<string>();
+  for (const r of rows) if (r.month) seen.add(r.month.slice(0, 4));
+  return [...seen].sort().reverse();
+}
+
+/**
+ * The values still worth offering in each chip group, given everything else that
+ * is selected. Sorted, distinct, blanks dropped.
+ *
+ * Seven passes over the rows — one per dimension, each skipping itself. On a
+ * 46k-row export that is a few milliseconds, and it is what stops the UI offering
+ * a salesperson who sold nothing of the brand you just picked.
+ */
+export function facetValues(rows: Row[], filters: RowFilters): Record<Dimension, string[]> {
+  const out = {} as Record<Dimension, string[]>;
+  for (const dim of Object.keys(DIMENSION_VALUE) as Dimension[]) {
+    const seen = new Set<string>();
+    for (const r of applyFilters(rows, filters, dim)) {
+      const v = DIMENSION_VALUE[dim](r).trim();
+      if (v) seen.add(v);
+    }
+    out[dim] = [...seen].sort();
+  }
+  return out;
+}
+
+/** Customer `0` is a walk-in, not a customer number. Display-only. */
+export function customerLabel(code: string): string {
+  return code === '0' || code === '000' ? 'Walk-in' : code;
+}
+
 // ---- Public entry points ----------------------------------------------------
+
+/**
+ * Build the dashboard summary from raw parsed CSV records.
+ *
+ * Kept as the one-call entry point the three dashboard pages already use. It is
+ * now just `normalizeRecords` → `applyFilters` (date window only) → `aggregateRows`,
+ * which is exactly what it did inline before the split.
+ */
+export function aggregate(records: Record<string, string>[], options?: GroupingOptions): SalesSummary {
+  const opts = { ...DEFAULT_GROUPING, ...options };
+  const rows = normalizeRecords(records, opts);
+  return aggregateRows(applyFilters(rows, { dateFrom: opts.dateFrom, dateTo: opts.dateTo }));
+}
 
 /**
  * Parse CSV text into raw records, without aggregating.

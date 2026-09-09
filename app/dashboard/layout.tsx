@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Award,
   Trophy,
+  Compass,
   LogOut,
   Menu,
   X,
@@ -25,10 +26,12 @@ const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Brand Performance', href: '/dashboard/brands', icon: Award },
   { name: 'Leaderboards', href: '/dashboard/leaderboard', icon: Trophy },
+  { name: 'Explorer', href: '/dashboard/explorer', icon: Compass },
 ];
 
 import { Logo } from '@/components/logo';
 import { PeriodFilter } from '@/components/period-filter';
+import { SavedReports } from '@/components/saved-reports';
 import { canAccess, ROLE_LABELS, type Role } from '@/lib/roles';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -142,6 +145,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               {systemStatus || 'Operational'}
             </span>
           </div>
+
+          {/* Reports already remembered on this machine */}
+          <SavedReports />
 
           {/* Upload sales data — managers/admins only */}
           {user && user.role !== 'demo' && (

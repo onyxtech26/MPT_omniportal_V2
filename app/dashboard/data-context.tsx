@@ -2,16 +2,24 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  parseCsvRecords, aggregate, listMonths,
-  type OutletSummary, type SalesmanProfile,
+  parseCsvRecords, aggregate, listMonths, normalizeRecords,
+  type OutletSummary, type SalesmanProfile, type Row,
 } from '@/lib/salesData';
-import { saveCsv, loadCsv, clearCsv } from '@/lib/csvStore';
+import {
+  saveCsv, loadCsv, clearCsv,
+  saveReport, listReports, loadReport, deleteReport, type ReportMeta,
+} from '@/lib/csvStore';
 
 // Re-export so existing consumers can keep importing these from the context.
 export type { OutletSummary, SalesmanProfile };
 
 interface DataContextType {
   outlets: OutletSummary[];
+  /**
+   * The loaded report as cleaned transaction rows, before any date window or
+   * filter. The Explorer slices these itself; the other pages read `outlets`.
+   */
+  rows: Row[];
   isLoading: boolean;
   systemStatus: string | null;   // human-readable state for the header pill
   lastUpdated: string | null;
@@ -29,6 +37,12 @@ interface DataContextType {
   clearData: () => Promise<void>;
   /** Re-read the CSV currently held in the browser store. */
   refetch: () => void;
+  /** Reports remembered on this machine, newest first. */
+  savedReports: ReportMeta[];
+  /** Re-open one of them. */
+  openSavedReport: (id: number) => Promise<void>;
+  /** Forget one of them. Does not affect what is currently on screen. */
+  removeSavedReport: (id: number) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -43,12 +57,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
+  const [savedReports, setSavedReports] = useState<ReportMeta[]>([]);
 
   // Everything the pages read is derived from the rows plus the chosen window,
   // so one filter change updates every screen consistently.
   const outlets = useMemo(
     () => (records.length ? aggregate(records, { dateFrom, dateTo }).outlets : []),
     [records, dateFrom, dateTo],
+  );
+  // Cleaned once per file, not per filter change — this is the expensive part
+  // (return matching, date parsing, grouping) and the Explorer re-slices it on
+  // every chip click.
+  const rows = useMemo(
+    () => (records.length ? normalizeRecords(records) : []),
+    [records],
   );
   const availableMonths = useMemo(() => listMonths(records), [records]);
 
@@ -80,24 +102,54 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const refreshReports = useCallback(async () => {
+    setSavedReports(await listReports());
+  }, []);
+
   useEffect(() => { restore(); }, [restore]);
+  useEffect(() => { refreshReports(); }, [refreshReports]);
+
+  /** Shared by "open a file" and "open a saved report" — same state transition. */
+  const showCsv = useCallback((text: string, name: string, savedAt?: number) => {
+    setRecords(parseCsvRecords(text));
+    setFileName(name);
+    setSystemStatus('Local data');
+    setLastUpdated(new Date(savedAt ?? Date.now()).toLocaleString());
+    setDateFrom(null);   // a new report starts unfiltered
+    setDateTo(null);
+  }, []);
 
   const loadFromFile = useCallback(async (file: File) => {
     setIsLoading(true);
     try {
       const text = await file.text();
-      setRecords(parseCsvRecords(text));
-      setFileName(file.name);
-      setSystemStatus('Local data');
-      setLastUpdated(new Date().toLocaleString());
-      setDateFrom(null);   // a new report starts unfiltered
-      setDateTo(null);
-      // Persist for next time — stays on this machine only.
+      showCsv(text, file.name);
+      // Persist for next time — stays on this machine only. History is a
+      // convenience: if the quota is full the report still opens.
       try { await saveCsv(text, file.name); } catch { /* storage may be blocked; data still shows this session */ }
+      try { await saveReport(text, file.name); await refreshReports(); } catch { /* history unavailable */ }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [showCsv, refreshReports]);
+
+  const openSavedReport = useCallback(async (id: number) => {
+    setIsLoading(true);
+    try {
+      const stored = await loadReport(id);
+      if (!stored) { await refreshReports(); return; }   // deleted in another tab
+      showCsv(stored.text, stored.fileName, stored.savedAt);
+      // Make it the report that comes back on next visit, too.
+      try { await saveCsv(stored.text, stored.fileName); } catch { /* ignore */ }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showCsv, refreshReports]);
+
+  const removeSavedReport = useCallback(async (id: number) => {
+    try { await deleteReport(id); } catch { /* ignore */ }
+    await refreshReports();
+  }, [refreshReports]);
 
   const clearData = useCallback(async () => {
     try { await clearCsv(); } catch { /* ignore */ }
@@ -111,10 +163,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <DataContext.Provider value={{
-      outlets, isLoading, systemStatus, lastUpdated, fileName,
+      outlets, rows, isLoading, systemStatus, lastUpdated, fileName,
       hasData: outlets.length > 0,
       availableMonths, dateFrom, dateTo, setDateRange,
       loadFromFile, clearData, refetch: restore,
+      savedReports, openSavedReport, removeSavedReport,
     }}>
       {children}
     </DataContext.Provider>
