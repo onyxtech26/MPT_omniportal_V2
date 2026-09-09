@@ -14,6 +14,73 @@ Format:
 
 ---
 
+## 2026-09-07 — Explorer page: filter by anything, and a saved-report history
+
+Ported the two things the Director's own `sales-pulse` tool does that OmniPortal
+could not. His tool reads the same POS export we do, so this closes a real gap:
+he could answer "how did OGY do on CAESAR at AM in March?" and we could not.
+
+**Decision: a new page, not global filters.** The three existing pages were
+reconciled against the official POS report and stay exactly as they were — filter
+state lives inside the Explorer, not in the shared data context, so a filter can
+never leak into them. Promoting it later is a deliberate second step.
+
+**Decision: our counting wins where the two tools disagree.** `cost_amt` is already
+a line total and is not multiplied by quantity (his multiplies, overstating cost on
+multi-unit lines); returns forced negative; orphan credit notes dropped.
+
+- **Engine split** (`lib/salesData.ts`). `aggregate()` did three jobs in one pass and
+  threw the cleaned rows away. Now `normalizeRecords()` cleans (the expensive part —
+  return matching, date parsing, grouping) and `aggregateRows()` totals; `aggregate()`
+  is a wrapper, so every existing caller is untouched. Cleaning runs once per file
+  instead of once per click: 509 ms once, then ~20–60 ms per filter change on 46k rows.
+- **Row-level filters** — `applyFilters(rows, filters, skip)` and `facetValues()`.
+  `skip` is what makes the chip lists usable: when drawing the Brand chips it leaves
+  `brand` unconstrained, so picking one brand does not hide all the others. Ported
+  from his `filtered(skip)` (`app.js:13`).
+- **Explorer page** (`app/dashboard/explorer/`) — filter sidebar (outlet, sales
+  category, salesperson, brand, vendor, customer, model), KPI row with **ASP**,
+  trend chart at monthly/weekly/daily/weekdays/weekend, and top-10 breakdowns.
+- **Watch vs Service is read back off the label `normalizeRow` already assigned**,
+  not re-derived from the category codes — one classification, so the two cannot drift.
+  (His 13-code list folds `OH`/`OT` into Service; ours keeps Voucher and Deposit separate.)
+- **Saved-report history** (`lib/csvStore.ts`, DB v1 → v2). Was one CSV under one key;
+  now keeps the newest 5, with load/delete. Metadata and payload are in **separate
+  object stores** so listing does not deserialise ~9 MB per report — his tool stores
+  the *parsed rows*, which is bigger still. Dedupes on filename+size; a quota failure
+  degrades to "no history" rather than blocking the load.
+- **Finding: the Customer filter is dead on this data.** `cust_no` is `0`/`000` on
+  every row of all three exports — every sale is a walk-in. Rather than delete the
+  dimension, a chip group with fewer than 2 values hides itself, so Customer returns
+  automatically if a file with real customer numbers ever arrives. His tool has the
+  same dead panel (rewritten three times, `app.js:40-42`).
+
+**Bug found and fixed while building:** the Explorer's trend chart rendered its Units
+line as a ~7px sliver while the bars were correct. Cause: `interval="preserveStartEnd"`
+on the Recharts `XAxis` — in Recharts 3.x it collapses a `Line`'s x positions in a
+`ComposedChart` while `Bar` (which positions off the band scale directly) is unaffected.
+Silent: no console error. Fixed by removing `interval` and using `minTickGap` for label
+thinning, with a comment in the file so it is not re-added. Same family as the
+`AnimatePresence mode="wait"` note at `app/dashboard/page.tsx:493` — a chart-adjacent
+prop that breaks rendering without complaining.
+
+**Verified** (the integrity convention: money may be relabelled, never moved):
+- Old vs new engine on the 46k-row 2026 file — revenue, units, cost, transaction count
+  and every per-outlet figure identical. Grand total RM 5,511,299.89 unchanged.
+- Reconciled again to the printed POS report, 1–30 April 2026, through the full UI:
+  **KLT RM 26,456.00**, **KMT RM 35,824.75** — still exact.
+- Cross-filtering: selecting KLT leaves Outlet at all 14 (so a second is pickable)
+  while Salesperson 78→9, Brand 120→28, Vendor 54→24, Model 4,567→736.
+- Weekday (152) + weekend (60) buckets = daily (212), so the split is exhaustive.
+- History: v1→v2 upgrade on a real existing database kept `kv`; save, dedupe, 5-report
+  cap with eviction, load, delete and survival across reload all confirmed.
+- Static export builds; no `fetch` anywhere in `app/`, `lib/`, `components/`.
+
+Files: `lib/salesData.ts`, `lib/csvStore.ts`, `lib/roles.ts`,
+`app/dashboard/data-context.tsx`, `app/dashboard/layout.tsx`,
+`app/dashboard/explorer/page.tsx`, `components/explorer-filters.tsx`,
+`components/filter-chip-group.tsx`, `components/saved-reports.tsx`.
+
 ## 2026-09-02 — Seiko watch variants counted as one line
 
 - Decision: **keep grouping product lines by description** (they read better than
