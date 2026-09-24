@@ -113,10 +113,10 @@ Open your browser and go to **http://localhost:3000**
 
 ## Logging in
 
-| Account | Username | Password | Access |
-|---|---|---|---|
-| Admin | `admin` | `admin123` | Full access to all features |
-| Demo | `demo` | `demo` | Read-only, no file uploads |
+These are **V1 credentials and no longer apply.** V2 has no login server — the
+landing page is a client-side role picker (Director / Manager / IT Admin), not
+authentication. A real login backed by Supabase is being added as part of the
+watch repair module; see `docs/REPAIR_MODULE_SPEC.md`.
 
 ---
 

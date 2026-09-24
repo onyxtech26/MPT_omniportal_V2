@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   },
   // Allow access to remote image placeholder.
   images: {
-    unoptimized: true, // Required for static export to mobile
+    unoptimized: true, // Next's image optimizer needs a server; a static export has none.
     remotePatterns: [
       {
         protocol: 'https',
@@ -20,8 +20,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: 'export', // Changed to 'export' for mobile app compatibility
-  trailingSlash: true, // Required for Capacitor to correctly map routes to index.html files
+  // ⚠️ DO NOT REMOVE — this is not a leftover mobile flag. It is what makes
+  // "the Director's sales data never leaves his machine" a structural fact
+  // rather than a policy: with no server output, there is nowhere for
+  // lib/salesData.ts / csvStore.ts / data-context.tsx to send the CSV to,
+  // even by accident. (Mobile/Capacitor packaging that once justified this
+  // comment was removed; the flag stayed for this reason instead. Repair-job
+  // data lives in Supabase and is reached directly from the browser — see
+  // docs/REPAIR_MODULE_SPEC.md §3 — so this app never needs its own server.)
+  output: 'export',
+  trailingSlash: true, // Static export routing: /dashboard/ maps to dashboard/index.html
   transpilePackages: ['motion'],
   webpack: (config, { dev }) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.

@@ -3,3 +3,19 @@
 @theme {
   --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
+
+/* Customer repair slip (app/repairs/slip). 80mm is a standard thermal
+   receipt width; margin:0 stops the browser adding its own header/footer
+   whitespace. .no-print hides the app's own chrome (nav, buttons) so only
+   the slip content comes out of the printer — see
+   docs/REPAIR_MODULE_SPEC.md §6.3 on why a printed slip stays part of this
+   design even though the record itself is digital. */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

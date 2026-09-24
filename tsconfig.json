@@ -24,5 +24,9 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  // supabase/functions/** runs on Deno, not Node — Deno globals, npm:/jsr:
+  // specifiers, and its own separate dependency graph. It was never part of
+  // this Next.js project and tsc has no business trying to check it, the
+  // same way backend/'s Python is out of scope here.
+  "exclude": ["node_modules", "supabase/functions"]
 }

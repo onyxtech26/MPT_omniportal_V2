@@ -1,30 +1,27 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, TrendingUp, Package, ChevronRight, ChevronDown, Download, Users, Award, DollarSign, Medal, Calendar, X, Trophy, Zap, Info, Upload } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { useData } from './data-context';
 
+// No auth guard here on purpose — app/dashboard/layout.tsx already owns that
+// (it wraps every page under /dashboard). A second, independent check here
+// used to read a 'token' key that real auth never sets, which would have
+// bounced every visit straight back to the login page the moment auth-context
+// replaced the old localStorage-based login.
 export default function DashboardPage() {
   const { outlets, isLoading, lastUpdated, systemStatus, loadFromFile } = useData();
   const [selectedOutletCode, setSelectedOutletCode] = useState<string | null>(null);
   const [selectedSalesmanId, setSelectedSalesmanId] = useState<string | null>(null);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const router = useRouter();
 
   // Collapse any open month when switching salesperson.
   useEffect(() => { setExpandedMonth(null); }, [selectedSalesmanId]);
 
-  useEffect(() => {
-    if (!localStorage.getItem('token')) {
-      router.push('/');
-    }
-  }, [router]);
-
-  const selectedOutlet = useMemo(() => 
+  const selectedOutlet = useMemo(() =>
     outlets?.find(o => o.code === selectedOutletCode) || null, 
   [outlets, selectedOutletCode]);
 

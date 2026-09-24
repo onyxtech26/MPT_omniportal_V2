@@ -8,6 +8,7 @@ import {
   Award,
   Trophy,
   Compass,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -22,22 +23,30 @@ import { DataProvider, useData } from './data-context';
 // Agenda; nav moved from the old left sidebar into the header so every page stays
 // one click away. (The Agenda needs a server, so it cannot run on the deployed
 // site — the Manager continues to use the desktop build for it.)
+//
+// '/admin' is a deliberate exception to "this nav is sales-only" — IT Admin
+// lands on /dashboard like everyone else in management (see
+// DEFAULT_ROUTE_FOR_ROLE), and needs some way to actually reach the console
+// besides typing the URL. The existing canAccess filter below already
+// restricts it to admin; nobody else ever sees this item.
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Brand Performance', href: '/dashboard/brands', icon: Award },
   { name: 'Leaderboards', href: '/dashboard/leaderboard', icon: Trophy },
   { name: 'Explorer', href: '/dashboard/explorer', icon: Compass },
+  { name: 'Admin', href: '/admin', icon: Settings },
 ];
 
 import { Logo } from '@/components/logo';
 import { PeriodFilter } from '@/components/period-filter';
 import { SavedReports } from '@/components/saved-reports';
-import { canAccess, ROLE_LABELS, type Role } from '@/lib/roles';
+import { canAccess, ROLE_LABELS, defaultRouteFor } from '@/lib/roles';
+import { useAuth } from '@/lib/auth-context';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [user, setUser] = useState<{ username: string; role?: string } | null>(null);
+  const { session, profile, loading: authLoading, signOut, isPasswordRecovery } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,36 +76,40 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Wait for the very first "is anyone signed in" check before deciding
+  // anything — on load, "no session yet" and "signed out" look identical for
+  // a moment, and redirecting on that first false read would bounce a
+  // perfectly signed-in Director back to the login page.
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (authLoading) return;
+    if (!session || !profile) {
       router.replace('/');
       return;
     }
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try { setUser(JSON.parse(storedUser)); } catch {}
+    // A new or reset account (or one that clicked "forgot password") must
+    // set its own password before it can do anything else — checked before
+    // the normal per-role access check.
+    if (profile.must_change_password || isPasswordRecovery) {
+      router.replace('/change-password');
+      return;
     }
-  }, []);
-
-  // Redirect if current route is not allowed for this role
-  useEffect(() => {
-    if (!user) return;
-    if (!canAccess(user.role, pathname)) {
-      router.replace('/dashboard');
+    // Signed in, but this role cannot reach this particular page (e.g. a
+    // stale bookmark, or a role that changed). Send them to somewhere they
+    // CAN reach rather than looping on the page that just rejected them.
+    if (!canAccess(profile.role, pathname)) {
+      router.replace(defaultRouteFor(profile.role));
     }
-  }, [user, pathname]);
+  }, [authLoading, session, profile, isPasswordRecovery, pathname, router]);
 
   // Close the mobile nav whenever the route changes (avoids it lingering open).
   useEffect(() => { setIsMobileNavOpen(false); }, [pathname]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    await signOut();
     router.push('/');
   };
 
-  const navItems = NAV_ITEMS.filter(item => canAccess(user?.role, item.href));
+  const navItems = NAV_ITEMS.filter(item => canAccess(profile?.role, item.href));
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
@@ -149,8 +162,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           {/* Reports already remembered on this machine */}
           <SavedReports />
 
-          {/* Upload sales data — managers/admins only */}
-          {user && user.role !== 'demo' && (
+          {/* Upload sales data. Every role that reaches this layout already
+              passed canAccess (boss/manager/admin only — see ROUTE_ACCESS),
+              so no further check is needed here. (This replaces a check
+              against a 'demo' role that no longer exists and never actually
+              restricted anyone.) */}
+          {profile && (
             <div className="flex items-center gap-2">
               {uploadMsg && (
                 <span className={`hidden sm:inline text-xs font-medium ${uploadMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -183,11 +200,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             className="flex items-center gap-3 p-1.5 hover:bg-slate-50 rounded-xl transition-colors border border-transparent hover:border-slate-100"
           >
             <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-medium text-sm shadow-sm">
-              {user?.username ? user.username.substring(0, 2).toUpperCase() : 'U'}
+              {profile?.display_name ? profile.display_name.substring(0, 2).toUpperCase() : 'U'}
             </div>
             <div className="hidden md:block text-left mr-1">
-              <p className="text-sm font-bold text-slate-900 leading-tight">{user?.username || 'User'}</p>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{ROLE_LABELS[user?.role as Role] ?? 'User'}</p>
+              <p className="text-sm font-bold text-slate-900 leading-tight">{profile?.display_name || 'User'}</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{profile ? ROLE_LABELS[profile.role] : 'User'}</p>
             </div>
             <ChevronDown size={16} className="text-slate-400 hidden md:block" />
           </button>
@@ -202,8 +219,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                 className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 overflow-hidden"
               >
                 <div className="px-4 py-3 border-b border-slate-50 md:hidden bg-slate-50/50">
-                  <p className="text-sm font-bold text-slate-900">{user?.username || 'User'}</p>
-                  <p className="text-xs text-slate-500">{ROLE_LABELS[user?.role as Role] ?? 'User'}</p>
+                  <p className="text-sm font-bold text-slate-900">{profile?.display_name || 'User'}</p>
+                  <p className="text-xs text-slate-500">{profile ? ROLE_LABELS[profile.role] : 'User'}</p>
                 </div>
 
                 <div className="p-1">
