@@ -17,6 +17,25 @@ Format:
 
 ---
 
+## IT Admin scoped down to what it actually does — no sales screens, real navigation
+
+An admin signing in landed on the sales dashboard, and the console was only a small
+"Admin" item in that nav; inside the console there was no way back out. The sales
+screens do nothing for an admin — the CSV lives only in whoever loads it's browser,
+so an admin saw an empty dashboard — and none of accounts, branches, audit log or
+repair support needs sales figures.
+
+- `lib/roles.ts`: `admin` removed from all four `/dashboard*` routes; admin now
+  lands on `/admin/users`. Spec §4.5 matrix updated to match.
+- `app/dashboard/layout.tsx`: the Admin nav item removed (admin no longer reaches it).
+- `app/admin/layout.tsx`: a **Repairs** nav item added (read access, for helping a
+  stuck branch); logo links to the console.
+- `app/repairs/layout.tsx`: a **← Console** link, admin only, so `/repairs` is not a dead end.
+- Still unbuilt from spec §4.3: "View as user", the one thing an admin doing remote
+  support would genuinely want next.
+
+---
+
 ## Repair module — IT Admin console built (Phase 5): accounts stop being a SQL exercise
 
 Until now, every one of the seven login accounts in this system was created

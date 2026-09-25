@@ -5,10 +5,14 @@
 export type Role = 'boss' | 'manager' | 'admin' | 'staff';
 
 export const ROUTE_ACCESS: Record<string, Role[]> = {
-  '/dashboard':             ['boss', 'manager', 'admin'],
-  '/dashboard/brands':      ['boss', 'manager', 'admin'],
-  '/dashboard/leaderboard': ['boss', 'manager', 'admin'],
-  '/dashboard/explorer':    ['boss', 'manager', 'admin'],
+  // Sales screens are the Director's and Manager's. IT Admin is deliberately
+  // NOT listed: the sales CSV lives only in the browser of whoever loads it,
+  // so an admin here would see an empty dashboard, and nothing an admin does
+  // (accounts, branches, audit log, repair support) needs sales figures.
+  '/dashboard':             ['boss', 'manager'],
+  '/dashboard/brands':      ['boss', 'manager'],
+  '/dashboard/leaderboard': ['boss', 'manager'],
+  '/dashboard/explorer':    ['boss', 'manager'],
   // Staff work here; management can see it too (oversight — the full view
   // comes in Phase 3, see docs/REPAIR_MODULE_SPEC.md). IT Admin administers
   // accounts and branches, not day-to-day jobs, but is not blocked from
@@ -53,7 +57,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 export const DEFAULT_ROUTE_FOR_ROLE: Record<Role, string> = {
   boss:    '/dashboard',
   manager: '/dashboard',
-  admin:   '/dashboard',
+  admin:   '/admin/users',
   staff:   '/repairs',
 };
 

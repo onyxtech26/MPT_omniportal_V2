@@ -259,8 +259,8 @@ revoke update, delete on repair_events from authenticated;
 
 | Capability | IT Admin | Boss | Manager | Staff |
 |---|---|---|---|---|
-| Sales dashboard / brands / leaderboards | A | A | S — assigned branches | D |
-| Load the sales CSV | A | A | S — own machine | D |
+| Sales dashboard / brands / leaderboards | **D** (revised — nothing an admin does needs it) | A | S — assigned branches | D |
+| Load the sales CSV | **D** (revised, as above) | A | S — own machine | D |
 | Repair job — create | D | D | S | S — own branch |
 | Repair job — read | A | A — all | S — assigned | S — own branch |
 | Repair job — update status | D | D | S | S — own branch |

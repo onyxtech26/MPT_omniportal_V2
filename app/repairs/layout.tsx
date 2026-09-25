@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { LogOut, ArrowLeft } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/lib/auth-context';
 import { canAccess, ROLE_LABELS, defaultRouteFor } from '@/lib/roles';
@@ -47,6 +48,13 @@ export default function RepairsLayout({ children }: { children: React.ReactNode 
       {/* no-print: hidden when printing the customer slip (app/repairs/slip) so
           only the slip itself, not the app chrome, comes out of the printer. */}
       <header className="no-print h-16 bg-white border-b border-slate-200 px-4 flex items-center gap-4 shadow-sm">
+        {/* IT Admin reaches /repairs from its console, so it needs a way back. */}
+        {profile.role === 'admin' && (
+          <Link href="/admin/users" aria-label="Back to admin console"
+            className="flex items-center gap-1.5 px-2.5 py-2 -ml-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+            <ArrowLeft size={16} /> <span className="hidden sm:inline">Console</span>
+          </Link>
+        )}
         <Logo textClassName="text-base sm:text-xl" />
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right hidden sm:block">

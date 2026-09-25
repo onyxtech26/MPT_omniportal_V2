@@ -8,7 +8,6 @@ import {
   Award,
   Trophy,
   Compass,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -24,17 +23,13 @@ import { DataProvider, useData } from './data-context';
 // one click away. (The Agenda needs a server, so it cannot run on the deployed
 // site — the Manager continues to use the desktop build for it.)
 //
-// '/admin' is a deliberate exception to "this nav is sales-only" — IT Admin
-// lands on /dashboard like everyone else in management (see
-// DEFAULT_ROUTE_FOR_ROLE), and needs some way to actually reach the console
-// besides typing the URL. The existing canAccess filter below already
-// restricts it to admin; nobody else ever sees this item.
+// IT Admin no longer reaches this layout at all (see ROUTE_ACCESS) — it has its
+// own console under /admin, so there is no Admin item here.
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Brand Performance', href: '/dashboard/brands', icon: Award },
   { name: 'Leaderboards', href: '/dashboard/leaderboard', icon: Trophy },
   { name: 'Explorer', href: '/dashboard/explorer', icon: Compass },
-  { name: 'Admin', href: '/admin', icon: Settings },
 ];
 
 import { Logo } from '@/components/logo';

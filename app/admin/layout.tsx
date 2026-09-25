@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Users, Building2, ScrollText, ArrowLeft } from 'lucide-react';
+import { LogOut, Users, Building2, ScrollText, Wrench } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { useAuth } from '@/lib/auth-context';
 import { canAccess, defaultRouteFor } from '@/lib/roles';
@@ -12,6 +12,9 @@ const NAV = [
   { name: 'Accounts', href: '/admin/users', icon: Users },
   { name: 'Branches', href: '/admin/branches', icon: Building2 },
   { name: 'Audit Log', href: '/admin/audit', icon: ScrollText },
+  // Read access to repair jobs, for helping a branch that is stuck. The
+  // repairs layout has a link back here.
+  { name: 'Repairs', href: '/repairs', icon: Wrench },
 ];
 
 // Its own layout, sibling of /dashboard and /repairs, for the same reason
@@ -37,11 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       <header className="h-16 bg-white border-b border-slate-200 px-4 flex items-center gap-4 shadow-sm">
-        <Link href="/dashboard" aria-label="Back to dashboard"
-          className="flex items-center gap-1.5 px-2.5 py-2 -ml-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
-          <ArrowLeft size={16} /> <span className="hidden sm:inline">Dashboard</span>
-        </Link>
-        <Link href="/dashboard" aria-label="Go to dashboard">
+        <Link href="/admin/users" aria-label="Go to admin console">
           <Logo textClassName="text-base sm:text-xl" />
         </Link>
         <nav className="hidden sm:flex items-center gap-1 ml-6">
