@@ -34,10 +34,36 @@ staff use one login and the figures live in the same governed database.
   amounts rejected, DELETE refused at the grant, a forged `updated_by`
   overwritten, manager may enter anywhere, boss/admin read-only, signed-out
   denied. Security advisor: nothing new.
-- **Screens:** `/daily-report` with Daily entry, Monthly and Setup tabs. Entry is
-  one list of all brands with RM and quantity boxes (sales-keeper's
-  one-brand-at-a-time wizard was replaced by a single list: everything visible,
-  faster with many brands). The WhatsApp summary copies from saved figures.
+- **Screens:** `/daily-report` with Daily entry, Monthly and Setup tabs. The
+  WhatsApp summary copies from saved figures.
+- **Entry flow (revised after the first version):** three steps. 1) tick the brands
+  that sold, 2) key in RM and quantity for only those, 3) enter each salesman's
+  total for the day. A day that already has figures opens on step 2 with its
+  brands ticked. Un-ticking a brand clears its figures, so saving zeroes anything
+  saved earlier (a correction, not a delete). Boss and admin see the saved figures
+  read-only. The first version listed every brand with two empty boxes each; that
+  was replaced because staff only sell a handful of brands a day.
+- **Starting data loaded for every outlet, from the POS export** (live database,
+  `supabase/migrations/daily_report_seed_pos_2026.sql`): 78 salesmen and about 250
+  brands across 13 branches. Salesmen are the POS `saleman_cd` with the `SW`
+  counter token removed (and 10-character-truncated codes such as `SW NADHIRA`
+  merged into `NADHIRAH`); blank and `POS` (no name keyed in) dropped. Brands are
+  `inv_desc` with whitespace and `-Return` cleaned, spelling variants merged
+  (`NAVI FORCE`/`NAVIFORCE`, `P.V.C STRAP`/`PVC STRAP`, `G SHOCK`/`G-SHOCK`), and
+  only brands with 5+ sale lines kept: `inv_desc` is free text that contains
+  customer names, phone numbers and repair chit numbers, and none of that may be
+  copied into the database. Four typo/promo rows were removed by hand. The 5+
+  rule keeps 97.6% of sales value; rarer brands are added on the Setup tab.
+  Existing MRT/JCI brands were kept. **`MIL` skipped:** it is in the export but is
+  not a registered branch. **`CS` is marked inactive but has 3,195 lines in 2026**,
+  contradicting the earlier "wound down" note; not changed, flagged.
+- **Checked against the real POS export** (Jan to Aug 2026, 52,580 lines, 14
+  outlets) before changing the flow: an outlet has 3 to 19 salesman codes and 12
+  to 23 sale lines a day at the small counters, so pick-then-enter fits the real
+  volume. POS brand names are too messy to load as a list (spelling variants,
+  model codes as brands, deposits and returns mixed in), so the cleaner
+  sales-keeper lists stay as the starting brand lists. `POS` is a system code in
+  every outlet, not a person, and should not be added as a salesman.
 - **Navigation fixed along the way:** a Repairs / Daily Report switcher for
   branch users; the Director and Manager gained links to both from the sales nav
   (nobody linked to `/repairs` before); Director/Manager get a Dashboard link back.

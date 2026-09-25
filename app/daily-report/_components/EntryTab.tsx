@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, Copy, Loader2, MessageCircle, Save, Search } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, Copy, Loader2, MessageCircle, Pencil, Save, Search, X } from 'lucide-react';
 import {
   saveDailyReport, buildWhatsappSummary, rm,
   type ReportBrand, type BrandFigure, type SalesmanFigure,
@@ -31,13 +31,19 @@ export function EntryTab(props: {
 
   const [brandDraft, setBrandDraft] = useState<BrandDraft>({});
   const [salesmanDraft, setSalesmanDraft] = useState<SalesmanDraft>({});
+  // The flow is two steps: first tick the brands that sold, then key in RM and
+  // quantity for only those. `selected` is the ticked brands, `step` the screen.
+  const [selected, setSelected] = useState<string[]>([]);
+  const [step, setStep] = useState<'pick' | 'enter'>('pick');
   const [filter, setFilter] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Start every day's form from what is already saved for it, so re-opening a
-  // day to correct it shows the real figures rather than a blank sheet.
+  // day to correct it shows the real figures rather than a blank sheet. A day
+  // that already has figures opens straight on the entry step, with its brands
+  // ticked; an empty day opens on the brand picker.
   useEffect(() => {
     const b: BrandDraft = {};
     for (const f of dayBrand) {
@@ -45,16 +51,31 @@ export function EntryTab(props: {
     }
     const s: SalesmanDraft = {};
     for (const f of daySalesman) s[f.staff_id] = f.sales_amount ? String(f.sales_amount) : '';
+    const ids = dayBrand.filter((f) => f.sales_amount > 0 || f.quantity > 0).map((f) => f.brand_id);
     setBrandDraft(b);
     setSalesmanDraft(s);
+    setSelected(ids);
+    setStep(ids.length > 0 || !canEnter ? 'enter' : 'pick');
+    setFilter('');
     setMessage(null);
-  }, [dayBrand, daySalesman]);
+  }, [dayBrand, daySalesman, canEnter]);
+
+  const toggleBrand = (id: string) =>
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+
+  // Un-ticking a brand clears its figures, so saving zeroes out anything that
+  // was saved for it earlier (a correction, never a delete).
+  const removeBrand = (id: string) => {
+    setSelected((cur) => cur.filter((x) => x !== id));
+    setBrandDraft((prev) => { const next = { ...prev }; delete next[id]; return next; });
+  };
 
   // Deactivated brands and salesmen stay visible on a day where they have
   // figures, so history is never hidden, but cannot be picked for new days.
-  const shownBrands = brands.filter((b) =>
+  const pickable = brands.filter((b) =>
     (b.is_active || dayBrand.some((f) => f.brand_id === b.id)) &&
     b.name.toLowerCase().includes(filter.trim().toLowerCase()));
+  const selectedBrands = brands.filter((b) => selected.includes(b.id));
   const shownSalesmen = salesmen.filter((s) => s.is_active || daySalesman.some((f) => f.staff_id === s.id));
 
   const brandTotal = brands.reduce((sum, b) => sum + parse(brandDraft[b.id]?.rm ?? ''), 0);
@@ -131,47 +152,91 @@ export function EntryTab(props: {
     <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
       <div className="space-y-6">
         <section className="bg-white rounded-2xl border border-slate-100 p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mr-auto">Sales by brand</h2>
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find brand"
-                className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 text-sm w-40" />
-            </div>
-          </div>
           {brands.length === 0 ? (
-            <p className="text-sm text-slate-500 py-4">No brands set up for this branch yet. Add them on the Setup tab.</p>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              <div className="grid grid-cols-[1fr_110px_70px] gap-2 pb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wide">
-                <span>Brand</span><span className="text-right">RM</span><span className="text-right">Qty</span>
+            <>
+              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Sales by brand</h2>
+              <p className="text-sm text-slate-500 py-2">No brands set up for this branch yet. Add them on the Setup tab.</p>
+            </>
+          ) : step === 'pick' ? (
+            <>
+              <div className="flex items-center gap-3 mb-1">
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mr-auto">1 · Which brands sold?</h2>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find brand"
+                    className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 text-sm w-40" />
+                </div>
               </div>
-              {shownBrands.map((b) => {
-                const d = brandDraft[b.id] ?? { rm: '', qty: '' };
-                const set = (patch: Partial<{ rm: string; qty: string }>) =>
-                  setBrandDraft((prev) => ({ ...prev, [b.id]: { ...d, ...patch } }));
-                const filled = parse(d.rm) > 0 || parse(d.qty) > 0;
-                return (
-                  <div key={b.id} className={`grid grid-cols-[1fr_110px_70px] gap-2 py-1.5 items-center ${filled ? 'bg-emerald-50/50 -mx-2 px-2 rounded-lg' : ''}`}>
-                    <span className="text-sm font-medium text-slate-700 truncate">
-                      {b.name}{!b.is_active && <span className="ml-1.5 text-[10px] font-bold text-slate-400 uppercase">inactive</span>}
-                    </span>
-                    <input inputMode="decimal" value={d.rm} disabled={!canEnter} placeholder="0.00"
-                      onChange={(e) => set({ rm: e.target.value })}
-                      className={`${cell} ${badAmount(d.rm) ? 'border-red-400 bg-red-50' : ''}`} />
-                    <input inputMode="numeric" value={d.qty} disabled={!canEnter} placeholder="0"
-                      onChange={(e) => set({ qty: e.target.value })}
-                      className={`${cell} ${badQty(d.qty) ? 'border-red-400 bg-red-50' : ''}`} />
+              <p className="text-xs text-slate-400 mb-4">Tap every brand that sold on this day, then continue.</p>
+              <div className="flex flex-wrap gap-2">
+                {pickable.map((b) => {
+                  const on = selected.includes(b.id);
+                  return (
+                    <button key={b.id} type="button" onClick={() => (on ? removeBrand(b.id) : toggleBrand(b.id))}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium border transition-colors ${on ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                      {on && <Check size={14} />}{b.name}
+                      {!b.is_active && <span className="text-[10px] font-bold uppercase opacity-60">inactive</span>}
+                    </button>
+                  );
+                })}
+                {pickable.length === 0 && <p className="text-sm text-slate-400 py-2">No brand matches that search.</p>}
+              </div>
+              <button type="button" onClick={() => { setFilter(''); setStep('enter'); }} disabled={selected.length === 0}
+                className="mt-5 w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-40 transition-colors">
+                Continue with {selected.length} brand{selected.length === 1 ? '' : 's'} <ArrowRight size={16} />
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mr-auto">
+                  {canEnter ? '2 · RM and quantity' : 'Sales by brand'}
+                </h2>
+                {canEnter && (
+                  <button type="button" onClick={() => setStep('pick')}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 underline">
+                    <Pencil size={13} /> Change brands
+                  </button>
+                )}
+              </div>
+              {selectedBrands.length === 0 ? (
+                <p className="text-sm text-slate-500 py-2">No brand sales recorded for this day.</p>
+              ) : (
+                <div className="divide-y divide-slate-50">
+                  <div className={`grid gap-2 pb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wide ${canEnter ? 'grid-cols-[1fr_110px_70px_28px]' : 'grid-cols-[1fr_110px_70px]'}`}>
+                    <span>Brand</span><span className="text-right">RM</span><span className="text-right">Qty</span>{canEnter && <span />}
                   </div>
-                );
-              })}
-              {shownBrands.length === 0 && <p className="text-sm text-slate-400 py-4">No brand matches that search.</p>}
-            </div>
+                  {selectedBrands.map((b) => {
+                    const d = brandDraft[b.id] ?? { rm: '', qty: '' };
+                    const set = (patch: Partial<{ rm: string; qty: string }>) =>
+                      setBrandDraft((prev) => ({ ...prev, [b.id]: { ...d, ...patch } }));
+                    return (
+                      <div key={b.id} className={`grid gap-2 py-1.5 items-center ${canEnter ? 'grid-cols-[1fr_110px_70px_28px]' : 'grid-cols-[1fr_110px_70px]'}`}>
+                        <span className="text-sm font-medium text-slate-700 truncate">
+                          {b.name}{!b.is_active && <span className="ml-1.5 text-[10px] font-bold text-slate-400 uppercase">inactive</span>}
+                        </span>
+                        <input inputMode="decimal" value={d.rm} disabled={!canEnter} placeholder="0.00"
+                          onChange={(e) => set({ rm: e.target.value })}
+                          className={`${cell} ${badAmount(d.rm) ? 'border-red-400 bg-red-50' : ''}`} />
+                        <input inputMode="numeric" value={d.qty} disabled={!canEnter} placeholder="0"
+                          onChange={(e) => set({ qty: e.target.value })}
+                          className={`${cell} ${badQty(d.qty) ? 'border-red-400 bg-red-50' : ''}`} />
+                        {canEnter && (
+                          <button type="button" aria-label={`Remove ${b.name}`} onClick={() => removeBrand(b.id)}
+                            className="p-1 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50"><X size={16} /></button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4">Sales by salesman</h2>
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">{canEnter ? "3 · " : ""}Who sold (each salesman&apos;s total for the day)</h2>
+          <p className="text-xs text-slate-400 mb-4">Enter the RM each salesman sold in total. This is checked against the brand total.</p>
           {shownSalesmen.length === 0 ? (
             <p className="text-sm text-slate-500">No salesmen are set up for this branch yet. A manager can add them on the Setup tab.</p>
           ) : (
