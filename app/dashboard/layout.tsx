@@ -13,7 +13,9 @@ import {
   X,
   ChevronDown,
   Upload,
-  Loader2
+  Loader2,
+  Wrench,
+  ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataProvider, useData } from './data-context';
@@ -30,6 +32,10 @@ const NAV_ITEMS = [
   { name: 'Brand Performance', href: '/dashboard/brands', icon: Award },
   { name: 'Leaderboards', href: '/dashboard/leaderboard', icon: Trophy },
   { name: 'Explorer', href: '/dashboard/explorer', icon: Compass },
+  // Links out to the branch modules. Filtered by canAccess like everything here,
+  // so Director and Manager see them; nobody was linking to /repairs before.
+  { name: 'Repairs', href: '/repairs', icon: Wrench },
+  { name: 'Daily Report', href: '/daily-report', icon: ClipboardList },
 ];
 
 import { Logo } from '@/components/logo';

@@ -63,6 +63,19 @@ In order. Full detail in spec §11.
 
 ## Done
 
+- **Daily Report section built** (`/daily-report`): daily sales by brand and by
+  salesman, monthly roll-up, brand/salesman setup, WhatsApp summary. The database
+  migration is applied to the live project (`supabase/migrations/daily_report.sql`)
+  and its access rules were tested with real identities. **Needs a browser test
+  as a staff account before rollout.** Only MRT and JCI have starting brand lists
+  (other branches add their own on the Setup tab). Decision: daily sales are
+  stored on the server, an exception to the browser-only rule, recorded in
+  spec section 14.
+- **IT Admin scoped to the console.** Admin no longer reaches the sales screens
+  (`/dashboard*`), lands on `/admin/users` after login, and has a Repairs nav item
+  in the console with a Console link back from `/repairs`. Fixes the "no way back"
+  dead end. Route/navigation change only — no database change. Spec §4.5 matrix
+  and changelog updated.
 - **Phase 5 — IT Admin console, built and driven live end-to-end, including a
   real bug found and fixed mid-verification, not just tested in theory.**
   - **The one Edge Function this system needs, and why it's the only one.**

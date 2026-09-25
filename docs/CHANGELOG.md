@@ -17,6 +17,38 @@ Format:
 
 ---
 
+## Daily Report section: sales entry by brand and by salesman, moved in from sales-keeper
+
+The branches already keep a daily sales log in a separate app (`sales-keeper`,
+Firebase). This brings it into OmniPortal as a second section beside Repairs, so
+staff use one login and the figures live in the same governed database.
+
+- **Database (applied to the live project):** four new tables with RLS, a
+  case-insensitive unique brand name per branch, composite keys that stop a row
+  crossing branches, a trigger-written append-only history, and an atomic
+  `save_daily_report` function. No DELETE granted. Starting brand lists for MRT
+  and JCI carried over from sales-keeper.
+- **Proven against real identities before any screen was built:** 25 checks in
+  rolled-back transactions. Staff limited to their own branch (reads and writes),
+  cross-branch brand/salesman references rejected, future dates and negative
+  amounts rejected, DELETE refused at the grant, a forged `updated_by`
+  overwritten, manager may enter anywhere, boss/admin read-only, signed-out
+  denied. Security advisor: nothing new.
+- **Screens:** `/daily-report` with Daily entry, Monthly and Setup tabs. Entry is
+  one list of all brands with RM and quantity boxes (sales-keeper's
+  one-brand-at-a-time wizard was replaced by a single list: everything visible,
+  faster with many brands). The WhatsApp summary copies from saved figures.
+- **Navigation fixed along the way:** a Repairs / Daily Report switcher for
+  branch users; the Director and Manager gained links to both from the sales nav
+  (nobody linked to `/repairs` before); Director/Manager get a Dashboard link back.
+- **Decision, recorded in spec section 14:** daily sales are stored on the server.
+  The Director's CSV analytics are unaffected and stay browser-only.
+- **Not verified in a browser:** signing in needs a real password, which was not
+  used. Build and type-check pass; the database rules were tested directly.
+- Not done: receipt scanning (needs a server function and a Gemini key).
+
+---
+
 ## IT Admin scoped down to what it actually does — no sales screens, real navigation
 
 An admin signing in landed on the sales dashboard, and the console was only a small

@@ -1,21 +1,18 @@
 'use client';
 
 import { useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, ArrowLeft } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { ModuleNav } from '@/components/module-nav';
 import { useAuth } from '@/lib/auth-context';
 import { canAccess, ROLE_LABELS, defaultRouteFor } from '@/lib/roles';
 
-// Deliberately its own layout, a sibling of app/dashboard/layout.tsx rather
-// than nested under it — this is the whole point of the route arrangement in
-// docs/REPAIR_MODULE_SPEC.md §3.3: /repairs must NOT be wrapped in the sales
-// dashboard's <DataProvider>, so that adding a server for repair data can
-// never come anywhere near the CSV path. Same auth guard, no DataProvider,
-// no sales nav.
-export default function RepairsLayout({ children }: { children: React.ReactNode }) {
+// Its own layout, a sibling of /repairs and /dashboard, for the same reason
+// they are siblings of each other: never nested under the sales dashboard's
+// <DataProvider>. Same auth guard as /repairs. See docs/REPAIR_MODULE_SPEC.md §3.3.
+export default function DailyReportLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { session, profile, loading, signOut, isPasswordRecovery } = useAuth();
@@ -46,9 +43,7 @@ export default function RepairsLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
-      {/* no-print: hidden when printing the customer slip (app/repairs/slip) so
-          only the slip itself, not the app chrome, comes out of the printer. */}
-      <header className="no-print h-16 bg-white border-b border-slate-200 px-4 flex items-center gap-4 shadow-sm">
+      <header className="h-16 bg-white border-b border-slate-200 px-4 flex items-center gap-4 shadow-sm">
         {/* Staff live in these two sections, so they need no way out. Everyone
             else arrives from somewhere (the admin console, the sales dashboard)
             and needs a way back to it. */}
@@ -78,7 +73,7 @@ export default function RepairsLayout({ children }: { children: React.ReactNode 
           </button>
         </div>
       </header>
-      <main className="p-4 md:p-8 max-w-[1600px] mx-auto">{children}</main>
+      <main className="p-4 md:p-8 max-w-[1200px] mx-auto">{children}</main>
     </div>
   );
 }

@@ -695,3 +695,43 @@ Independent of this project, these will bite whoever touches auth:
 > ⚠️ **`backend/` must not be deleted.** It is the source of the Agenda logic the
 > Manager's desktop `.exe` depends on, and Electron packaging was already removed —
 > a new `.exe` cannot be produced without restoring it from git history.
+
+---
+
+## 14. Daily Report (added after the repair module)
+
+A second branch-facing section beside Repairs, brought over from the standalone
+`sales-keeper` app. Staff enter each day's sales by brand (RM and quantity) and
+by salesman (RM), see a monthly roll-up, keep their branch's brand list, and copy
+the WhatsApp summary the branches already send.
+
+**Deliberate exception to the "sales data never leaves the browser" rule.** Daily
+figures entered here ARE stored in Supabase, branch-scoped by RLS exactly like
+repair jobs. The Director's CSV analytics under `/dashboard` are unchanged and
+still browser-only; `lib/daily-report.ts` must never be imported from them. The
+two are different datasets: the CSV is the POS export, this is what a counter
+keys in by hand each day.
+
+- **Tables:** `report_brands` (per-branch list, case-insensitively unique per
+  branch), `daily_sales` (branch, date, brand), `daily_salesman_sales` (branch,
+  date, salesman), `daily_report_history` (append-only, written by trigger).
+  Composite foreign keys make it impossible to point a row at another branch's
+  brand or salesman.
+- **Salesmen** are the existing `staff_members` rows (the same list as "served
+  by" on repairs), not a second list.
+- **Who may do what (RLS):** staff read/write their own branch only; manager
+  enters for any branch; boss and admin read-only. Brand lists: management
+  anywhere, staff for their own branch. Adding or deactivating salesmen:
+  management only (`staff_members` policy, unchanged). No future dates (Malaysia
+  time). No DELETE granted to anyone: a figure is corrected, not removed.
+- **`updated_by` / `updated_at` are stamped by a trigger**, so a client cannot
+  claim someone else saved a figure. Every real change is also written to
+  `daily_report_history`.
+- **Salesman totals are per day, not per brand** (owner's choice: little extra
+  typing). Brand total and salesman total are not forced to match; the screen
+  warns when they differ.
+- **Left out on purpose:** receipt-photo scanning (needs a Gemini key and a
+  server function; this app has neither) and sales-keeper's month-override fields
+  (the monthly view is derived from the daily rows, one source of truth).
+- SQL: `supabase/migrations/daily_report.sql`. Routes: `/daily-report`.
+

@@ -25,6 +25,11 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   // the page UNREACHABLE — exactly what happened until this line was added.
   '/repairs/new':           ['staff', 'manager', 'boss', 'admin'],
   '/repairs/slip':          ['staff', 'manager', 'boss', 'admin'],
+  // Daily Report — the branch's daily sales entry, monthly view and brand
+  // setup. Same gate as /repairs; the real rules (staff only their own branch,
+  // only staff/manager may enter figures, boss/admin read-only) live in the
+  // database's RLS, see supabase/migrations/daily_report.sql.
+  '/daily-report':          ['staff', 'manager', 'boss', 'admin'],
   // The console itself: admin only, matching the owner's decision that IT
   // Admin administers accounts, not the other way round (boss has DB-level
   // read access to the audit log per its RLS policy, but no route here yet —
