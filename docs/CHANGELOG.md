@@ -57,6 +57,27 @@ staff use one login and the figures live in the same governed database.
   Existing MRT/JCI brands were kept. **`MIL` skipped:** it is in the export but is
   not a registered branch. **`CS` is marked inactive but has 3,195 lines in 2026**,
   contradicting the earlier "wound down" note; not changed, flagged.
+- **Brands can be rearranged** (Setup tab, up/down arrows), by staff for their own
+  branch and by management for any. The brand order is the one `sort_order` column,
+  so the brand picker, the entry list and the WhatsApp summary all follow it with no
+  extra step. A reorder is one atomic database call (`reorder_report_brands`,
+  `supabase/migrations/daily_report_reorder.sql`) that renumbers the whole list
+  1..N, so it can never leave duplicate or half-applied positions. It runs as the
+  caller, so the existing brand-edit rule decides what changes: tested that staff
+  can reorder their own branch, cannot reorder another branch (no effect), and a
+  signed-out caller is refused. Arrows were chosen over drag-and-drop because they
+  work reliably on a phone and cannot misfire while scrolling.
+- **Setup: Delete replaced Deactivate for brands** (on request). A brand that was
+  never used, such as a typo or a wrong addition, now deletes cleanly. A brand that
+  already has sales recorded is refused by the database (foreign key, no cascade)
+  and the screen offers "Deactivate it instead", so deleting can never erase sales
+  history or change a monthly total. This is a deliberate exception to "no DELETE
+  granted anywhere", limited to `report_brands`
+  (`supabase/migrations/daily_report_brand_delete.sql`). Tested with real
+  identities: staff delete an unused brand of their own branch; a brand with sales
+  is refused; another branch's brand is untouched; sales figures stay undeletable;
+  signed-out is refused. A confirmation prompt appears before any delete.
+  Salesmen are still only deactivated.
 - **Checked against the real POS export** (Jan to Aug 2026, 52,580 lines, 14
   outlets) before changing the flow: an outlet has 3 to 19 salesman codes and 12
   to 23 sale lines a day at the small counters, so pick-then-enter fits the real

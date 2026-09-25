@@ -43,6 +43,22 @@ Waiting on the Director only for items that do not block the build — see spec 
 
 In order. Full detail in spec §11.
 
+- [ ] **Daily Report follow-ups** — browser test as staff/manager/Director; register
+      the `MIL` branch (in the POS export, not in the database) then load its 4
+      salesmen and 10 brands from `daily_report_seed_pos_2026.sql`; decide whether
+      `CS` (marked inactive, but 3,195 sale lines in 2026) should be reactivated;
+      create staff logins for the branches that have none (e.g. MRT); tidy
+      near-duplicate brands at MRT and JCI; deactivate the 3 old "Counter Staff"
+      test salesmen (KLT, KMT). Not built: receipt-photo scanning (needs a server
+      function and an AI key).
+- [ ] **Username login** — the login only accepts an email. Workable option: derive a
+      placeholder email from a username (costs emailed password resets for those
+      accounts). Undecided.
+- [ ] **"View as user"** for IT Admin (spec §4.3) — specified, not built.
+- [ ] **Small code fixes found in review:** admin function does not check its
+      audit-log writes succeeded; nothing stops an admin deactivating their own
+      account; profile loads twice at startup; a wrong comment in the forgot-password
+      handler; 9 style-level lint errors.
 - [x] **Phase 0 — repo hygiene** — three of four done, see Done below.
   - [ ] Upgrade Vercel to Pro — **billing action, needs the account owner.** I do
         not act on payment/plan changes without explicit sign-off each time; this
@@ -63,14 +79,17 @@ In order. Full detail in spec §11.
 
 ## Done
 
-- **Daily Report section built** (`/daily-report`): daily sales by brand and by
-  salesman, monthly roll-up, brand/salesman setup, WhatsApp summary. The database
-  migration is applied to the live project (`supabase/migrations/daily_report.sql`)
-  and its access rules were tested with real identities. **Needs a browser test
-  as a staff account before rollout.** Only MRT and JCI have starting brand lists
-  (other branches add their own on the Setup tab). Decision: daily sales are
-  stored on the server, an exception to the browser-only rule, recorded in
-  spec section 14.
+- **Daily Report section built** (`/daily-report`) and live. Entry is three steps:
+  tick the brands that sold, key in RM and quantity for those, then each salesman's
+  total for the day; plus a Monthly roll-up, a Setup tab (add, rename, reorder,
+  delete brands; add or deactivate salesmen) and a WhatsApp summary that follows the
+  brand order. All access rules are Postgres RLS, tested with real identities
+  (`supabase/migrations/daily_report*.sql`). Starting data loaded from the Jan to Aug
+  2026 POS export: 78 salesmen and about 250 brands across 13 branches (`MIL`
+  skipped, see Next). Brands can be deleted only if never used (the database refuses
+  otherwise); nothing else is deletable. Decision: daily sales are stored on the
+  server, an exception to the browser-only rule, recorded in spec section 14.
+  **Never opened signed-in in a browser yet: test as staff, manager and Director.**
 - **IT Admin scoped to the console.** Admin no longer reaches the sales screens
   (`/dashboard*`), lands on `/admin/users` after login, and has a Repairs nav item
   in the console with a Console link back from `/repairs`. Fixes the "no way back"

@@ -89,6 +89,29 @@ export async function setBrandActive(id: string, isActive: boolean): Promise<voi
   if (error) throw error;
 }
 
+// Deletes a brand. The database only allows this for a brand with NO sales
+// recorded: daily_sales points at it through a foreign key with no cascade, so a
+// brand that has been used is refused (Postgres error 23503) and its history is
+// never touched. That case comes back as 'in_use' so the screen can offer
+// Deactivate instead of showing a raw database error.
+export async function deleteBrand(id: string): Promise<'deleted' | 'in_use'> {
+  const { error } = await supabase.from('report_brands').delete().eq('id', id);
+  if (error) {
+    if (error.code === '23503') return 'in_use';
+    throw error;
+  }
+  return 'deleted';
+}
+
+// Saves a new order for a branch's brand list. `orderedIds` is the WHOLE list in
+// the wanted order; the database numbers them 1..N in one atomic statement. The
+// brand picker, the entry list, the monthly view and the WhatsApp summary all
+// read `sort_order`, so they all follow this order.
+export async function reorderBrands(branch: string, orderedIds: string[]): Promise<void> {
+  const { error } = await supabase.rpc('reorder_report_brands', { p_branch: branch, p_ids: orderedIds });
+  if (error) throw error;
+}
+
 export async function listBrandFigures(branch: string, month: string): Promise<BrandFigure[]> {
   const { data, error } = await supabase
     .from('daily_sales').select('brand_id, sale_date, sales_amount, quantity')

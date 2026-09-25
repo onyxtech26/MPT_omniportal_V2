@@ -723,7 +723,12 @@ keys in by hand each day.
   enters for any branch; boss and admin read-only. Brand lists: management
   anywhere, staff for their own branch. Adding or deactivating salesmen:
   management only (`staff_members` policy, unchanged). No future dates (Malaysia
-  time). No DELETE granted to anyone: a figure is corrected, not removed.
+  time). No DELETE on any sales figure, salesman figure or history row: a figure
+  is corrected, not removed. **One narrow exception, added on request:** a brand may
+  be deleted (staff own branch, management any) but only if it has never been used.
+  Sales point at brands through a foreign key with no cascade, so the database
+  itself refuses to delete a brand that has any sales recorded; history cannot be
+  erased this way. A used brand can only be deactivated.
 - **`updated_by` / `updated_at` are stamped by a trigger**, so a client cannot
   claim someone else saved a figure. Every real change is also written to
   `daily_report_history`.
