@@ -8,6 +8,7 @@ import { Logo } from '@/components/logo';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { defaultRouteFor } from '@/lib/roles';
+import { toLoginEmail } from '@/lib/login-identity';
 
 // Real login, replacing the old role picker. The role picker set a value in
 // the browser and called that "logged in" — its own comment used to say so
@@ -37,7 +38,7 @@ export default function LoginPage() {
   const handleForgotPassword = async () => {
     setForgotError(null);
     if (!email.trim()) {
-      setForgotError('Type your email above first, then press "Forgot password?" again.');
+      setForgotError('Type your outlet or account above first, then press "Forgot password?" again.');
       return;
     }
     setForgotBusy(true);
@@ -49,7 +50,11 @@ export default function LoginPage() {
     // allow-list can only be changed from the Supabase dashboard — no tool
     // here can set it — so if the email link still doesn't work, check
     // Authentication → URL Configuration there first.
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    //
+    // A short code (see lib/login-identity.ts) still expands to a real Gmail
+    // address, so the reset link genuinely reaches an inbox even though the
+    // account's day-to-day password never changes on its own.
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(toLoginEmail(email), {
       redirectTo: `${window.location.origin}/change-password`,
     });
     setForgotBusy(false);
@@ -133,17 +138,18 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-xs font-semibold text-slate-500 mb-1.5">
-                  Email
+                  Outlet or account
                 </label>
                 <input
                   id="email"
-                  type="email"
+                  type="text"
                   required
                   autoComplete="username"
+                  autoCapitalize="none"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 text-sm"
-                  placeholder="you@mptwatches.com"
+                  placeholder="e.g. MRT, or admin"
                 />
               </div>
               <div>

@@ -698,6 +698,40 @@ Independent of this project, these will bite whoever touches auth:
 
 ---
 
+## 14a. Login simplified to CODE + CODE12345 (owner's request)
+
+Login now takes a short code instead of a full email: the branch code for staff
+(`MRT`), the role name otherwise (`admin`, `boss`, `manager`). The password is
+that code, uppercased, plus `12345` — `MRT12345`, `ADMIN12345`. It is a real,
+permanent password, not a one-time one: `must_change_password` is left false, and
+account creation / reset now set this exact password instead of a random one.
+
+- **Why not a lookup table:** every account's real email already follows
+  `onyxtech26+<code>@gmail.com` (Gmail plus-addressing to one inbox), so the short
+  code the user types is expanded to that real address by a formula
+  (`lib/login-identity.ts`), not a database read. A value already containing `@`
+  passes through unchanged, so a full email still works.
+- **Password recovery still uses a real inbox.** "Forgot password?" expands the
+  same code before calling Supabase, so the reset link goes to a real Gmail
+  address (`onyxtech26@gmail.com` behind every `+code`), not a fake one.
+- **The trade-off, accepted on request:** the password is guessable by anyone who
+  knows the outlet codes. Judged acceptable because these are shared branch
+  logins where the real access control is who is standing at the counter, not
+  password entropy — the same judgement already made for one login per branch.
+  `/admin` and the Director/Manager accounts follow the same scheme by choice
+  (all accounts, not staff-only), so `ADMIN12345` and `BOSS12345` carry the same
+  trade-off; anyone using this convention should treat the code list itself as
+  sensitive.
+- **Verified against the live Auth server**, not just read from the code: a
+  direct `grant_type=password` call with `MRT12345` returned 200; the same call
+  with a wrong password returned 400 `invalid_credentials`.
+- Existing accounts' passwords and `must_change_password` were updated directly
+  in the database (`extensions.crypt`/`gen_salt('bf')`, the same hashing Supabase
+  Auth itself uses) to match this scheme, since they predate it.
+- `supabase/functions/admin-users/index.ts` deploys the derived-password logic to
+  the same Edge Function that already held the service-role key — no new
+  credential-holding surface was added.
+
 ## 14. Daily Report (added after the repair module)
 
 A second branch-facing section beside Repairs, brought over from the standalone

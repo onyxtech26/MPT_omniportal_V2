@@ -47,13 +47,10 @@ In order. Full detail in spec §11.
       the `MIL` branch (in the POS export, not in the database) then load its 4
       salesmen and 10 brands from `daily_report_seed_pos_2026.sql`; decide whether
       `CS` (marked inactive, but 3,195 sale lines in 2026) should be reactivated;
-      create staff logins for the branches that have none (e.g. MRT); tidy
+      create staff logins for the branches that still have none; tidy
       near-duplicate brands at MRT and JCI; deactivate the 3 old "Counter Staff"
       test salesmen (KLT, KMT). Not built: receipt-photo scanning (needs a server
       function and an AI key).
-- [ ] **Username login** — the login only accepts an email. Workable option: derive a
-      placeholder email from a username (costs emailed password resets for those
-      accounts). Undecided.
 - [ ] **"View as user"** for IT Admin (spec §4.3) — specified, not built.
 - [ ] **Small code fixes found in review:** admin function does not check its
       audit-log writes succeeded; nothing stops an admin deactivating their own
@@ -79,6 +76,19 @@ In order. Full detail in spec §11.
 
 ## Done
 
+- **Login simplified to a short code** (`MRT`, `admin`, `boss`, `manager`, ...)
+  **and a fixed `CODE12345` password**, permanent by design (owner's request,
+  applied to all accounts). A full email still works if typed. Password recovery
+  still emails a real inbox — the code expands to the real address behind it
+  (`lib/login-identity.ts`) before either sign-in or "Forgot password?" touches
+  it. Account creation and reset now set this exact password
+  (`supabase/functions/admin-users`, deployed); the 10 existing accounts were
+  updated to match directly in the database. Verified against the live Auth
+  server (right password → 200, wrong → 400), not just read from the code.
+  Security trade-off recorded in spec §14a: the password is guessable from the
+  code, accepted because a shared counter login's real protection is who is at
+  the till. **Never opened the login screen in a browser** — only the Auth API
+  was checked directly.
 - **Daily Report section built** (`/daily-report`) and live. Entry is three steps:
   tick the brands that sold, key in RM and quantity for those, then each salesman's
   total for the day; plus a Monthly roll-up, a Setup tab (add, rename, reorder,

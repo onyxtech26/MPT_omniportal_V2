@@ -47,8 +47,8 @@ export default function AdminUsersPage() {
     setBusyId(p.id);
     setError(null);
     try {
-      const { temporary_password } = await resetAccountPassword(p.id);
-      setRevealed({ email: p.email ?? p.display_name, password: temporary_password });
+      const { password } = await resetAccountPassword(p.id);
+      setRevealed({ email: p.email ?? p.display_name, password });
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not reset the password.');
@@ -130,7 +130,7 @@ export default function AdminUsersPage() {
 
       {showCreate && (
         <CreateAccountModal branches={branches} onClose={() => setShowCreate(false)}
-          onCreated={(result) => { setShowCreate(false); setRevealed({ email: result.email, password: result.temporary_password }); reload(); }} />
+          onCreated={(result) => { setShowCreate(false); setRevealed({ email: result.email, password: result.password }); reload(); }} />
       )}
 
       {revealed && <RevealPasswordModal email={revealed.email} password={revealed.password} onClose={() => setRevealed(null)} />}
@@ -140,7 +140,7 @@ export default function AdminUsersPage() {
 
 function CreateAccountModal({ branches, onClose, onCreated }: {
   branches: Branch[]; onClose: () => void;
-  onCreated: (result: { email: string; temporary_password: string }) => void;
+  onCreated: (result: { email: string; password: string }) => void;
 }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('staff');
@@ -215,7 +215,7 @@ function RevealPasswordModal({ email, password, onClose }: { email: string; pass
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 text-center">
         <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-2">Shown once — will not be shown again</p>
-        <p className="text-sm text-slate-500 mb-1">Temporary password for</p>
+        <p className="text-sm text-slate-500 mb-1">Login for</p>
         <p className="font-semibold text-slate-900 mb-4">{email}</p>
         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-4">
           <code className="flex-1 font-mono text-sm text-slate-900 text-left">{password}</code>
@@ -224,8 +224,11 @@ function RevealPasswordModal({ email, password, onClose }: { email: string; pass
           </button>
         </div>
         <p className="text-xs text-slate-400 mb-4">
-          Relay this to the account holder out of band (in person, or by phone — not written down anywhere permanent).
-          They'll be asked to set their own password the moment they sign in.
+          This is the account&apos;s permanent password — the outlet or role code
+          plus &ldquo;12345&rdquo; — not a one-time password. It stays this way
+          until someone uses &ldquo;Forgot password?&rdquo; to set a different one.
+          On the login screen, sign in with just the code (e.g. &ldquo;MRT&rdquo;),
+          not the full email.
         </p>
         <button onClick={onClose} className="w-full px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white">Done</button>
       </div>

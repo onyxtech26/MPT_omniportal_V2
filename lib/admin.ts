@@ -101,13 +101,16 @@ async function invokeAdminUsers(body: Record<string, unknown>): Promise<Record<s
 
 export async function createAccount(input: {
   email: string; role: Role; branchCode?: string; displayName: string;
-}): Promise<{ email: string; temporary_password: string }> {
+}): Promise<{ email: string; password: string }> {
   return invokeAdminUsers({
     action: 'create', email: input.email, role: input.role,
     branch_code: input.branchCode, display_name: input.displayName,
-  }) as Promise<{ email: string; temporary_password: string }>;
+  }) as Promise<{ email: string; password: string }>;
 }
 
-export async function resetAccountPassword(userId: string): Promise<{ temporary_password: string }> {
-  return invokeAdminUsers({ action: 'reset_password', user_id: userId }) as Promise<{ temporary_password: string }>;
+// Resets to the account's own derived password (its branch/role code +
+// "12345" — see lib/login-identity.ts), not a random one, so a reset never
+// fights with the fact this account's password is meant to stay memorable.
+export async function resetAccountPassword(userId: string): Promise<{ password: string }> {
+  return invokeAdminUsers({ action: 'reset_password', user_id: userId }) as Promise<{ password: string }>;
 }

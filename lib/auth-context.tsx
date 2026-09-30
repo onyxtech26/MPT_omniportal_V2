@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { Role } from './roles';
+import { toLoginEmail } from './login-identity';
 
 // The row from public.profiles for whoever is signed in. Supabase's own
 // session tells us WHO (an email, a user id); it says nothing about role or
@@ -111,7 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadProfile]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // Expands a short login (e.g. "MRT") to the real address behind it — see
+    // lib/login-identity.ts. A value that is already a full email passes through.
+    const { error } = await supabase.auth.signInWithPassword({ email: toLoginEmail(email), password });
     return { error: error?.message ?? null };
   }, []);
 

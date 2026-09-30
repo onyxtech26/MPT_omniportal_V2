@@ -17,6 +17,41 @@ Format:
 
 ---
 
+## Login simplified: outlet or role code, CODE12345 — a real password, not one-time
+
+Owner's request: type the outlet name (or role) and a password shaped
+`OUTLET12345`, with password recovery still reaching a real inbox.
+
+- `lib/login-identity.ts` (new): expands a short code to the real address behind
+  it (`onyxtech26+<code>@gmail.com`); a value containing `@` passes through
+  unchanged. Used by sign-in AND by "Forgot password?", so recovery keeps working.
+- `app/page.tsx`: the email field is now a plain text field, labelled "Outlet or
+  account", placeholder `e.g. MRT, or admin`.
+- `supabase/functions/admin-users/index.ts`: account creation and password reset
+  now set a DERIVED password (`<CODE>12345`) instead of a random one, and leave
+  `must_change_password` false — the whole point is that the password keeps
+  working, so a forced change on first use would undo it immediately. Applies to
+  every role, not staff only, per the owner's answer. Deployed to the live
+  project (version 3).
+- `lib/admin.ts` / `app/admin/users/page.tsx`: the reveal-once dialog's copy was
+  rewritten — it no longer says "temporary password" or promises a forced change,
+  since neither is true anymore.
+- **Existing accounts updated to match**, directly in the database, using the
+  same password hashing Supabase Auth itself uses
+  (`extensions.crypt(pass, extensions.gen_salt('bf'))`): all 10 accounts (admin,
+  boss, manager, and 7 branches including the new MRT account) now sign in with
+  `<CODE>12345`, and `must_change_password` is false everywhere.
+- **Verified against the live Auth server**, not just read from the source: a
+  direct password-grant call with `MRT12345` returned 200; the same call with a
+  wrong password returned 400 `invalid_credentials`.
+- **Security trade-off, accepted on request, recorded in spec §14a:** the
+  password is guessable from the outlet/role code. Judged acceptable for a shared
+  counter login. `ADMIN12345` and `BOSS12345` carry the same trade-off since the
+  scope covers every role, not staff only — worth another look if this app is
+  ever used somewhere the code list itself isn't already common knowledge.
+- Build and type-check pass. **Not opened in a browser signed in** — only checked
+  against the Auth server directly.
+
 ## Daily Report section: sales entry by brand and by salesman, moved in from sales-keeper
 
 The branches already keep a daily sales log in a separate app (`sales-keeper`,

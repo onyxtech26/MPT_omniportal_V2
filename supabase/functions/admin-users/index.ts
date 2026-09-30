@@ -16,6 +16,16 @@
 // UPDATE the browser already does directly, because profiles_admin_update
 // already lets an admin do that under RLS — no elevated key required.
 //
+// Passwords are DERIVED, not random: <CODE>12345, where CODE is the branch
+// code for staff or the role name otherwise — the same shorthand the login
+// page expands (see lib/login-identity.ts). Chosen on request, in place of
+// the earlier scheme of a random one-time password forcing a change on first
+// login: the owner wants a memorable password that keeps working, for a
+// shared counter login where the real security boundary is who is standing
+// at the till, not the password's entropy. must_change_password is left
+// false for exactly that reason — forcing a change would immediately undo
+// the memorable password this function just set.
+//
 // Security model: re-derive "is this caller an admin" from their OWN
 // verified JWT on every request, via a client scoped to their own
 // Authorization header (so RLS's profiles_read_self policy is what lets them
@@ -36,14 +46,12 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-// A random temporary password nobody chose and nobody but this function
-// ever sees in plaintext — it's handed back once, for the admin to relay to
-// the new/reset account out of band, and must_change_password forces a real
-// password before that account can do anything else.
-function randomPassword(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '').slice(0, 20);
+// staff -> its branch code; everyone else -> their role name. Must match
+// lib/login-identity.ts's expansion, or the password this hands out would not
+// match what the login page actually sends to Supabase.
+function derivedPassword(role: string, branchCode: string | null): string {
+  const code = role === 'staff' ? branchCode : role;
+  return `${(code ?? '').toUpperCase()}12345`;
 }
 
 Deno.serve(async (req: Request) => {
@@ -88,9 +96,9 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'only a staff account carries a branch' }, 400);
       }
 
-      const tempPassword = randomPassword();
+      const password = derivedPassword(role, branch_code ?? null);
       const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
-        email, password: tempPassword, email_confirm: true,
+        email, password, email_confirm: true,
       });
       if (createErr || !created.user) {
         return json({ error: createErr?.message ?? 'Could not create the account' }, 400);
@@ -98,7 +106,7 @@ Deno.serve(async (req: Request) => {
 
       const { error: profileInsertErr } = await adminClient.from('profiles').insert({
         id: created.user.id, role, branch_code: branch_code ?? null, display_name,
-        is_active: true, must_change_password: true, email,
+        is_active: true, must_change_password: false, email,
       });
       if (profileInsertErr) {
         // Without a matching profile, every RLS policy in this schema joins
@@ -114,25 +122,31 @@ Deno.serve(async (req: Request) => {
         details: { email, role, branch_code: branch_code ?? null },
       });
 
-      return json({ email, temporary_password: tempPassword, user_id: created.user.id });
+      return json({ email, password, user_id: created.user.id });
     }
 
     if (body.action === 'reset_password') {
       const { user_id } = body;
       if (!user_id) return json({ error: 'user_id is required' }, 400);
 
-      const tempPassword = randomPassword();
+      // The target's own role/branch decide the password, not anything the
+      // caller sends — same JWT-derived discipline as the admin check above,
+      // applied here to what would otherwise be a client-controlled value.
+      const { data: target, error: targetErr } = await adminClient
+        .from('profiles').select('role, branch_code').eq('id', user_id).maybeSingle();
+      if (targetErr || !target) return json({ error: 'No such account' }, 404);
+
+      const password = derivedPassword(target.role, target.branch_code);
       const { error: updateErr } = await adminClient.auth.admin.updateUserById(user_id, {
-        password: tempPassword,
+        password,
       });
       if (updateErr) return json({ error: updateErr.message }, 400);
 
-      await adminClient.from('profiles').update({ must_change_password: true }).eq('id', user_id);
       await adminClient.from('admin_audit_log').insert({
         actor: user.id, action: 'password_reset', target_user_id: user_id, details: {},
       });
 
-      return json({ temporary_password: tempPassword });
+      return json({ password });
     }
 
     return json({ error: `Unknown action: ${body.action}` }, 400);
