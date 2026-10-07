@@ -87,7 +87,7 @@ export default function NewRepairJobPage() {
     return (
       <div className="max-w-md mx-auto text-center py-16">
         <p className="text-slate-500 text-sm">
-          Only Retail Staff create repair jobs — intake happens at the outlet
+          Only Retail Staff create repairs — intake happens at the outlet
           counter with the watch in hand.
         </p>
         <button onClick={() => router.push('/repairs')} className="mt-4 text-sm font-semibold text-slate-900 underline">
@@ -102,7 +102,7 @@ export default function NewRepairJobPage() {
     setError(null);
 
     if (!branchCode) { setError('Branch is required.'); return; }
-    if (!servedBy) { setError('Select who is handling this job — this is the record of who took it in.'); return; }
+    if (!servedBy) { setError('Select who is handling this repair — this is the record of who took it in.'); return; }
     if (!customerName.trim()) { setError('Customer name is required.'); return; }
     if (!customerPhone.trim()) { setError('Customer phone is required.'); return; }
     if (!servicesRequired.trim()) { setError('Describe what the customer wants fixed.'); return; }
@@ -152,7 +152,7 @@ export default function NewRepairJobPage() {
         setCreatedJobNo(input.jobNo);
         setQueuedOffline(true);
       } else {
-        setError(err instanceof Error ? err.message : 'Could not save this job.');
+        setError(err instanceof Error ? err.message : 'Could not save this repair.');
       }
     } finally {
       setSubmitting(false);
@@ -165,11 +165,11 @@ export default function NewRepairJobPage() {
         <div className={`w-14 h-14 rounded-2xl text-white flex items-center justify-center mx-auto mb-6 ${queuedOffline ? 'bg-amber-500' : 'bg-emerald-600'}`}>
           {queuedOffline ? <WifiOff size={24} /> : <Save size={24} />}
         </div>
-        <h1 className="text-xl font-bold text-slate-900 mb-2">Job No. {createdJobNo}</h1>
+        <h1 className="text-xl font-bold text-slate-900 mb-2">Repair No. {createdJobNo}</h1>
         {queuedOffline ? (
           <p className="text-amber-700 text-sm mb-6 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-            No connection right now — this job is saved on this device and will
-            sync automatically. The job number above is final; it's safe to give
+            No connection right now — this repair is saved on this device and will
+            sync automatically. The repair number above is final; it's safe to give
             to the customer.
           </p>
         ) : (
@@ -183,7 +183,7 @@ export default function NewRepairJobPage() {
             onClick={() => { setCreatedJobNo(null); setQueuedOffline(false); setCustomerName(''); setCustomerPhone(''); setServicesRequired(''); }}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-700"
           >
-            New job
+            New repair
           </button>
         </div>
       </div>
@@ -195,7 +195,7 @@ export default function NewRepairJobPage() {
       <button onClick={() => router.push('/repairs')} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 mb-4">
         <ArrowLeft size={16} /> Repairs
       </button>
-      <h1 className="text-xl font-bold text-slate-900 mb-1">New Repair Job</h1>
+      <h1 className="text-xl font-bold text-slate-900 mb-1">New Repair</h1>
       <p className="text-sm text-slate-500 mb-6">The digital chit — customer copy prints after saving.</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -307,7 +307,7 @@ export default function NewRepairJobPage() {
             build does not collect yet. */}
         <p className="text-xs text-slate-400 bg-slate-50 rounded-xl px-4 py-3 leading-relaxed">
           The customer's name and phone number are collected to process this
-          repair, including sharing with the vendor factory where the job is
+          repair, including sharing with the vendor factory where the repair is
           sent out-of-house, and are kept only as long as needed. / Nama dan
           nombor telefon pelanggan dikumpul untuk memproses pembaikan ini,
           termasuk perkongsian dengan kilang vendor jika kerja dihantar ke
@@ -319,7 +319,7 @@ export default function NewRepairJobPage() {
         <button type="submit" disabled={submitting}
           className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 transition-colors disabled:opacity-60">
           {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-          {submitting ? 'Saving…' : 'Save Job'}
+          {submitting ? 'Saving…' : 'Save Repair'}
         </button>
       </form>
     </div>

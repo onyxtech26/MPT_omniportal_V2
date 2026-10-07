@@ -55,14 +55,14 @@ function StatusPageInner() {
 
         {result === 'not_found' && (
           <p className="text-sm text-slate-500">
-            We couldn't find a repair job for this link. Please check the QR
+            We couldn't find a repair for this link. Please check the QR
             code or contact the branch you left your watch at.
           </p>
         )}
 
         {result !== 'loading' && result !== 'not_found' && (
           <>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Job No.</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Repair No.</p>
             <p className="font-mono text-lg font-bold text-slate-900 mb-4">{result.job_no}</p>
             <div className="inline-block px-4 py-2 rounded-full bg-slate-900 text-white text-sm font-semibold mb-4">
               {STATUS_LABELS[result.status]}

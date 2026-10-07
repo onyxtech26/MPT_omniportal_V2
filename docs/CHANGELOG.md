@@ -17,6 +17,13 @@ Format:
 
 ---
 
+## "Job" renamed to "Repair" on screen
+
+Owner's request: "Job No." and "New Job" read oddly to staff. Every on-screen
+label now says Repair: "Repair No.", "New Repair", "Save Repair", "Cancel
+Repair", "Void Repair", list counts, search hint, the public status page and
+the WhatsApp greeting. Code and database names are unchanged.
+
 ## Collected jobs show who collected and the customer's signature
 
 Owner's request: staff and the Manager can check the signature later. The job
