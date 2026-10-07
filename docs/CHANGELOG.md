@@ -17,6 +17,34 @@ Format:
 
 ---
 
+## Meeting Agenda is back, for the Manager, running in the browser
+- Owner's request: the Manager's main monthly tool, the Meeting Agenda, had
+  stayed in the desktop build because it needed the Python server. It is now a
+  page at `/dashboard/agenda` (Manager only; the Director does not get it).
+- The Manager picks last year's and this year's POS exports (or reports already
+  saved on that computer), an optional separate Jan-to-month report, the month
+  and the outlets. The page fills the Meeting Agenda workbook, writes one
+  WhatsApp message per outlet, shows a short summary table, and offers the
+  workbook and a ZIP of everything for download. Nothing is uploaded or stored.
+- The calculations are a TypeScript port of the latest Python generator from
+  the owner's desktop folder (`backend/agenda/` is updated to that version too,
+  with its tests). Rounding and summation reproduce pandas exactly
+  (`lib/agenda/pynum.ts`). Checked on the Jan–Sep 2025/2026 exports: all 9
+  monthly workbooks, a 4-outlet custom one and a no-current-year one are
+  cell-for-cell identical to the Python output (values, formats, fonts, colours),
+  and 148 of 150 messages are identical; the other 2 differ only in the order of
+  two lines with exactly equal movement, which the Python orders at random.
+- Deliberate differences: years in the sheet and messages come from the reports
+  instead of being fixed at 2025/2026; old-format `.xls` printed reports cannot
+  be read in the browser (save as `.xlsx`, or use the CSV).
+- The template served to the browser (`public/agenda/Meeting_Agenda.xlsx`) has
+  the sample April figures removed; every figure cell is filled or cleared on
+  generation, so the output is unchanged.
+- Files: `app/dashboard/agenda/page.tsx`, `lib/agenda/*`, `lib/roles.ts`,
+  `app/dashboard/layout.tsx`, `public/agenda/Meeting_Agenda.xlsx`, `jszip`.
+
+---
+
 ## Repairs status filter shows only the repair steps
 - The status dropdown on the Repairs list now offers Received, Sent to Repair,
   Ready to Collect and Collected (plus All statuses). Returned Unrepaired,

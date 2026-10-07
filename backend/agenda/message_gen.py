@@ -90,7 +90,17 @@ CATEGORY_NAMES: dict[str, str] = {
 
 # Categories merged into a single display group
 CATEGORY_GROUPS: dict[str, set[str]] = {
-    "Seiko":                  {"SEI", "SEI-5", "SEI-SP5", "SEI-WC"},
+    # Watches only. SEI-WC (Seiko Wall Clock) is deliberately NOT here: the
+    # manager asked for it to be reported separately (2026-09-03), closing a
+    # question flagged in PROMPT_LOG.md #8 back in August. Merging it distorted
+    # both halves of the line -- GPL July 2026 sold ZERO Seiko watches, yet the
+    # combined line read "Seiko ... 1.1k 2026 sales = 4pcs" because 4 wall
+    # clocks were folded in, hiding that the watch business had stopped. Wall
+    # clocks are high-volume/low-value (GPL Jan-Jul 2026: 38 of the group's 62
+    # units, but only 21% of its revenue), so they swamp the piece counts.
+    # This also makes SEI-WC consistent with every other wall clock -- CR-WC,
+    # OH-WC and TSO-WC were already standalone -- and with SEI-AC.
+    "Seiko":                  {"SEI", "SEI-5", "SEI-SP5"},
     "🔋 Sony + Renata battery": {"S-BAT", "R-BAT"},
 }
 

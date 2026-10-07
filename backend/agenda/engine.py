@@ -59,6 +59,9 @@ def load_report_csv(path: str) -> pd.DataFrame:
     df = pd.read_csv(path, dtype=str)
     for c in NUMERIC_COLS:
         df[c] = pd.to_numeric(df[c], errors="coerce")
+    if "discount" in df.columns:
+        disc_rate = pd.to_numeric(df["discount"], errors="coerce").fillna(0.0) / 100.0
+        df["trx_amt"] = (df["trx_amt"] * (1.0 - disc_rate)).round(2)
     df["_date"] = pd.to_datetime(df["trx_date"], format="%d/%m/%Y %H:%M:%S",
                                  errors="coerce")
     mask = df["_date"].isna()
