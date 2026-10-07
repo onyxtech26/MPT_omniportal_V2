@@ -17,6 +17,20 @@ Format:
 
 ---
 
+## Top bar tidied
+- Owner's request: the header's green "No data loaded" pill looked unprofessional
+  and nav labels wrapped onto two lines.
+- The pill is gone. The Load Data button carries that state instead: dark
+  "Load Data" with no report, a quiet "Change Data" (green tick, file name on
+  hover) once one is loaded. A red notice appears only if stored data cannot be read.
+- Nav is grouped (sales screens | Agenda | Repairs, Daily Report) with thin
+  dividers and shorter labels ("Brands", "Agenda") that never wrap. Below 1280px
+  it shows icons only; between 1280 and 1440px the OMNIPORTAL wordmark, the
+  History label and the name under the avatar step aside so the labels fit.
+- Files: `app/dashboard/layout.tsx`, `components/saved-reports.tsx`.
+
+---
+
 ## Meeting Agenda is back, for the Manager, running in the browser
 - Owner's request: the Manager's main monthly tool, the Meeting Agenda, had
   stayed in the desktop build because it needed the Python server. It is now a
