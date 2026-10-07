@@ -343,9 +343,9 @@ export const STATUS_LABELS: Record<JobStatus, string> = {
   DRAFT: 'Draft',
   RECEIVED: 'Received',
   SENT_TO_HQ: 'Sent to HQ',
-  IN_REPAIR: 'In Repair',
+  IN_REPAIR: 'Sent to Repair',
   RETURNED_TO_BRANCH: 'Returned to Branch',
-  READY_FOR_COLLECTION: 'Ready for Collection',
+  READY_FOR_COLLECTION: 'Ready to Collect',
   RETURN_UNREPAIRED: 'Returned Unrepaired',
   COLLECTED: 'Collected',
   UNCLAIMED: 'Unclaimed',
@@ -380,12 +380,36 @@ export const CUSTODY_LABELS: Record<CustodyState, string> = {
 // as a state machine (docs/REPAIR_MODULE_SPEC.md §5.2) is that most jumps
 // don't make sense, so the UI only ever offers the next real step (plus the
 // off-ramps handled separately: cancel, return unrepaired, void).
+//
+// Owner's decision: three steps after intake — Sent to Repair, Ready to
+// Collect, Collected. SENT_TO_HQ and RETURNED_TO_BRANCH stay in the database
+// enum (old history may name them) but are no longer offered.
 export const FORWARD_PATH: JobStatus[] = [
-  'RECEIVED', 'SENT_TO_HQ', 'IN_REPAIR', 'RETURNED_TO_BRANCH',
-  'READY_FOR_COLLECTION', 'COLLECTED',
+  'RECEIVED', 'IN_REPAIR', 'READY_FOR_COLLECTION', 'COLLECTED',
 ];
 
+// Statuses no longer on the path; a job still sitting in one moves straight on
+// to Ready to Collect.
+const RETIRED_MID_STATUSES: JobStatus[] = ['SENT_TO_HQ', 'RETURNED_TO_BRANCH'];
+
+// Statuses still in use, for filters and pickers.
+export const ACTIVE_STATUSES: JobStatus[] = [
+  'RECEIVED', 'IN_REPAIR', 'READY_FOR_COLLECTION', 'COLLECTED',
+  'RETURN_UNREPAIRED', 'UNCLAIMED', 'CANCELLED', 'VOID',
+];
+
+// Before collection: the job can still be returned unrepaired.
+export const PRE_READY_STATUSES: JobStatus[] = ['RECEIVED', 'IN_REPAIR', ...RETIRED_MID_STATUSES];
+
+// The button wording for each forward step.
+export const STEP_ACTION_LABELS: Partial<Record<JobStatus, string>> = {
+  IN_REPAIR: 'Send to Repair',
+  READY_FOR_COLLECTION: 'Ready to Collect',
+  COLLECTED: 'Mark Collected',
+};
+
 export function nextStatus(current: JobStatus): JobStatus | null {
+  if (RETIRED_MID_STATUSES.includes(current)) return 'READY_FOR_COLLECTION';
   const i = FORWARD_PATH.indexOf(current);
   if (i === -1 || i === FORWARD_PATH.length - 1) return null;
   return FORWARD_PATH[i + 1];
@@ -394,8 +418,6 @@ export function nextStatus(current: JobStatus): JobStatus | null {
 // The custody move that naturally goes with each forward status step, so the
 // UI can advance both at once with one transitionJob() call rather than two.
 export const CUSTODY_FOR_STATUS: Partial<Record<JobStatus, CustodyState>> = {
-  SENT_TO_HQ: 'IN_TRANSIT_TO_HQ',
   IN_REPAIR: 'AT_HQ_WORKSHOP',
-  RETURNED_TO_BRANCH: 'IN_TRANSIT_TO_BRANCH',
   READY_FOR_COLLECTION: 'AT_BRANCH',
 };

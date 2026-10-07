@@ -17,6 +17,16 @@ Format:
 
 ---
 
+## Repair steps cut to three: Sent to Repair, Ready to Collect, Collected
+
+Owner's request. After intake (Received), staff now click Send to Repair, then
+Ready to Collect, then Mark Collected. Sent to HQ and Returned to Branch are no
+longer offered (they stay in the database enum for old history; a job stuck in
+one moves straight to Ready to Collect). Labels changed: In Repair → "Sent to
+Repair", Ready for Collection → "Ready to Collect". The status filter lists
+only statuses in use. Frontend only (`lib/repairs.ts`, `app/repairs/page.tsx`);
+no database change needed.
+
 ## Repair jobs record a deposit and show the balance to pay
 
 Owner's request: customers sometimes pay part of the fee at intake.

@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import {
   listRepairJobs, getRepairJob, listJobEvents, listJobContacts, listStaffForBranch,
   transitionJob, collectJob, logContact, uploadSignature, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
-  STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS,
+  STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, ACTIVE_STATUSES, PRE_READY_STATUSES, STEP_ACTION_LABELS,
   type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember,
   type ContactChannel, type ContactPurpose, type ContactOutcome, type CollectionProof, type JobStatus,
 } from '@/lib/repairs';
@@ -129,7 +129,7 @@ function RepairsListPageInner() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as JobStatus | 'ALL')}
           className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm">
           <option value="ALL">All statuses</option>
-          {(Object.keys(STATUS_LABELS) as JobStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+          {ACTIVE_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
       </div>
 
@@ -318,7 +318,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
                     onClick={() => runAction(() => transitionJob({
                       jobId: job.id, toStatus: next, toCustody: CUSTODY_FOR_STATUS[next], servedBy: job.served_by ?? undefined,
                     }))}>
-                    Move to {STATUS_LABELS[next]}
+                    {STEP_ACTION_LABELS[next] ?? `Move to ${STATUS_LABELS[next]}`}
                   </ActionButton>
                 )}
                 {next === 'COLLECTED' && (
@@ -326,7 +326,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
                     Mark Collected
                   </ActionButton>
                 )}
-                {['RECEIVED', 'SENT_TO_HQ', 'IN_REPAIR', 'RETURNED_TO_BRANCH'].includes(job.status) && (
+                {PRE_READY_STATUSES.includes(job.status) && (
                   <ActionButton icon={PackageX} busy={busy} variant="warn" onClick={() => {
                     const reason = window.prompt('Reason the item is returned unrepaired:');
                     if (reason) runAction(() => transitionJob({ jobId: job.id, toStatus: 'RETURN_UNREPAIRED', toCustody: 'AT_BRANCH', reason }));
