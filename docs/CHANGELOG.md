@@ -17,6 +17,15 @@ Format:
 
 ---
 
+## Repairs status filter shows only the repair steps
+- The status dropdown on the Repairs list now offers Received, Sent to Repair,
+  Ready to Collect and Collected (plus All statuses). Returned Unrepaired,
+  Unclaimed, Cancelled and Void are gone from the dropdown; repairs in those
+  states still appear under All statuses.
+- Files: `app/repairs/page.tsx`, `lib/repairs.ts` (dropped `ACTIVE_STATUSES`).
+
+---
+
 ## Repairs can be corrected or deleted
 
 Owner's request: staff sometimes key a repair in wrong.
