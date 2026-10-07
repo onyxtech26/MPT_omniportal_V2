@@ -43,7 +43,9 @@ function RepairsListPageInner() {
   const [queuedCount, setQueuedCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
-  const canCreate = profile?.role === 'staff' || profile?.role === 'manager';
+  // Intake happens at the outlet counter, so only Retail Staff create jobs. The
+  // Manager watches job status across branches but does not key anything in.
+  const canCreate = profile?.role === 'staff';
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -198,7 +200,11 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
   const [showCollect, setShowCollect] = useState(false);
   const [showVoid, setShowVoid] = useState(false);
 
-  const canManage = profile?.role === 'manager' || profile?.role === 'admin';
+  // Staff move their own jobs along; IT Admin keeps support access. The Manager
+  // only views status (owner's decision) — the database enforces the same split,
+  // see supabase/migrations/manager_view_only.sql.
+  const canAct = profile?.role === 'staff' || profile?.role === 'admin';
+  const canVoid = profile?.role === 'admin';
 
   const load = useCallback(async () => {
     const [j, ev, ct] = await Promise.all([getRepairJob(jobId), listJobEvents(jobId), listJobContacts(jobId)]);
@@ -298,7 +304,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
           {actionError && <p className="text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{actionError}</p>}
 
           {/* Status actions */}
-          {!isTerminal && (
+          {canAct && !isTerminal && (
             <Section title="Actions">
               <div className="flex flex-col gap-2">
                 {next && next !== 'COLLECTED' && (
@@ -330,7 +336,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
                     Cancel Job
                   </ActionButton>
                 )}
-                {canManage && (
+                {canVoid && (
                   <ActionButton icon={ShieldAlert} busy={busy} variant="danger" onClick={() => setShowVoid(true)}>
                     Void Job
                   </ActionButton>
@@ -348,7 +354,8 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
               onSubmit={(reason) => runAction(() => transitionJob({ jobId: job.id, toStatus: 'VOID', reason })).then(() => setShowVoid(false))} />
           )}
 
-          <ContactLogSection jobId={job.id} contacts={contacts} staff={staff} servedBy={job.served_by} onLogged={load} />
+          <ContactLogSection jobId={job.id} contacts={contacts} staff={staff} servedBy={job.served_by}
+            canLog={canAct} onLogged={load} />
 
           <Section title="History">
             <ul className="space-y-2">
@@ -501,8 +508,8 @@ function VoidForm({ busy, onCancel, onSubmit }: { busy: boolean; onCancel: () =>
   );
 }
 
-function ContactLogSection({ jobId, contacts, staff, servedBy, onLogged }: {
-  jobId: string; contacts: ContactLogEntry[]; staff: StaffMember[]; servedBy: string | null; onLogged: () => void;
+function ContactLogSection({ jobId, contacts, staff, servedBy, canLog, onLogged }: {
+  jobId: string; contacts: ContactLogEntry[]; staff: StaffMember[]; servedBy: string | null; canLog: boolean; onLogged: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [channel, setChannel] = useState<ContactChannel>('WHATSAPP');
@@ -532,7 +539,7 @@ function ContactLogSection({ jobId, contacts, staff, servedBy, onLogged }: {
         ))}
         {contacts.length === 0 && <p className="text-xs text-slate-400">No contact attempts logged yet.</p>}
       </div>
-      {!open ? (
+      {!canLog ? null : !open ? (
         <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
           <Clock size={13} /> Log a contact attempt
         </button>

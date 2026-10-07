@@ -18,8 +18,9 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   // Repairs or the Daily Report at all; it only uses the sales dashboard. The
   // database enforces the same split (see
   // supabase/migrations/boss_no_branch_ops.sql), so this is not just hidden UI.
-  // The finer "only staff/manager may actually submit" rules live inside the
-  // pages and, for real, in RLS.
+  // The Manager is view-only on both (outlet staff do the input); that finer
+  // rule lives inside the pages and, for real, in RLS
+  // (supabase/migrations/manager_view_only.sql).
   //
   // Every sub-route needs its own entry because canAccess denies by default:
   // forgetting one here doesn't make the page insecure, it makes it UNREACHABLE.
@@ -27,9 +28,8 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/repairs/new':           ['staff', 'manager', 'admin'],
   '/repairs/slip':          ['staff', 'manager', 'admin'],
   // Daily Report — the branch's daily sales entry, monthly view and brand
-  // setup. Same gate as /repairs; staff only see their own branch, only
-  // staff/manager may enter figures, admin is read-only (RLS, see
-  // supabase/migrations/daily_report.sql).
+  // setup. Same gate as /repairs; staff only see their own branch and are the
+  // only ones who enter figures (RLS, see supabase/migrations/).
   '/daily-report':          ['staff', 'manager', 'admin'],
   // The console itself: admin only, matching the owner's decision that IT
   // Admin administers accounts, not the other way round (boss has DB-level

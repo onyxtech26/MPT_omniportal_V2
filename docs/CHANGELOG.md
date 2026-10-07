@@ -17,6 +17,22 @@ Format:
 
 ---
 
+## Manager is view-only on Repairs and the Daily Report; Ampang shows as AM
+
+Owner's decision: outlet staff do all the input; the Manager only watches status.
+
+- `app/repairs/page.tsx`, `app/repairs/new/page.tsx`: "New job" is staff only; the
+  job panel's Actions and "Log a contact attempt" show for staff and IT Admin
+  only; Void is IT Admin only.
+- `app/daily-report/page.tsx`: entering figures is staff only; brand setup is
+  staff (own branch) and IT Admin; salesman lists are IT Admin only.
+- `supabase/migrations/manager_view_only.sql` (new, after `boss_no_branch_ops.sql`):
+  new `app.can_work_branch()` (admin anywhere, staff own branch) gates every
+  repair and Daily Report write; `can_enter_sales()` is staff only. Reads unchanged.
+  Also clears the `AM` branch's display name ("Ampang") so it shows as `AM` like
+  every other outlet. Dry run: manager still sees 4 jobs / 296 brands but can
+  update 0; admin and KLT staff unchanged.
+
 ## Director no longer sees Repairs or the Daily Report
 
 Owner's request: the boss account doesn't need the Daily Report or Repairs.

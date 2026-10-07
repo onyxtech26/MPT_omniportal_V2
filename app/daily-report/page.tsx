@@ -26,9 +26,10 @@ export default function DailyReportPage() {
   const { profile } = useAuth();
   const role = profile?.role;
   const isStaff = role === 'staff';
-  const canEnter = role === 'staff' || role === 'manager';
-  const canEditBrands = true;                     // management anywhere, staff for their own branch
-  const canManageSalesmen = role !== 'staff';     // staff_members is management-only
+  // Outlet staff key in the figures; the Manager only views (owner's decision).
+  const canEnter = role === 'staff';
+  const canEditBrands = role === 'staff' || role === 'admin'; // staff for their own branch
+  const canManageSalesmen = role === 'admin';     // staff_members is IT Admin only
 
   const [branches, setBranches] = useState<ReportBranch[]>([]);
   const [branch, setBranch] = useState('');

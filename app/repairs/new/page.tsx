@@ -60,11 +60,10 @@ export default function NewRepairJobPage() {
 
   // Staff have exactly one branch — their own — and it is not a choice on
   // this screen; it comes from the signed-in account, the same way the paper
-  // chit is only ever filled in at the branch that has it. A manager has no
-  // home branch (see profiles_branch_matches_role), so a manager creating a
-  // job on someone else's behalf picks one.
+  // chit is only ever filled in at the branch that has it. (The branch picker
+  // below served managers, who no longer create jobs; staff never see it.)
   const isStaff = profile?.role === 'staff';
-  const canCreate = profile?.role === 'staff' || profile?.role === 'manager';
+  const canCreate = profile?.role === 'staff';
 
   useEffect(() => {
     if (isStaff && profile?.branch_code) setBranchCode(profile.branch_code);
@@ -87,7 +86,7 @@ export default function NewRepairJobPage() {
     return (
       <div className="max-w-md mx-auto text-center py-16">
         <p className="text-slate-500 text-sm">
-          Only Retail Staff and Managers create repair jobs — intake happens at a
+          Only Retail Staff create repair jobs — intake happens at the outlet
           counter with the watch in hand.
         </p>
         <button onClick={() => router.push('/repairs')} className="mt-4 text-sm font-semibold text-slate-900 underline">
