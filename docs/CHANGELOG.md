@@ -17,6 +17,20 @@ Format:
 
 ---
 
+## Repair jobs record a deposit and show the balance to pay
+
+Owner's request: customers sometimes pay part of the fee at intake.
+
+- `app/repairs/new/page.tsx`: "Fee & Timing" gains "Deposit paid (RM)" and a
+  read-only "Balance to pay (RM)" that updates as you type (total fee minus
+  deposit). A deposit needs a fee and cannot exceed it.
+- Job panel (`app/repairs/page.tsx`) and printed slip show deposit and balance.
+- `lib/repairs.ts`: `deposit` on the job and the create input; `balanceDue()`.
+  `p_deposit` is only sent when a deposit is entered.
+- `supabase/migrations/repair_deposit.sql` (new): `repair_jobs.deposit`
+  (0 to fee), and `create_repair_job` gains `p_deposit` (old signature dropped
+  so the API never sees two overloads). Balance is never stored, only computed.
+
 ## Manager is view-only on Repairs and the Daily Report; Ampang shows as AM
 
 Owner's decision: outlet staff do all the input; the Manager only watches status.

@@ -50,6 +50,7 @@ export type RepairJob = {
   in_warranty_at_intake: boolean | null;
   warranty_note: string | null;
   fee: number | null;
+  deposit: number | null;
   declared_item_value: number | null;
   promised_ready_date: string | null;
   status: JobStatus;
@@ -209,11 +210,19 @@ export type CreateJobInput = {
   inWarrantyAtIntake?: boolean;
   warrantyNote?: string;
   fee?: number;
+  deposit?: number;
   declaredItemValue?: number;
   promisedReadyDate?: string;
   preprintedChitNo?: string;
   servedBy?: string;
 };
+
+// What the customer still owes: the fee less any deposit paid at intake. Null
+// when no fee was set (nothing to balance against).
+export function balanceDue(fee: number | null | undefined, deposit: number | null | undefined): number | null {
+  if (fee == null) return null;
+  return Math.max(0, Number(fee) - Number(deposit ?? 0));
+}
 
 export async function createRepairJob(input: CreateJobInput): Promise<RepairJob> {
   const { data, error } = await supabase.rpc('create_repair_job', {
@@ -238,6 +247,9 @@ export async function createRepairJob(input: CreateJobInput): Promise<RepairJob>
     p_promised_ready_date: input.promisedReadyDate ?? null,
     p_preprinted_chit_no: input.preprintedChitNo ?? null,
     p_served_by: input.servedBy ?? null,
+    // Only sent when there is one, so a job without a deposit never depends on
+    // supabase/migrations/repair_deposit.sql having been applied.
+    ...(input.deposit != null ? { p_deposit: input.deposit } : {}),
   });
   if (error) throw error;
   return data as RepairJob;

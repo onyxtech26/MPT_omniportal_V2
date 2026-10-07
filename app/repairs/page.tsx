@@ -10,7 +10,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import {
   listRepairJobs, getRepairJob, listJobEvents, listJobContacts, listStaffForBranch,
-  transitionJob, collectJob, logContact, uploadSignature, waLink, nextStatus, CUSTODY_FOR_STATUS,
+  transitionJob, collectJob, logContact, uploadSignature, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
   STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS,
   type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember,
   type ContactChannel, type ContactPurpose, type ContactOutcome, type CollectionProof, type JobStatus,
@@ -298,6 +298,12 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
 
           <div className="grid grid-cols-2 gap-4">
             {job.fee != null && <Section title="Fee"><p className="text-sm font-semibold text-slate-900">RM {Number(job.fee).toFixed(2)}</p></Section>}
+            {job.fee != null && job.deposit != null && (
+              <>
+                <Section title="Deposit paid"><p className="text-sm text-slate-700">RM {Number(job.deposit).toFixed(2)}</p></Section>
+                <Section title="Balance to pay"><p className="text-sm font-semibold text-slate-900">RM {balanceDue(job.fee, job.deposit)!.toFixed(2)}</p></Section>
+              </>
+            )}
             {job.promised_ready_date && <Section title="Promised"><p className="text-sm text-slate-700">{new Date(job.promised_ready_date).toLocaleDateString()}</p></Section>}
           </div>
 

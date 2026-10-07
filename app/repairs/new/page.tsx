@@ -6,7 +6,7 @@ import { Loader2, Save, WifiOff, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import {
-  createRepairJob, generateJobNo, normalisePhone,
+  createRepairJob, generateJobNo, normalisePhone, balanceDue,
   type CreateJobInput, type JobType, type ServiceRoute, type WarrantyDeclaration,
 } from '@/lib/repairs';
 import { queueJob } from '@/lib/repairs-outbox';
@@ -49,6 +49,7 @@ export default function NewRepairJobPage() {
   const [purchaseDate, setPurchaseDate] = useState('');
   const [warrantyNote, setWarrantyNote] = useState('');
   const [fee, setFee] = useState('');
+  const [deposit, setDeposit] = useState('');
   const [declaredItemValue, setDeclaredItemValue] = useState('');
   const [promisedReadyDate, setPromisedReadyDate] = useState('');
   const [preprintedChitNo, setPreprintedChitNo] = useState('');
@@ -109,6 +110,8 @@ export default function NewRepairJobPage() {
       setError('Purchase date is required when warranty is valid and received.');
       return;
     }
+    if (deposit && !fee) { setError('Enter the total fee before the deposit, so the balance can be worked out.'); return; }
+    if (deposit && Number(deposit) > Number(fee)) { setError('The deposit cannot be more than the total fee.'); return; }
 
     const input: CreateJobInput = {
       jobNo: generateJobNo(branchCode), // generated ONCE, here — see lib/repairs.ts
@@ -129,6 +132,7 @@ export default function NewRepairJobPage() {
       inWarrantyAtIntake: warrantyDeclaration ? warrantyDeclaration === 'VALID_AND_RECEIVED' : undefined,
       warrantyNote: warrantyNote.trim() || undefined,
       fee: fee ? Number(fee) : undefined,
+      deposit: deposit ? Number(deposit) : undefined,
       declaredItemValue: declaredItemValue ? Number(declaredItemValue) : undefined,
       promisedReadyDate: promisedReadyDate || undefined,
       preprintedChitNo: preprintedChitNo.trim() || undefined,
@@ -280,8 +284,13 @@ export default function NewRepairJobPage() {
 
         <section className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Fee &amp; Timing</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Fee (RM)"><input type="number" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} className={inputClass} /></Field>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <Field label="Total fee (RM)"><input type="number" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} className={inputClass} /></Field>
+            <Field label="Deposit paid (RM)"><input type="number" min="0" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0.00" className={inputClass} /></Field>
+            <Field label="Balance to pay (RM)">
+              <input readOnly tabIndex={-1} value={fee ? (balanceDue(Number(fee), deposit ? Number(deposit) : 0) ?? 0).toFixed(2) : ''}
+                placeholder="—" className={`${inputClass} bg-slate-50 font-semibold text-slate-900`} />
+            </Field>
             <Field label="Declared value (RM)"><input type="number" min="0" step="0.01" value={declaredItemValue} onChange={(e) => setDeclaredItemValue(e.target.value)} className={inputClass} /></Field>
             <Field label="Promised ready date"><input type="date" value={promisedReadyDate} onChange={(e) => setPromisedReadyDate(e.target.value)} className={inputClass} /></Field>
           </div>
