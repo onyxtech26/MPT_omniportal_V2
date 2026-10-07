@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { Printer } from 'lucide-react';
-import { getRepairJob, type RepairJob } from '@/lib/repairs';
+import { getRepairJob, balanceDue, type RepairJob } from '@/lib/repairs';
 import { supabase } from '@/lib/supabase';
 
 // The record itself is digital, but the customer still walks away with
@@ -75,6 +75,12 @@ function SlipPageInner() {
         <p><b>Services:</b> {job.services_required}</p>
         {job.promised_ready_date && <p><b>Promised:</b> {new Date(job.promised_ready_date).toLocaleDateString()}</p>}
         {job.fee != null && <p><b>Fee:</b> RM {Number(job.fee).toFixed(2)}</p>}
+        {job.fee != null && job.deposit != null && (
+          <>
+            <p><b>Deposit paid:</b> RM {Number(job.deposit).toFixed(2)}</p>
+            <p><b>Balance to pay:</b> RM {balanceDue(job.fee, job.deposit)!.toFixed(2)}</p>
+          </>
+        )}
         {servedByName && <p><b>Attended by:</b> {servedByName}</p>}
 
         {qrDataUrl && (

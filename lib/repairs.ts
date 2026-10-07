@@ -50,6 +50,7 @@ export type RepairJob = {
   in_warranty_at_intake: boolean | null;
   warranty_note: string | null;
   fee: number | null;
+  deposit: number | null;
   declared_item_value: number | null;
   promised_ready_date: string | null;
   status: JobStatus;
@@ -179,6 +180,37 @@ export async function listJobContacts(jobId: string): Promise<ContactLogEntry[]>
   return data as ContactLogEntry[];
 }
 
+export type CollectionRecord = {
+  job_id: string;
+  collected_at: string;
+  collector_name: string;
+  collector_relationship: string | null;
+  proof_method: CollectionProof;
+  signature_path: string | null;
+};
+
+// The collection record for a job, or null if it has not been collected.
+// Readable by anyone who can see the job (staff at that branch, manager,
+// admin) — the collections_read policy.
+export async function getJobCollection(jobId: string): Promise<CollectionRecord | null> {
+  const { data, error } = await supabase
+    .from('collections')
+    .select('job_id, collected_at, collector_name, collector_relationship, proof_method, signature_path')
+    .eq('job_id', jobId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as CollectionRecord | null;
+}
+
+// A short-lived link to view a stored signature. The bucket is private and its
+// read policy is "can this caller see the job", so only staff at that branch,
+// the manager and IT Admin get a link; anyone else gets an error.
+export async function signatureUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('signatures').createSignedUrl(path, 300);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
 // ---------------------------------------------------------------------------
 // Writes. Multi-table ones go through the Postgres functions from the
 // repair_job_write_functions migration so they're atomic — see that
@@ -209,11 +241,19 @@ export type CreateJobInput = {
   inWarrantyAtIntake?: boolean;
   warrantyNote?: string;
   fee?: number;
+  deposit?: number;
   declaredItemValue?: number;
   promisedReadyDate?: string;
   preprintedChitNo?: string;
   servedBy?: string;
 };
+
+// What the customer still owes: the fee less any deposit paid at intake. Null
+// when no fee was set (nothing to balance against).
+export function balanceDue(fee: number | null | undefined, deposit: number | null | undefined): number | null {
+  if (fee == null) return null;
+  return Math.max(0, Number(fee) - Number(deposit ?? 0));
+}
 
 export async function createRepairJob(input: CreateJobInput): Promise<RepairJob> {
   const { data, error } = await supabase.rpc('create_repair_job', {
@@ -238,6 +278,9 @@ export async function createRepairJob(input: CreateJobInput): Promise<RepairJob>
     p_promised_ready_date: input.promisedReadyDate ?? null,
     p_preprinted_chit_no: input.preprintedChitNo ?? null,
     p_served_by: input.servedBy ?? null,
+    // Only sent when there is one, so a job without a deposit never depends on
+    // supabase/migrations/repair_deposit.sql having been applied.
+    ...(input.deposit != null ? { p_deposit: input.deposit } : {}),
   });
   if (error) throw error;
   return data as RepairJob;
@@ -331,9 +374,9 @@ export const STATUS_LABELS: Record<JobStatus, string> = {
   DRAFT: 'Draft',
   RECEIVED: 'Received',
   SENT_TO_HQ: 'Sent to HQ',
-  IN_REPAIR: 'In Repair',
+  IN_REPAIR: 'Sent to Repair',
   RETURNED_TO_BRANCH: 'Returned to Branch',
-  READY_FOR_COLLECTION: 'Ready for Collection',
+  READY_FOR_COLLECTION: 'Ready to Collect',
   RETURN_UNREPAIRED: 'Returned Unrepaired',
   COLLECTED: 'Collected',
   UNCLAIMED: 'Unclaimed',
@@ -368,12 +411,36 @@ export const CUSTODY_LABELS: Record<CustodyState, string> = {
 // as a state machine (docs/REPAIR_MODULE_SPEC.md §5.2) is that most jumps
 // don't make sense, so the UI only ever offers the next real step (plus the
 // off-ramps handled separately: cancel, return unrepaired, void).
+//
+// Owner's decision: three steps after intake — Sent to Repair, Ready to
+// Collect, Collected. SENT_TO_HQ and RETURNED_TO_BRANCH stay in the database
+// enum (old history may name them) but are no longer offered.
 export const FORWARD_PATH: JobStatus[] = [
-  'RECEIVED', 'SENT_TO_HQ', 'IN_REPAIR', 'RETURNED_TO_BRANCH',
-  'READY_FOR_COLLECTION', 'COLLECTED',
+  'RECEIVED', 'IN_REPAIR', 'READY_FOR_COLLECTION', 'COLLECTED',
 ];
 
+// Statuses no longer on the path; a job still sitting in one moves straight on
+// to Ready to Collect.
+const RETIRED_MID_STATUSES: JobStatus[] = ['SENT_TO_HQ', 'RETURNED_TO_BRANCH'];
+
+// Statuses still in use, for filters and pickers.
+export const ACTIVE_STATUSES: JobStatus[] = [
+  'RECEIVED', 'IN_REPAIR', 'READY_FOR_COLLECTION', 'COLLECTED',
+  'RETURN_UNREPAIRED', 'UNCLAIMED', 'CANCELLED', 'VOID',
+];
+
+// Before collection: the job can still be returned unrepaired.
+export const PRE_READY_STATUSES: JobStatus[] = ['RECEIVED', 'IN_REPAIR', ...RETIRED_MID_STATUSES];
+
+// The button wording for each forward step.
+export const STEP_ACTION_LABELS: Partial<Record<JobStatus, string>> = {
+  IN_REPAIR: 'Send to Repair',
+  READY_FOR_COLLECTION: 'Ready to Collect',
+  COLLECTED: 'Mark Collected',
+};
+
 export function nextStatus(current: JobStatus): JobStatus | null {
+  if (RETIRED_MID_STATUSES.includes(current)) return 'READY_FOR_COLLECTION';
   const i = FORWARD_PATH.indexOf(current);
   if (i === -1 || i === FORWARD_PATH.length - 1) return null;
   return FORWARD_PATH[i + 1];
@@ -382,8 +449,6 @@ export function nextStatus(current: JobStatus): JobStatus | null {
 // The custody move that naturally goes with each forward status step, so the
 // UI can advance both at once with one transitionJob() call rather than two.
 export const CUSTODY_FOR_STATUS: Partial<Record<JobStatus, CustodyState>> = {
-  SENT_TO_HQ: 'IN_TRANSIT_TO_HQ',
   IN_REPAIR: 'AT_HQ_WORKSHOP',
-  RETURNED_TO_BRANCH: 'IN_TRANSIT_TO_BRANCH',
   READY_FOR_COLLECTION: 'AT_BRANCH',
 };

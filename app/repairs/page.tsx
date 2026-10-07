@@ -10,9 +10,9 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import {
   listRepairJobs, getRepairJob, listJobEvents, listJobContacts, listStaffForBranch,
-  transitionJob, collectJob, logContact, uploadSignature, waLink, nextStatus, CUSTODY_FOR_STATUS,
-  STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS,
-  type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember,
+  transitionJob, collectJob, logContact, uploadSignature, getJobCollection, signatureUrl, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
+  STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, ACTIVE_STATUSES, PRE_READY_STATUSES, STEP_ACTION_LABELS,
+  type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember, type CollectionRecord,
   type ContactChannel, type ContactPurpose, type ContactOutcome, type CollectionProof, type JobStatus,
 } from '@/lib/repairs';
 import { flushOutbox, listQueued } from '@/lib/repairs-outbox';
@@ -43,7 +43,9 @@ function RepairsListPageInner() {
   const [queuedCount, setQueuedCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
-  const canCreate = profile?.role === 'staff' || profile?.role === 'manager';
+  // Intake happens at the outlet counter, so only Retail Staff create jobs. The
+  // Manager watches job status across branches but does not key anything in.
+  const canCreate = profile?.role === 'staff';
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -127,7 +129,7 @@ function RepairsListPageInner() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as JobStatus | 'ALL')}
           className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm">
           <option value="ALL">All statuses</option>
-          {(Object.keys(STATUS_LABELS) as JobStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+          {ACTIVE_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
       </div>
 
@@ -197,8 +199,14 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCollect, setShowCollect] = useState(false);
   const [showVoid, setShowVoid] = useState(false);
+  const [collection, setCollection] = useState<CollectionRecord | null>(null);
+  const [sigUrl, setSigUrl] = useState<string | null>(null);
 
-  const canManage = profile?.role === 'manager' || profile?.role === 'boss' || profile?.role === 'admin';
+  // Staff move their own jobs along; IT Admin keeps support access. The Manager
+  // only views status (owner's decision) — the database enforces the same split,
+  // see supabase/migrations/manager_view_only.sql.
+  const canAct = profile?.role === 'staff' || profile?.role === 'admin';
+  const canVoid = profile?.role === 'admin';
 
   const load = useCallback(async () => {
     const [j, ev, ct] = await Promise.all([getRepairJob(jobId), listJobEvents(jobId), listJobContacts(jobId)]);
@@ -206,6 +214,12 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
     setEvents(ev);
     setContacts(ct);
     if (j) setStaff(await listStaffForBranch(j.branch_code));
+    // The customer's signature at collection, for staff and the manager to
+    // check later. A failure here (e.g. the file is missing) must not break
+    // the rest of the panel, so it only hides the image.
+    const c = j?.status === 'COLLECTED' ? await getJobCollection(jobId).catch(() => null) : null;
+    setCollection(c);
+    setSigUrl(c?.signature_path ? await signatureUrl(c.signature_path).catch(() => null) : null);
   }, [jobId]);
 
   useEffect(() => { load(); }, [load]);
@@ -292,13 +306,19 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
 
           <div className="grid grid-cols-2 gap-4">
             {job.fee != null && <Section title="Fee"><p className="text-sm font-semibold text-slate-900">RM {Number(job.fee).toFixed(2)}</p></Section>}
+            {job.fee != null && job.deposit != null && (
+              <>
+                <Section title="Deposit paid"><p className="text-sm text-slate-700">RM {Number(job.deposit).toFixed(2)}</p></Section>
+                <Section title="Balance to pay"><p className="text-sm font-semibold text-slate-900">RM {balanceDue(job.fee, job.deposit)!.toFixed(2)}</p></Section>
+              </>
+            )}
             {job.promised_ready_date && <Section title="Promised"><p className="text-sm text-slate-700">{new Date(job.promised_ready_date).toLocaleDateString()}</p></Section>}
           </div>
 
           {actionError && <p className="text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{actionError}</p>}
 
           {/* Status actions */}
-          {!isTerminal && (
+          {canAct && !isTerminal && (
             <Section title="Actions">
               <div className="flex flex-col gap-2">
                 {next && next !== 'COLLECTED' && (
@@ -306,7 +326,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
                     onClick={() => runAction(() => transitionJob({
                       jobId: job.id, toStatus: next, toCustody: CUSTODY_FOR_STATUS[next], servedBy: job.served_by ?? undefined,
                     }))}>
-                    Move to {STATUS_LABELS[next]}
+                    {STEP_ACTION_LABELS[next] ?? `Move to ${STATUS_LABELS[next]}`}
                   </ActionButton>
                 )}
                 {next === 'COLLECTED' && (
@@ -314,7 +334,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
                     Mark Collected
                   </ActionButton>
                 )}
-                {['RECEIVED', 'SENT_TO_HQ', 'IN_REPAIR', 'RETURNED_TO_BRANCH'].includes(job.status) && (
+                {PRE_READY_STATUSES.includes(job.status) && (
                   <ActionButton icon={PackageX} busy={busy} variant="warn" onClick={() => {
                     const reason = window.prompt('Reason the item is returned unrepaired:');
                     if (reason) runAction(() => transitionJob({ jobId: job.id, toStatus: 'RETURN_UNREPAIRED', toCustody: 'AT_BRANCH', reason }));
@@ -330,7 +350,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
                     Cancel Job
                   </ActionButton>
                 )}
-                {canManage && (
+                {canVoid && (
                   <ActionButton icon={ShieldAlert} busy={busy} variant="danger" onClick={() => setShowVoid(true)}>
                     Void Job
                   </ActionButton>
@@ -348,7 +368,27 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
               onSubmit={(reason) => runAction(() => transitionJob({ jobId: job.id, toStatus: 'VOID', reason })).then(() => setShowVoid(false))} />
           )}
 
-          <ContactLogSection jobId={job.id} contacts={contacts} staff={staff} servedBy={job.served_by} onLogged={load} />
+          {collection && (
+            <Section title="Collection">
+              <p className="text-sm text-slate-700">
+                Collected by <span className="font-semibold text-slate-900">{collection.collector_name}</span>
+                {collection.collector_relationship && ` (${collection.collector_relationship})`}
+                {' · '}{new Date(collection.collected_at).toLocaleString()}
+              </p>
+              {sigUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- a short-lived signed URL; next/image cannot optimise it in a static export
+                <img src={sigUrl} alt={`Signature of ${collection.collector_name}`}
+                  className="mt-2 w-full max-w-xs h-28 object-contain bg-white border border-slate-200 rounded-xl" />
+              ) : (
+                <p className="text-xs text-slate-400 mt-1">
+                  {collection.signature_path ? 'Signature could not be loaded.' : 'No signature taken (chit surrendered).'}
+                </p>
+              )}
+            </Section>
+          )}
+
+          <ContactLogSection jobId={job.id} contacts={contacts} staff={staff} servedBy={job.served_by}
+            canLog={canAct} onLogged={load} />
 
           <Section title="History">
             <ul className="space-y-2">
@@ -501,8 +541,8 @@ function VoidForm({ busy, onCancel, onSubmit }: { busy: boolean; onCancel: () =>
   );
 }
 
-function ContactLogSection({ jobId, contacts, staff, servedBy, onLogged }: {
-  jobId: string; contacts: ContactLogEntry[]; staff: StaffMember[]; servedBy: string | null; onLogged: () => void;
+function ContactLogSection({ jobId, contacts, staff, servedBy, canLog, onLogged }: {
+  jobId: string; contacts: ContactLogEntry[]; staff: StaffMember[]; servedBy: string | null; canLog: boolean; onLogged: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [channel, setChannel] = useState<ContactChannel>('WHATSAPP');
@@ -532,7 +572,7 @@ function ContactLogSection({ jobId, contacts, staff, servedBy, onLogged }: {
         ))}
         {contacts.length === 0 && <p className="text-xs text-slate-400">No contact attempts logged yet.</p>}
       </div>
-      {!open ? (
+      {!canLog ? null : !open ? (
         <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
           <Clock size={13} /> Log a contact attempt
         </button>

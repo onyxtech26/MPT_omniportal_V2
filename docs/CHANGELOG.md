@@ -17,6 +17,70 @@ Format:
 
 ---
 
+## Collected jobs show who collected and the customer's signature
+
+Owner's request: staff and the Manager can check the signature later. The job
+panel gains a "Collection" section for collected jobs: collector, relationship,
+time, and the signature image (a 5-minute signed link from the private
+`signatures` bucket). No database change: storage read policy is already "can
+see the job", so staff see their own branch, Manager and IT Admin see all, boss
+none. Checked on the live DB: KMT staff 1 signature, KLT staff 0, Manager 2.
+
+## Repair steps cut to three: Sent to Repair, Ready to Collect, Collected
+
+Owner's request. After intake (Received), staff now click Send to Repair, then
+Ready to Collect, then Mark Collected. Sent to HQ and Returned to Branch are no
+longer offered (they stay in the database enum for old history; a job stuck in
+one moves straight to Ready to Collect). Labels changed: In Repair → "Sent to
+Repair", Ready for Collection → "Ready to Collect". The status filter lists
+only statuses in use. Frontend only (`lib/repairs.ts`, `app/repairs/page.tsx`);
+no database change needed.
+
+## Repair jobs record a deposit and show the balance to pay
+
+Owner's request: customers sometimes pay part of the fee at intake.
+
+- `app/repairs/new/page.tsx`: "Fee & Timing" gains "Deposit paid (RM)" and a
+  read-only "Balance to pay (RM)" that updates as you type (total fee minus
+  deposit). A deposit needs a fee and cannot exceed it.
+- Job panel (`app/repairs/page.tsx`) and printed slip show deposit and balance.
+- `lib/repairs.ts`: `deposit` on the job and the create input; `balanceDue()`.
+  `p_deposit` is only sent when a deposit is entered.
+- `supabase/migrations/repair_deposit.sql` (new): `repair_jobs.deposit`
+  (0 to fee), and `create_repair_job` gains `p_deposit` (old signature dropped
+  so the API never sees two overloads). Balance is never stored, only computed.
+
+## Manager is view-only on Repairs and the Daily Report; Ampang shows as AM
+
+Owner's decision: outlet staff do all the input; the Manager only watches status.
+
+- `app/repairs/page.tsx`, `app/repairs/new/page.tsx`: "New job" is staff only; the
+  job panel's Actions and "Log a contact attempt" show for staff and IT Admin
+  only; Void is IT Admin only.
+- `app/daily-report/page.tsx`: entering figures is staff only; brand setup is
+  staff (own branch) and IT Admin; salesman lists are IT Admin only.
+- `supabase/migrations/manager_view_only.sql` (new, after `boss_no_branch_ops.sql`):
+  new `app.can_work_branch()` (admin anywhere, staff own branch) gates every
+  repair and Daily Report write; `can_enter_sales()` is staff only. Reads unchanged.
+  Also clears the `AM` branch's display name ("Ampang") so it shows as `AM` like
+  every other outlet. Dry run: manager still sees 4 jobs / 296 brands but can
+  update 0; admin and KLT staff unchanged.
+
+## Director no longer sees Repairs or the Daily Report
+
+Owner's request: the boss account doesn't need the Daily Report or Repairs.
+
+- `lib/roles.ts`: `boss` removed from `/repairs`, `/repairs/new`, `/repairs/slip`
+  and `/daily-report`. The dashboard top bar filters on `canAccess`, so both
+  links disappear for boss, and typing the URL bounces back to `/dashboard`.
+- `app/repairs/page.tsx`: dropped boss from the "can manage" check (dead now).
+- `supabase/migrations/boss_no_branch_ops.sql` (new): boss loses read and write
+  on branch data — `app.can_see_branch()` no longer includes boss, and a new
+  `app.runs_branches()` (admin, manager) replaces `is_management()` in every
+  branch write rule. `is_management()` is unchanged, so boss still reads
+  profiles and the audit log. Dry-run against the live DB: boss sees 0 repair
+  jobs, sales, brands and salesmen; manager, admin and staff counts unchanged.
+
 ## Login simplified: outlet or role code, CODE12345 — a real password, not one-time
 
 Owner's request: type the outlet name (or role) and a password shaped
