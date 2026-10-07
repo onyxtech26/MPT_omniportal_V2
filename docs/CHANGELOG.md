@@ -17,6 +17,21 @@ Format:
 
 ---
 
+## Director no longer sees Repairs or the Daily Report
+
+Owner's request: the boss account doesn't need the Daily Report or Repairs.
+
+- `lib/roles.ts`: `boss` removed from `/repairs`, `/repairs/new`, `/repairs/slip`
+  and `/daily-report`. The dashboard top bar filters on `canAccess`, so both
+  links disappear for boss, and typing the URL bounces back to `/dashboard`.
+- `app/repairs/page.tsx`: dropped boss from the "can manage" check (dead now).
+- `supabase/migrations/boss_no_branch_ops.sql` (new): boss loses read and write
+  on branch data — `app.can_see_branch()` no longer includes boss, and a new
+  `app.runs_branches()` (admin, manager) replaces `is_management()` in every
+  branch write rule. `is_management()` is unchanged, so boss still reads
+  profiles and the audit log. Dry-run against the live DB: boss sees 0 repair
+  jobs, sales, brands and salesmen; manager, admin and staff counts unchanged.
+
 ## Login simplified: outlet or role code, CODE12345 — a real password, not one-time
 
 Owner's request: type the outlet name (or role) and a password shaped

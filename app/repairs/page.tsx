@@ -198,7 +198,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
   const [showCollect, setShowCollect] = useState(false);
   const [showVoid, setShowVoid] = useState(false);
 
-  const canManage = profile?.role === 'manager' || profile?.role === 'boss' || profile?.role === 'admin';
+  const canManage = profile?.role === 'manager' || profile?.role === 'admin';
 
   const load = useCallback(async () => {
     const [j, ev, ct] = await Promise.all([getRepairJob(jobId), listJobEvents(jobId), listJobContacts(jobId)]);

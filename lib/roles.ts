@@ -13,23 +13,24 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/dashboard/brands':      ['boss', 'manager'],
   '/dashboard/leaderboard': ['boss', 'manager'],
   '/dashboard/explorer':    ['boss', 'manager'],
-  // Staff work here; management can see it too (oversight — the full view
-  // comes in Phase 3, see docs/REPAIR_MODULE_SPEC.md). IT Admin administers
-  // accounts and branches, not day-to-day jobs, but is not blocked from
-  // looking — see the spec's permission matrix for the eventual split.
-  '/repairs':               ['staff', 'manager', 'boss', 'admin'],
-  // Same gate as /repairs itself — the finer "only staff/manager may actually
-  // submit" rule lives inside the page (and, for real, in the database's own
-  // repair_jobs_insert policy). This entry exists because canAccess denies
-  // by default: forgetting it here doesn't make the page insecure, it makes
-  // the page UNREACHABLE — exactly what happened until this line was added.
-  '/repairs/new':           ['staff', 'manager', 'boss', 'admin'],
-  '/repairs/slip':          ['staff', 'manager', 'boss', 'admin'],
+  // Branch work: staff, the Manager, and IT Admin (support). The Director is
+  // deliberately NOT listed — the owner asked that the boss account not see
+  // Repairs or the Daily Report at all; it only uses the sales dashboard. The
+  // database enforces the same split (see
+  // supabase/migrations/boss_no_branch_ops.sql), so this is not just hidden UI.
+  // The finer "only staff/manager may actually submit" rules live inside the
+  // pages and, for real, in RLS.
+  //
+  // Every sub-route needs its own entry because canAccess denies by default:
+  // forgetting one here doesn't make the page insecure, it makes it UNREACHABLE.
+  '/repairs':               ['staff', 'manager', 'admin'],
+  '/repairs/new':           ['staff', 'manager', 'admin'],
+  '/repairs/slip':          ['staff', 'manager', 'admin'],
   // Daily Report — the branch's daily sales entry, monthly view and brand
-  // setup. Same gate as /repairs; the real rules (staff only their own branch,
-  // only staff/manager may enter figures, boss/admin read-only) live in the
-  // database's RLS, see supabase/migrations/daily_report.sql.
-  '/daily-report':          ['staff', 'manager', 'boss', 'admin'],
+  // setup. Same gate as /repairs; staff only see their own branch, only
+  // staff/manager may enter figures, admin is read-only (RLS, see
+  // supabase/migrations/daily_report.sql).
+  '/daily-report':          ['staff', 'manager', 'admin'],
   // The console itself: admin only, matching the owner's decision that IT
   // Admin administers accounts, not the other way round (boss has DB-level
   // read access to the audit log per its RLS policy, but no route here yet —
