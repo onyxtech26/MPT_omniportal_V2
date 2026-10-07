@@ -17,6 +17,21 @@ Format:
 
 ---
 
+## Repairs can be corrected or deleted
+
+Owner's request: staff sometimes key a repair in wrong.
+
+- Job panel: "Edit Details" (staff at that outlet, IT Admin; until collected,
+  cancelled or voided) corrects customer, phone, item, services, observations,
+  fee, deposit and promised date. Each correction adds a "Details corrected:
+  …" line to the repair's history.
+- "Delete Repair": staff at that outlet while the repair is still Received;
+  IT Admin any time. Asks for confirmation.
+- `supabase/migrations/repair_delete.sql` (new): DELETE grant + policy
+  `repair_jobs_delete` with the rule above, and a trigger that writes a full
+  snapshot of the deleted repair to `admin_audit_log` first. Editing needed no
+  database change (existing update policy).
+
 ## "Job" renamed to "Repair" on screen
 
 Owner's request: "Job No." and "New Job" read oddly to staff. Every on-screen

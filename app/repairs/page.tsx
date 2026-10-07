@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Search, X, Phone, MessageCircle, ArrowRight, Ban, PackageX,
-  ShieldAlert, Clock, WifiOff, RefreshCw, CheckCircle2, Printer,
+  ShieldAlert, Clock, WifiOff, RefreshCw, CheckCircle2, Printer, Pencil, Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import {
   listRepairJobs, getRepairJob, listJobEvents, listJobContacts, listStaffForBranch,
-  transitionJob, collectJob, logContact, uploadSignature, getJobCollection, signatureUrl, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
+  transitionJob, collectJob, logContact, uploadSignature, getJobCollection, signatureUrl,
+  updateRepairDetails, deleteRepairJob, normalisePhone, type RepairDetailsPatch, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
   STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, ACTIVE_STATUSES, PRE_READY_STATUSES, STEP_ACTION_LABELS,
   type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember, type CollectionRecord,
   type ContactChannel, type ContactPurpose, type ContactOutcome, type CollectionProof, type JobStatus,
@@ -199,6 +200,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCollect, setShowCollect] = useState(false);
   const [showVoid, setShowVoid] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [collection, setCollection] = useState<CollectionRecord | null>(null);
   const [sigUrl, setSigUrl] = useState<string | null>(null);
 
@@ -242,6 +244,25 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
 
   const next = nextStatus(job.status);
   const isTerminal = ['COLLECTED', 'CANCELLED', 'VOID', 'RETURN_UNREPAIRED', 'UNCLAIMED'].includes(job.status);
+  // Fixing a typo: staff (own outlet) and IT Admin, until the watch has left.
+  const canEdit = canAct && !['COLLECTED', 'CANCELLED', 'VOID'].includes(job.status);
+  // Removing a repair keyed in by mistake: staff only while it is still
+  // Received; IT Admin any time. Mirrors the repair_jobs_delete policy.
+  const canDelete = (profile?.role === 'staff' && job.status === 'RECEIVED') || profile?.role === 'admin';
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete repair ${job.job_no} for ${job.customer_name}? This cannot be undone.`)) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await deleteRepairJob(job.id);
+      onChanged();
+      onClose();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not delete this repair.');
+      setBusy(false);
+    }
+  };
 
   return (
     <>
@@ -316,6 +337,28 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
           </div>
 
           {actionError && <p className="text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{actionError}</p>}
+
+          {(canEdit || canDelete) && !showEdit && (
+            <div className="flex flex-wrap gap-2">
+              {canEdit && (
+                <button onClick={() => setShowEdit(true)} disabled={busy}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50">
+                  <Pencil size={14} /> Edit Details
+                </button>
+              )}
+              {canDelete && (
+                <button onClick={handleDelete} disabled={busy}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50">
+                  <Trash2 size={14} /> Delete Repair
+                </button>
+              )}
+            </div>
+          )}
+
+          {showEdit && (
+            <EditDetailsForm job={job} busy={busy} onCancel={() => setShowEdit(false)}
+              onSubmit={(patch) => runAction(() => updateRepairDetails(job, patch)).then(() => setShowEdit(false))} />
+          )}
 
           {/* Status actions */}
           {canAct && !isTerminal && (
@@ -520,6 +563,68 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
           className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white disabled:opacity-50">
           {uploading ? 'Saving signature…' : 'Confirm Collection'}
         </button>
+        <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function EditDetailsForm({ job, busy, onCancel, onSubmit }: {
+  job: RepairJob; busy: boolean; onCancel: () => void; onSubmit: (patch: RepairDetailsPatch) => void;
+}) {
+  const [customerName, setCustomerName] = useState(job.customer_name);
+  const [phone, setPhone] = useState(job.customer_phone_raw ?? job.customer_phone);
+  const [brand, setBrand] = useState(job.brand ?? '');
+  const [modelNo, setModelNo] = useState(job.model_no ?? '');
+  const [serialNo, setSerialNo] = useState(job.serial_no ?? '');
+  const [services, setServices] = useState(job.services_required);
+  const [observations, setObservations] = useState(job.staff_observations ?? '');
+  const [fee, setFee] = useState(job.fee != null ? String(job.fee) : '');
+  const [deposit, setDeposit] = useState(job.deposit != null ? String(job.deposit) : '');
+  const [promised, setPromised] = useState(job.promised_ready_date ?? '');
+  const [error, setError] = useState<string | null>(null);
+
+  const save = () => {
+    setError(null);
+    if (!customerName.trim()) return setError('Customer name is required.');
+    if (!phone.trim()) return setError('Customer phone is required.');
+    if (!services.trim()) return setError('Describe what the customer wants fixed.');
+    if (deposit && !fee) return setError('Enter the total fee before the deposit.');
+    if (deposit && Number(deposit) > Number(fee)) return setError('The deposit cannot be more than the total fee.');
+    onSubmit({
+      customer_name: customerName.trim(),
+      customer_phone: normalisePhone(phone),
+      customer_phone_raw: phone.trim(),
+      brand: brand.trim() || null,
+      model_no: modelNo.trim() || null,
+      serial_no: serialNo.trim() || null,
+      services_required: services.trim(),
+      staff_observations: observations.trim() || null,
+      fee: fee ? Number(fee) : null,
+      deposit: deposit ? Number(deposit) : null,
+      promised_ready_date: promised || null,
+    });
+  };
+
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+      <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Edit details</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Customer name"><input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className={smallInput} /></Field>
+        <Field label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} className={smallInput} /></Field>
+        <Field label="Brand"><input value={brand} onChange={(e) => setBrand(e.target.value)} className={smallInput} /></Field>
+        <Field label="Model"><input value={modelNo} onChange={(e) => setModelNo(e.target.value)} className={smallInput} /></Field>
+        <Field label="Serial no."><input value={serialNo} onChange={(e) => setSerialNo(e.target.value)} className={smallInput} /></Field>
+        <Field label="Promised ready date"><input type="date" value={promised} onChange={(e) => setPromised(e.target.value)} className={smallInput} /></Field>
+        <Field label="Total fee (RM)"><input type="number" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} className={smallInput} /></Field>
+        <Field label="Deposit paid (RM)"><input type="number" min="0" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} className={smallInput} /></Field>
+      </div>
+      <Field label="Services required"><textarea rows={2} value={services} onChange={(e) => setServices(e.target.value)} className={smallInput} /></Field>
+      <Field label="Staff observations"><textarea rows={2} value={observations} onChange={(e) => setObservations(e.target.value)} className={smallInput} /></Field>
+      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button disabled={busy} onClick={save}
+          className="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-900 text-white disabled:opacity-50">Save Changes</button>
         <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
       </div>
     </div>
