@@ -17,6 +17,15 @@ Format:
 
 ---
 
+## Collected jobs show who collected and the customer's signature
+
+Owner's request: staff and the Manager can check the signature later. The job
+panel gains a "Collection" section for collected jobs: collector, relationship,
+time, and the signature image (a 5-minute signed link from the private
+`signatures` bucket). No database change: storage read policy is already "can
+see the job", so staff see their own branch, Manager and IT Admin see all, boss
+none. Checked on the live DB: KMT staff 1 signature, KLT staff 0, Manager 2.
+
 ## Repair steps cut to three: Sent to Repair, Ready to Collect, Collected
 
 Owner's request. After intake (Received), staff now click Send to Repair, then

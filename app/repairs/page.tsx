@@ -10,9 +10,9 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import {
   listRepairJobs, getRepairJob, listJobEvents, listJobContacts, listStaffForBranch,
-  transitionJob, collectJob, logContact, uploadSignature, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
+  transitionJob, collectJob, logContact, uploadSignature, getJobCollection, signatureUrl, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
   STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, ACTIVE_STATUSES, PRE_READY_STATUSES, STEP_ACTION_LABELS,
-  type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember,
+  type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember, type CollectionRecord,
   type ContactChannel, type ContactPurpose, type ContactOutcome, type CollectionProof, type JobStatus,
 } from '@/lib/repairs';
 import { flushOutbox, listQueued } from '@/lib/repairs-outbox';
@@ -199,6 +199,8 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCollect, setShowCollect] = useState(false);
   const [showVoid, setShowVoid] = useState(false);
+  const [collection, setCollection] = useState<CollectionRecord | null>(null);
+  const [sigUrl, setSigUrl] = useState<string | null>(null);
 
   // Staff move their own jobs along; IT Admin keeps support access. The Manager
   // only views status (owner's decision) — the database enforces the same split,
@@ -212,6 +214,12 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
     setEvents(ev);
     setContacts(ct);
     if (j) setStaff(await listStaffForBranch(j.branch_code));
+    // The customer's signature at collection, for staff and the manager to
+    // check later. A failure here (e.g. the file is missing) must not break
+    // the rest of the panel, so it only hides the image.
+    const c = j?.status === 'COLLECTED' ? await getJobCollection(jobId).catch(() => null) : null;
+    setCollection(c);
+    setSigUrl(c?.signature_path ? await signatureUrl(c.signature_path).catch(() => null) : null);
   }, [jobId]);
 
   useEffect(() => { load(); }, [load]);
@@ -358,6 +366,25 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
           {showVoid && (
             <VoidForm busy={busy} onCancel={() => setShowVoid(false)}
               onSubmit={(reason) => runAction(() => transitionJob({ jobId: job.id, toStatus: 'VOID', reason })).then(() => setShowVoid(false))} />
+          )}
+
+          {collection && (
+            <Section title="Collection">
+              <p className="text-sm text-slate-700">
+                Collected by <span className="font-semibold text-slate-900">{collection.collector_name}</span>
+                {collection.collector_relationship && ` (${collection.collector_relationship})`}
+                {' · '}{new Date(collection.collected_at).toLocaleString()}
+              </p>
+              {sigUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- a short-lived signed URL; next/image cannot optimise it in a static export
+                <img src={sigUrl} alt={`Signature of ${collection.collector_name}`}
+                  className="mt-2 w-full max-w-xs h-28 object-contain bg-white border border-slate-200 rounded-xl" />
+              ) : (
+                <p className="text-xs text-slate-400 mt-1">
+                  {collection.signature_path ? 'Signature could not be loaded.' : 'No signature taken (chit surrendered).'}
+                </p>
+              )}
+            </Section>
           )}
 
           <ContactLogSection jobId={job.id} contacts={contacts} staff={staff} servedBy={job.served_by}

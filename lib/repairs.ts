@@ -180,6 +180,37 @@ export async function listJobContacts(jobId: string): Promise<ContactLogEntry[]>
   return data as ContactLogEntry[];
 }
 
+export type CollectionRecord = {
+  job_id: string;
+  collected_at: string;
+  collector_name: string;
+  collector_relationship: string | null;
+  proof_method: CollectionProof;
+  signature_path: string | null;
+};
+
+// The collection record for a job, or null if it has not been collected.
+// Readable by anyone who can see the job (staff at that branch, manager,
+// admin) — the collections_read policy.
+export async function getJobCollection(jobId: string): Promise<CollectionRecord | null> {
+  const { data, error } = await supabase
+    .from('collections')
+    .select('job_id, collected_at, collector_name, collector_relationship, proof_method, signature_path')
+    .eq('job_id', jobId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as CollectionRecord | null;
+}
+
+// A short-lived link to view a stored signature. The bucket is private and its
+// read policy is "can this caller see the job", so only staff at that branch,
+// the manager and IT Admin get a link; anyone else gets an error.
+export async function signatureUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('signatures').createSignedUrl(path, 300);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
 // ---------------------------------------------------------------------------
 // Writes. Multi-table ones go through the Postgres functions from the
 // repair_job_write_functions migration so they're atomic — see that
