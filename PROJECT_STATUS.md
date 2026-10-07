@@ -76,6 +76,10 @@ In order. Full detail in spec §11.
 
 ## Done
 
+- **Meeting Agenda rebuilt for the Manager** (`/dashboard/agenda`, Manager only).
+  Runs entirely in the browser; ported from the latest Python generator and
+  checked cell-for-cell against it on the Jan–Sep 2025/2026 exports (details in
+  the changelog). **Not yet opened signed in as the Manager on the live site.**
 - **Login simplified to a short code** (`MRT`, `admin`, `boss`, `manager`, ...)
   **and a fixed `CODE12345` password**, permanent by design (owner's request,
   applied to all accounts). A full email still works if typed. Password recovery

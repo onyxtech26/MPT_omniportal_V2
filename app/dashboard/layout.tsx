@@ -15,15 +15,16 @@ import {
   Upload,
   Loader2,
   Wrench,
-  ClipboardList
+  ClipboardList,
+  FileSpreadsheet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataProvider, useData } from './data-context';
 
-// Top-bar navigation. V2 removed Forecast, Seasonal, Ask-the-Data and the Meeting
-// Agenda; nav moved from the old left sidebar into the header so every page stays
-// one click away. (The Agenda needs a server, so it cannot run on the deployed
-// site — the Manager continues to use the desktop build for it.)
+// Top-bar navigation. V2 removed Forecast, Seasonal and Ask-the-Data; nav moved
+// from the old left sidebar into the header so every page stays one click away.
+// The Meeting Agenda came back once it was rebuilt to run in the browser (it
+// used to need the desktop build's Python server); only the Manager sees it.
 //
 // IT Admin no longer reaches this layout at all (see ROUTE_ACCESS) — it has its
 // own console under /admin, so there is no Admin item here.
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { name: 'Brand Performance', href: '/dashboard/brands', icon: Award },
   { name: 'Leaderboards', href: '/dashboard/leaderboard', icon: Trophy },
   { name: 'Explorer', href: '/dashboard/explorer', icon: Compass },
+  { name: 'Meeting Agenda', href: '/dashboard/agenda', icon: FileSpreadsheet },
   // Links out to the branch modules. Filtered by canAccess like everything here,
   // so only the Manager sees them — the Director has no access to either.
   { name: 'Repairs', href: '/repairs', icon: Wrench },

@@ -13,6 +13,10 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/dashboard/brands':      ['boss', 'manager'],
   '/dashboard/leaderboard': ['boss', 'manager'],
   '/dashboard/explorer':    ['boss', 'manager'],
+  // The Meeting Agenda is the Manager's own monthly report to the Director,
+  // so only the Manager gets it (owner's decision). It reads the POS exports
+  // in the browser like the rest of the dashboard; nothing is stored.
+  '/dashboard/agenda':      ['manager'],
   // Branch work: staff, the Manager, and IT Admin (support). The Director is
   // deliberately NOT listed — the owner asked that the boss account not see
   // Repairs or the Daily Report at all; it only uses the sales dashboard. The

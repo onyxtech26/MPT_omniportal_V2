@@ -2,33 +2,48 @@
 
 Opens the agenda template with openpyxl, writes the FY25 figures the 2025 CSV
 can prove (monthly + Jan->month accumulated sales, profit margins, profit
-amounts) into their exact cells, and preserves the sheet's existing variance
-formulas (=D6-C6, =E6/C6, =I6-H6, =J6/H6). When no 2026 CSV is supplied the
-FY26 columns are left blank and their headers are annotated "awaiting data
-input" (SKILL.md section 5 -- never fabricate 2026 numbers).
+amounts) into their exact cells, and computes the variance columns. When no
+2026 CSV is supplied the FY26 columns are left blank and their headers are
+annotated "awaiting data input" (SKILL.md section 5 -- never fabricate 2026
+numbers).
 
-openpyxl does not evaluate formulas, so the preserved variance cells keep their
-old cached results. We set fullCalcOnLoad so Excel/LibreOffice recompute them
-when the file is opened -- the "recalc pass" referenced in SKILL.md section 7.
+Every cell is written as a literal value. The template ships the variance
+columns as formulas (=D6-C6, =E6/C6, =I6-H6, =J6/H6), but openpyxl saves a
+formula with an EMPTY cached result, so only apps that recalculate on open
+(desktop Excel) would show anything -- WPS, Excel Online, Sheets, phone
+previews and PDF exports all rendered those four columns blank. We overwrite
+them with computed numbers so the workbook carries its own answers everywhere.
 """
 from __future__ import annotations
 import calendar
+from copy import copy
 
 import openpyxl
-from openpyxl.styles import Font
+from openpyxl.styles import Color
 
 from .engine import TARGET_BRANCHES, branch_figures
 
 # Variance % colouring: negative → red, zero/positive → blue (bold, matching template).
-_RED  = Font(bold=True, color="FF0000")
-_BLUE = Font(bold=True, color="0070C0")
+_RED  = "FFFF0000"
+_BLUE = "FF0070C0"
 
 
-def _pct_font(value: float | None):
-    """Return red Font for negative values, blue Font for zero/positive."""
+def _colour_pct(cell, value: float | None) -> None:
+    """Colour a variance cell by sign, preserving the template's font.
+
+    Assigning a bare ``Font(bold=..., color=...)`` replaces the whole font
+    object, which drops the template's explicit Calibri 10 and leaves the cell
+    to fall back to the workbook default (Calibri 11). That renders the four
+    variance cells about 11% larger than the figures beside them -- visible
+    against the manager's own sheet, where every body cell is the same size.
+    Copy the existing font and override only weight and colour.
+    """
     if value is None:
-        return None
-    return _RED if value < 0 else _BLUE
+        return
+    font = copy(cell.font)
+    font.b = True
+    font.color = Color(rgb=_RED if value < 0 else _BLUE)
+    cell.font = font
 
 # The template has six branch slots, two rows apart: an even "sales" row and
 # the "Profit" row beneath it. Slot 0=rows 6/7, slot 1=8/9 ... slot 5=16/17 --
@@ -45,10 +60,9 @@ AWAITING = "awaiting data input"
 # FY26 cells cleared when no 2026 data exists. Keyed by (column, row offset
 # from the branch sales row): 0 = sales row, 1 = profit row beneath it.
 #
-# Sales rows (offset 0) hold formula cells E=D-C and F=E/C for the monthly
-# block, and J=I-H and K=J/H for the accumulated block.  When D and I are
-# cleared those formulas produce #VALUE! / #DIV/0! errors, so we blank them
-# out here too.
+# Sales rows (offset 0) hold the variance cells E=D-C and F=E/C for the monthly
+# block, and J=I-H and K=J/H for the accumulated block.  With no FY26 data there
+# is nothing to compare against, so they are blanked out here too.
 FY26_CELLS = [
     ("D", 0),  # FY26 monthly sales
     ("D", 1),  # FY26 monthly margin
@@ -71,8 +85,9 @@ def _acc_margin_label(branch: str, margin: float) -> str:
 
 
 def _blank_slot(ws, slot: int) -> None:
-    """Clear an unused branch slot entirely (labels, values, and the variance
-    formulas, which would error against blank inputs)."""
+    """Clear an unused branch slot entirely -- labels, figures and variances,
+    including the template's variance formulas in E/F/J/K, which would error
+    against blank inputs if left in place."""
     srow = _sales_row(slot)
     for row in (srow, srow + 1):
         for col in "BCDEFGHIJKL":
@@ -122,31 +137,60 @@ def _write_branch(ws, branch: str, slot: int, df25, df26, month: int,
         ws[f"D{prow}"] = m26["margin"]
         ws[f"G{prow}"] = m26["profit"]
 
+        # An outlet that did not trade in FY25 (CS and MIL opened in 2026) has
+        # no baseline to compare against. The template's =E/C and =J/H would
+        # divide by zero and print #DIV/0! in the manager's sheet, and a margin
+        # "variance" measured against 0.00% would read as a 63-point gain that
+        # never happened. So when the baseline is absent, every COMPARISON cell
+        # is blanked; the FY26 figures themselves, and the variance amounts in
+        # E/J (which are just the FY26 totals), still print normally.
+        has_month_base = bool(monthly["sales"])
+        has_acc_base = bool(acc_sales)
+
         # Monthly margin variance (profit row, col E) — value cell, colour by sign.
-        e_val = round(m26["margin"] - monthly["margin"], 4)
+        e_val = round(m26["margin"] - monthly["margin"], 4) if has_month_base else None
         ws[f"E{prow}"] = e_val
-        ws[f"E{prow}"].font = _pct_font(e_val)
+        _colour_pct(ws[f"E{prow}"], e_val)
 
         ws[f"I{srow}"] = a26["sales"]
         ws[f"I{prow}"] = a26["margin"]
         ws[f"L{prow}"] = a26["profit"]
 
         # Accumulated margin variance (profit row, col J) — value cell, colour by sign.
-        j_val = round(a26["margin"] - acc_margin, 4) if acc_margin is not None else None
+        j_val = (round(a26["margin"] - acc_margin, 4)
+                 if acc_margin is not None and has_acc_base else None)
         ws[f"J{prow}"] = j_val
-        ws[f"J{prow}"].font = _pct_font(j_val)
+        _colour_pct(ws[f"J{prow}"], j_val)
 
-        # Monthly sales variance % (sales row, col F) — formula cell, colour by sign.
-        if monthly["sales"]:
-            ws[f"F{srow}"].font = _pct_font(
-                (m26["sales"] - monthly["sales"]) / monthly["sales"]
-            )
+        # Monthly sales variance amount (col E) and % (col F) on the sales row.
+        # These are written as literal numbers rather than left to the template's
+        # =D6-C6 / =E6/C6, because openpyxl saves a formula with an EMPTY cached
+        # result (<f>D6-C6</f><v></v>). Desktop Excel recalculates on load and
+        # fills it in, but any viewer that renders the cache instead -- WPS,
+        # Excel Online, Sheets, phone previews, PDF exports -- draws the cell
+        # blank. The manager's sheet gets forwarded and printed, so it has to
+        # carry its own answers. The template's number formats are untouched:
+        # col E is accounting (prints -84719 as "(84,719)") and col F is "0%".
+        e_amt = round(m26["sales"] - monthly["sales"], 2)
+        ws[f"E{srow}"] = e_amt
 
-        # Accumulated sales variance % (sales row, col K) — formula cell, colour by sign.
-        if acc_sales and acc_sales != 0:
-            ws[f"K{srow}"].font = _pct_font(
-                (a26["sales"] - acc_sales) / acc_sales
-            )
+        if has_month_base:
+            f_pct = round(e_amt / monthly["sales"], 4)
+            ws[f"F{srow}"] = f_pct
+            _colour_pct(ws[f"F{srow}"], f_pct)
+        else:
+            ws[f"F{srow}"] = None
+
+        # Accumulated sales variance amount (col J) and % (col K) — same reasoning.
+        j_amt = round(a26["sales"] - acc_sales, 2) if acc_sales is not None else None
+        ws[f"J{srow}"] = j_amt
+
+        if has_acc_base:
+            k_pct = round(j_amt / acc_sales, 4)
+            ws[f"K{srow}"] = k_pct
+            _colour_pct(ws[f"K{srow}"], k_pct)
+        else:
+            ws[f"K{srow}"] = None
     else:
         for col, off in FY26_CELLS:
             ws[f"{col}{srow + off}"] = None
@@ -169,7 +213,8 @@ def fill_agenda(template_path: str, out_path: str, df25, df26=None,
     branches:  outlets to place in the template's six slots, in order
                (defaults to TARGET_BRANCHES). Only the first NUM_SLOTS are
                written; unused slots are blanked.
-    The =D6-C6 style variance formulas are never touched in occupied slots.
+    Occupied slots get computed variance values in E/F/J/K, replacing the
+    template's =D6-C6 style formulas (see the module docstring for why).
     """
     if df25_acc is _UNSET:
         df25_acc = df25
@@ -197,8 +242,9 @@ def fill_agenda(template_path: str, out_path: str, df25, df26=None,
         ws["D5"] = f"FY26/ ({AWAITING})"
         ws["I5"] = f"FY26/ Acc. Sales ({AWAITING})"
 
-    # Recalc pass: openpyxl cannot evaluate formulas in-process, so flag the
-    # workbook for a full recalculation when a spreadsheet app opens it.
+    # Every cell we write is a literal value, so there is nothing left to
+    # recalculate. Kept as a safety net in case a future template revision
+    # introduces a formula outside the six branch slots.
     wb.calculation.fullCalcOnLoad = True
     wb.save(out_path)
     return out_path
