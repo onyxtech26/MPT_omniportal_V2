@@ -347,6 +347,55 @@ export async function uploadSignature(jobId: string, svgText: string): Promise<s
   return path;
 }
 
+// The fields staff may correct after intake. Status, branch and money history
+// are not here: those move only through the proper actions.
+export type RepairDetailsPatch = {
+  customer_name: string;
+  customer_phone: string;
+  customer_phone_raw: string;
+  brand: string | null;
+  model_no: string | null;
+  serial_no: string | null;
+  services_required: string;
+  staff_observations: string | null;
+  fee: number | null;
+  deposit: number | null;
+  promised_ready_date: string | null;
+};
+
+const DETAIL_LABELS: Record<keyof RepairDetailsPatch, string> = {
+  customer_name: 'customer name', customer_phone: 'phone', customer_phone_raw: 'phone',
+  brand: 'brand', model_no: 'model', serial_no: 'serial no.',
+  services_required: 'services', staff_observations: 'observations',
+  fee: 'fee', deposit: 'deposit', promised_ready_date: 'promised date',
+};
+
+// Corrects a repair's details and records what changed in its history, so a
+// correction is visible later rather than silently overwriting the original.
+export async function updateRepairDetails(job: RepairJob, patch: RepairDetailsPatch): Promise<void> {
+  const changed = (Object.keys(patch) as (keyof RepairDetailsPatch)[])
+    .filter((k) => String(patch[k] ?? '') !== String(job[k] ?? ''));
+  if (changed.length === 0) return;
+  const { error } = await supabase.from('repair_jobs').update(patch).eq('id', job.id);
+  if (error) throw error;
+  const what = [...new Set(changed.map((k) => DETAIL_LABELS[k]))].join(', ');
+  const { error: evErr } = await supabase.from('repair_events').insert({
+    job_id: job.id, kind: 'NOTE', actor: (await supabase.auth.getUser()).data.user?.id ?? null,
+    reason: `Details corrected: ${what}`,
+  });
+  if (evErr) throw evErr;
+}
+
+// Deletes a repair keyed in by mistake. The database decides who may: staff at
+// that outlet while it is still Received, or IT Admin (repair_jobs_delete
+// policy). A snapshot goes to the audit log first. RLS turns a refused delete
+// into "0 rows", so that case is reported as an error here.
+export async function deleteRepairJob(jobId: string): Promise<void> {
+  const { data, error } = await supabase.from('repair_jobs').delete().eq('id', jobId).select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('This repair can no longer be deleted.');
+}
+
 export async function logContact(args: {
   jobId: string;
   channel: ContactChannel;
