@@ -12,7 +12,7 @@ import {
   listRepairJobs, getRepairJob, listJobEvents, listJobContacts, listStaffForBranch,
   transitionJob, collectJob, logContact, uploadSignature, getJobCollection, signatureUrl,
   updateRepairDetails, deleteRepairJob, normalisePhone, type RepairDetailsPatch, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
-  STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, ACTIVE_STATUSES, PRE_READY_STATUSES, STEP_ACTION_LABELS,
+  STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, FORWARD_PATH, PRE_READY_STATUSES, STEP_ACTION_LABELS,
   type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember, type CollectionRecord,
   type ContactChannel, type ContactPurpose, type ContactOutcome, type CollectionProof, type JobStatus,
 } from '@/lib/repairs';
@@ -130,7 +130,7 @@ function RepairsListPageInner() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as JobStatus | 'ALL')}
           className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm">
           <option value="ALL">All statuses</option>
-          {ACTIVE_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+          {FORWARD_PATH.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
       </div>
 

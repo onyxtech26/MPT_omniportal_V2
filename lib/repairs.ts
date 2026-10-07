@@ -472,12 +472,6 @@ export const FORWARD_PATH: JobStatus[] = [
 // to Ready to Collect.
 const RETIRED_MID_STATUSES: JobStatus[] = ['SENT_TO_HQ', 'RETURNED_TO_BRANCH'];
 
-// Statuses still in use, for filters and pickers.
-export const ACTIVE_STATUSES: JobStatus[] = [
-  'RECEIVED', 'IN_REPAIR', 'READY_FOR_COLLECTION', 'COLLECTED',
-  'RETURN_UNREPAIRED', 'UNCLAIMED', 'CANCELLED', 'VOID',
-];
-
 // Before collection: the job can still be returned unrepaired.
 export const PRE_READY_STATUSES: JobStatus[] = ['RECEIVED', 'IN_REPAIR', ...RETIRED_MID_STATUSES];
 
