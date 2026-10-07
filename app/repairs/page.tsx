@@ -100,7 +100,7 @@ function RepairsListPageInner() {
       {queuedCount > 0 && (
         <div className="flex items-center gap-2 mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-100 text-amber-800 text-sm font-medium">
           {syncing ? <RefreshCw size={16} className="animate-spin" /> : <WifiOff size={16} />}
-          {queuedCount} job{queuedCount > 1 ? 's' : ''} saved on this device, not yet synced.
+          {queuedCount} repair{queuedCount > 1 ? 's' : ''} saved on this device, not yet synced.
           <button onClick={trySync} className="ml-auto underline font-semibold">Retry now</button>
         </div>
       )}
@@ -109,13 +109,13 @@ function RepairsListPageInner() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Repairs</h1>
           <p className="text-sm text-slate-500">
-            {profile?.role === 'staff' ? `${profile.branch_code} branch` : 'All branches'} · {filtered.length} job{filtered.length === 1 ? '' : 's'}
+            {profile?.role === 'staff' ? `${profile.branch_code} branch` : 'All branches'} · {filtered.length} repair{filtered.length === 1 ? '' : 's'}
           </p>
         </div>
         {canCreate && (
           <button onClick={() => router.push('/repairs/new')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 transition-colors">
-            <Plus size={16} /> New Job
+            <Plus size={16} /> New Repair
           </button>
         )}
       </div>
@@ -123,7 +123,7 @@ function RepairsListPageInner() {
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search job no, name, phone, brand…"
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search repair no., name, phone, brand…"
             className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as JobStatus | 'ALL')}
@@ -136,14 +136,14 @@ function RepairsListPageInner() {
       {loading ? (
         <p className="text-sm text-slate-400 py-12 text-center">Loading…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-slate-400 py-12 text-center">No jobs match.</p>
+        <p className="text-sm text-slate-400 py-12 text-center">No repairs match.</p>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left text-xs font-bold text-slate-400 uppercase tracking-wide">
-                  <th className="px-4 py-3">Job No.</th>
+                  <th className="px-4 py-3">Repair No.</th>
                   <th className="px-4 py-3">Branch</th>
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Item</th>
@@ -277,7 +277,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
             <div className="flex items-center gap-3 mt-1">
               <span className="text-sm text-slate-500">{job.customer_phone}</span>
               <a href={`tel:${job.customer_phone}`} className="text-slate-400 hover:text-slate-900"><Phone size={14} /></a>
-              <a href={waLink(job.customer_phone, `Hi ${job.customer_name}, this is MPT Watches regarding job ${job.job_no}.`)}
+              <a href={waLink(job.customer_phone, `Hi ${job.customer_name}, this is MPT Watches regarding your repair ${job.job_no}.`)}
                 target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-emerald-600"><MessageCircle size={14} /></a>
             </div>
           </Section>
@@ -347,12 +347,12 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
                     const reason = window.prompt('Reason for cancelling:');
                     if (reason) runAction(() => transitionJob({ jobId: job.id, toStatus: 'CANCELLED', reason }));
                   }}>
-                    Cancel Job
+                    Cancel Repair
                   </ActionButton>
                 )}
                 {canVoid && (
                   <ActionButton icon={ShieldAlert} busy={busy} variant="danger" onClick={() => setShowVoid(true)}>
-                    Void Job
+                    Void Repair
                   </ActionButton>
                 )}
               </div>
@@ -530,7 +530,7 @@ function VoidForm({ busy, onCancel, onSubmit }: { busy: boolean; onCancel: () =>
   const [reason, setReason] = useState('');
   return (
     <div className="bg-red-50 border border-red-100 rounded-xl p-4 space-y-3">
-      <p className="text-xs font-bold text-red-800 uppercase tracking-wide">Void Job — cannot be undone by staff</p>
+      <p className="text-xs font-bold text-red-800 uppercase tracking-wide">Void Repair — cannot be undone by staff</p>
       <Field label="Reason *"><input value={reason} onChange={(e) => setReason(e.target.value)} className={smallInput} /></Field>
       <div className="flex gap-2">
         <button disabled={busy || !reason.trim()} onClick={() => onSubmit(reason.trim())}
