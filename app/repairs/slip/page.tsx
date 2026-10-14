@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { Printer } from 'lucide-react';
-import { getRepairJob, balanceDue, type RepairJob } from '@/lib/repairs';
+import { getRepairJob, balanceDue, chitIsInJobNo, type RepairJob } from '@/lib/repairs';
 import { supabase } from '@/lib/supabase';
 
 // The record itself is digital, but the customer still walks away with
@@ -65,7 +65,7 @@ function SlipPageInner() {
         <hr className="my-2 border-dashed" />
 
         <p className="text-center font-bold" style={{ fontSize: '16px' }}>{job.job_no}</p>
-        {job.preprinted_chit_no && <p className="text-center">Chit No. {job.preprinted_chit_no}</p>}
+        {!chitIsInJobNo(job.job_no, job.preprinted_chit_no) && <p className="text-center">Chit No. {job.preprinted_chit_no}</p>}
         <p className="text-center">{job.branch_code} · {new Date(job.intake_at).toLocaleString()}</p>
 
         <hr className="my-2 border-dashed" />

@@ -440,13 +440,16 @@ improve the sales dashboard at the same time.
 
 **Record both numbers. The system's number is authoritative.**
 
-**`job_no`** — generated **on the device**, format `KLT-2609-7F3K` (branch, year+month,
-random). Generating it client-side means **a slip can print even when the
-connection is down**, and there is no server sequence to collide on.
+**`job_no`** — **the chit number is the repair number** (owner's decision, 2026-10-14).
+Staff key the chit number in first; the system builds `job_no` on the device as
+`BRANCH-CHITNO`, e.g. `KLT-54279`. The branch prefix keeps outlets with overlapping
+chit books from colliding on the UNIQUE `job_no` constraint, and building it
+client-side means **a slip can print even when the connection is down**. Jobs
+created before this change keep their generated number (`KLT-2609-7F3K`).
 
-**`preprinted_chit_no`** — optional, indexed. Recorded when a physical chit was used.
-Duplicates **warn, never block** — old chit stock across 12 branches almost
-certainly repeats serials, and a hard block trains staff to type garbage.
+**`preprinted_chit_no`** — now always set (the same number the staff keyed in), indexed.
+An older note said duplicates only warn; a duplicate within one outlet is now
+refused, because the repair number must be unique. 
 
 **Why not just use the pre-printed number:** it is not under system control (books
 get skipped, spoiled, reordered in overlapping ranges), it is not globally unique,

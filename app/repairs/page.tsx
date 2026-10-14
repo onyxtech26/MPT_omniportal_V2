@@ -12,7 +12,7 @@ import {
   listRepairJobs, getRepairJob, listJobEvents, listJobContacts, listStaffForBranch,
   transitionJob, collectJob, logContact, uploadSignature, getJobCollection, signatureUrl,
   updateRepairDetails, deleteRepairJob, normalisePhone, type RepairDetailsPatch, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
-  STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, FORWARD_PATH, PRE_READY_STATUSES, STEP_ACTION_LABELS,
+  chitIsInJobNo, STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, FORWARD_PATH, PRE_READY_STATUSES, STEP_ACTION_LABELS,
   type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember, type CollectionRecord,
   type ContactChannel, type ContactPurpose, type ContactOutcome, type CollectionProof, type JobStatus,
 } from '@/lib/repairs';
@@ -275,7 +275,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
         <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between z-10">
           <div>
             <p className="font-mono text-sm font-bold text-slate-900">{job.job_no}</p>
-            {job.preprinted_chit_no && <p className="text-xs text-slate-400">Chit No. {job.preprinted_chit_no}</p>}
+            {!chitIsInJobNo(job.job_no, job.preprinted_chit_no) && <p className="text-xs text-slate-400">Chit No. {job.preprinted_chit_no}</p>}
           </div>
           <div className="flex items-center gap-1">
             <a href={`/repairs/slip?job=${job.id}`} target="_blank" rel="noopener noreferrer"

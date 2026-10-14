@@ -6,7 +6,7 @@ import { Loader2, Save, WifiOff, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import {
-  createRepairJob, generateJobNo, normalisePhone, balanceDue,
+  createRepairJob, jobNoFromChit, normalisePhone, balanceDue,
   type CreateJobInput, type JobType, type ServiceRoute, type WarrantyDeclaration,
 } from '@/lib/repairs';
 import { queueJob } from '@/lib/repairs-outbox';
@@ -101,6 +101,9 @@ export default function NewRepairJobPage() {
     e.preventDefault();
     setError(null);
 
+    const chit = preprintedChitNo.trim();
+    if (!chit) { setError('Enter the repair number from the chit first.'); return; }
+    if (!/^[A-Za-z0-9-]{1,20}$/.test(chit)) { setError('The repair number can only have letters, digits and dashes (no spaces).'); return; }
     if (!branchCode) { setError('Branch is required.'); return; }
     if (!servedBy) { setError('Select who is handling this repair — this is the record of who took it in.'); return; }
     if (!customerName.trim()) { setError('Customer name is required.'); return; }
@@ -114,7 +117,7 @@ export default function NewRepairJobPage() {
     if (deposit && Number(deposit) > Number(fee)) { setError('The deposit cannot be more than the total fee.'); return; }
 
     const input: CreateJobInput = {
-      jobNo: generateJobNo(branchCode), // generated ONCE, here — see lib/repairs.ts
+      jobNo: jobNoFromChit(branchCode, chit), // the chit number IS the repair number — see lib/repairs.ts
       branchCode,
       servedBy,
       customerName: customerName.trim(),
@@ -135,7 +138,7 @@ export default function NewRepairJobPage() {
       deposit: deposit ? Number(deposit) : undefined,
       declaredItemValue: declaredItemValue ? Number(declaredItemValue) : undefined,
       promisedReadyDate: promisedReadyDate || undefined,
-      preprintedChitNo: preprintedChitNo.trim() || undefined,
+      preprintedChitNo: chit,
     };
 
     setSubmitting(true);
@@ -152,7 +155,10 @@ export default function NewRepairJobPage() {
         setCreatedJobNo(input.jobNo);
         setQueuedOffline(true);
       } else {
-        setError(err instanceof Error ? err.message : 'Could not save this repair.');
+        const msg = err instanceof Error ? err.message : '';
+        setError(/duplicate|unique/i.test(msg)
+          ? `Repair number ${chit} has already been used at ${branchCode}. Check the number on the chit.`
+          : msg || 'Could not save this repair.');
       }
     } finally {
       setSubmitting(false);
@@ -199,6 +205,15 @@ export default function NewRepairJobPage() {
       <p className="text-sm text-slate-500 mb-6">The digital chit — customer copy prints after saving.</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        <section className="bg-white rounded-2xl border border-slate-100 p-5 space-y-2">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Repair number</h2>
+          <Field label="Chit no. (this is the repair number) *">
+            <input value={preprintedChitNo} onChange={(e) => setPreprintedChitNo(e.target.value.replace(/\s/g, ''))}
+              placeholder="e.g. 54279" maxLength={20} autoFocus inputMode="text" className={`${inputClass} text-lg font-semibold`} />
+          </Field>
+          <p className="text-xs text-slate-400">Key this in first, exactly as printed on the chit. Customers collect with it.</p>
+        </section>
+
         <section className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Intake</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -294,9 +309,6 @@ export default function NewRepairJobPage() {
             <Field label="Declared value (RM)"><input type="number" min="0" step="0.01" value={declaredItemValue} onChange={(e) => setDeclaredItemValue(e.target.value)} className={inputClass} /></Field>
             <Field label="Promised ready date"><input type="date" value={promisedReadyDate} onChange={(e) => setPromisedReadyDate(e.target.value)} className={inputClass} /></Field>
           </div>
-          <Field label="Pre-printed chit no. (if used)">
-            <input value={preprintedChitNo} onChange={(e) => setPreprintedChitNo(e.target.value)} placeholder="e.g. 54279" className={inputClass} />
-          </Field>
         </section>
 
         {/* PDPA notice, in both languages, at intake — before collection, as
