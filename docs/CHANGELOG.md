@@ -17,6 +17,25 @@ Format:
 
 ---
 
+## One shared top bar across the dashboard, Repairs and Daily Report
+- Owner's question: why does clicking Repairs or Daily Report jump to a different
+  page? They are separate layouts on purpose (never inside the sales dashboard's
+  data provider, so repair data stays apart from the sales CSV), but each drew
+  its own, different header, so it felt like another app.
+- New `components/app-header.tsx` is the one top bar all three now draw: same
+  grouped tabs (sales | Agenda | Repairs, Daily Report), same profile menu.
+  Tabs still follow `canAccess`: Manager sees all, Director no Repairs or Daily
+  Report, staff only those two, IT Admin those two plus a "Console" link back.
+- Load Data and History are passed in by the dashboard layout only, so the
+  shared bar never touches sales data. The separate layouts and their guards
+  are unchanged; no database change.
+- Printed repair slip is unaffected (header stays `no-print`, top padding
+  removed on print). `components/module-nav.tsx` removed (replaced).
+- Files: `components/app-header.tsx`, `app/dashboard/layout.tsx`,
+  `app/repairs/layout.tsx`, `app/daily-report/layout.tsx`.
+
+---
+
 ## Top bar tidied
 - Owner's request: the header's green "No data loaded" pill looked unprofessional
   and nav labels wrapped onto two lines.
