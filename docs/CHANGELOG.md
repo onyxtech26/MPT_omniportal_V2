@@ -17,6 +17,56 @@ Format:
 
 ---
 
+## Repair intake photos dropped; customer copy and phone signing planned (in progress)
+- Owner's idea: staff photograph the watch (front, back, side, condition) at
+  intake, the customer gets a copy, and a customer without their chit can sign
+  on their own phone.
+- Photos dropped at the owner's request: at the spec's volumes they would
+  outgrow Supabase's free 1 GB storage within about a month, and the owner is
+  staying on the free plan. Staff observations (text) stay the condition record.
+- In progress, two PRs: (1) the slip's QR status page shows the intake record
+  as text and staff get "Send copy on WhatsApp"; (2) one-time, 15-minute
+  signing link by WhatsApp or counter QR, signed through a new `customer-sign`
+  Edge Function. Will need one migration and that function deployed.
+- Plan: `plans/repair-intake-photos-and-remote-signing.md` in the project files.
+  Full summary of all recent work: `docs/WORK_SO_FAR.md`.
+
+---
+
+## Chit number is the repair number
+- Onyxx: the chit number is the repair number, and it is the first thing staff key in.
+- New Repair now starts with a required "Chit no." box (autofocused). The repair number becomes `BRANCH-CHITNO` (e.g. KMT-54279) instead of a random code; a chit number already used at the same outlet is refused with a clear message. Old repairs keep their old numbers, and the separate "Chit No." line is hidden where it would just repeat the number.
+- No SQL needed: `job_no` already has a UNIQUE constraint and the chit still saves to `preprinted_chit_no`.
+
+---
+
+## Brands: drag and drop, Sort A to Z
+- Onyxx wanted to arrange brands by dragging, and an auto alphabetical order for after brands are added or removed.
+- Brands tab: drag a brand by its grip handle to drop it in a new spot (arrows stay for phones); "Sort A to Z" renumbers the whole list in one go. Uses the existing `reorder_report_brands` function, so no SQL is needed.
+
+---
+
+## Salesmen: own tab, staff can manage their branch
+- Onyxx: staff should add/remove salesmen, and the flow inside Daily Report setup was awkward.
+- New "Salesmen" tab (add, rename, Remove = deactivate, Reactivate); the old Setup tab is now "Brands". Daily entry also has an "Add a salesman" box under "Who sold", which refreshes only the salesmen list so half-typed figures survive.
+- Staff manage their own branch, IT Admin any; Manager/Director stay view-only.
+- **Needs SQL:** run `supabase/migrations/salesmen_staff_manage.sql` (switches the staff_members policies to `app.can_work_branch`). Until it is run, staff adds/renames are refused by the database.
+
+---
+
+## No more red flash right after login
+- Onyxx saw an error flash for a split second after signing in.
+- Cause: Supabase hands over the session a moment before the profile row loads, so the login page briefly read "signed in, no active access" and showed the red box. `lib/auth-context.tsx` now stays in `loading` until that profile arrives (only for a new sign-in, not token refreshes).
+
+---
+
+## History moved next to Load Data
+- Onyxx: History sat jammed against the Daily Report tab and read like a nav tab.
+- It is now a small icon button on the right beside Load Data / Change Data, with a divider before the profile menu. The "Data loaded." note only shows on very wide screens (1700px+).
+- Files: `components/saved-reports.tsx`, `components/app-header.tsx`, `app/dashboard/layout.tsx`.
+
+---
+
 ## One shared top bar across the dashboard, Repairs and Daily Report
 - Owner's question: why does clicking Repairs or Daily Report jump to a different
   page? They are separate layouts on purpose (never inside the sales dashboard's
@@ -897,35 +947,6 @@ automated policy tests get written **before** any feature code.
 - Files added: `docs/REPAIR_MODULE_SPEC.md`, `PROJECT_STATUS.md`
 
 ---
-
-
-
-
-
-
-## 2026-10-14 — Chit number is the repair number
-- Onyxx: the chit number is the repair number, and it is the first thing staff key in.
-- New Repair now starts with a required "Chit no." box (autofocused). The repair number becomes `BRANCH-CHITNO` (e.g. KMT-54279) instead of a random code; a chit number already used at the same outlet is refused with a clear message. Old repairs keep their old numbers, and the separate "Chit No." line is hidden where it would just repeat the number.
-- No SQL needed: `job_no` already has a UNIQUE constraint and the chit still saves to `preprinted_chit_no`.
-
-## 2026-10-14 — Brands: drag and drop, Sort A to Z
-- Onyxx wanted to arrange brands by dragging, and an auto alphabetical order for after brands are added or removed.
-- Brands tab: drag a brand by its grip handle to drop it in a new spot (arrows stay for phones); "Sort A to Z" renumbers the whole list in one go. Uses the existing `reorder_report_brands` function, so no SQL is needed.
-
-## 2026-10-14 — Salesmen: own tab, staff can manage their branch
-- Onyxx: staff should add/remove salesmen, and the flow inside Daily Report setup was awkward.
-- New "Salesmen" tab (add, rename, Remove = deactivate, Reactivate); the old Setup tab is now "Brands". Daily entry also has an "Add a salesman" box under "Who sold", which refreshes only the salesmen list so half-typed figures survive.
-- Staff manage their own branch, IT Admin any; Manager/Director stay view-only.
-- **Needs SQL:** run `supabase/migrations/salesmen_staff_manage.sql` (switches the staff_members policies to `app.can_work_branch`). Until it is run, staff adds/renames are refused by the database.
-
-## 2026-10-14 — No more red flash right after login
-- Onyxx saw an error flash for a split second after signing in.
-- Cause: Supabase hands over the session a moment before the profile row loads, so the login page briefly read "signed in, no active access" and showed the red box. `lib/auth-context.tsx` now stays in `loading` until that profile arrives (only for a new sign-in, not token refreshes).
-
-## 2026-10-14 — History moved next to Load Data
-- Onyxx: History sat jammed against the Daily Report tab and read like a nav tab.
-- It is now a small icon button on the right beside Load Data / Change Data, with a divider before the profile menu. The "Data loaded." note only shows on very wide screens (1700px+).
-- Files: `components/saved-reports.tsx`, `components/app-header.tsx`, `app/dashboard/layout.tsx`.
 
 ## 2026-09-07 — Explorer page: filter by anything, and a saved-report history
 
