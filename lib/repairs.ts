@@ -347,6 +347,81 @@ export async function uploadSignature(jobId: string, svgText: string): Promise<s
   return path;
 }
 
+// ---------------------------------------------------------------------------
+// The customer's copy. The QR on the printed slip and the "Send copy" WhatsApp
+// message both open the same public page, /status, which shows the intake
+// record (supabase/migrations/repair_customer_copy.sql). status_token is a
+// bearer credential: it goes only into this link.
+export function customerCopyUrl(job: Pick<RepairJob, 'status_token'>): string {
+  return `${window.location.origin}/status?token=${job.status_token}`;
+}
+
+export function customerCopyMessage(job: Pick<RepairJob, 'customer_name' | 'job_no' | 'status_token'>): string {
+  return `Hi ${job.customer_name}, thank you for leaving your watch with MPT Watches. `
+    + `Your repair number is ${job.job_no}. Your intake record and repair status: ${customerCopyUrl(job)}`;
+}
+
+// ---------------------------------------------------------------------------
+// Signing for collection on the customer's own phone, for when they come
+// without the chit (supabase/migrations/repair_remote_signing.sql). Staff start
+// a request; the customer opens /sign with its token, signs, and the counter
+// screen picks the signature up and finishes collection as usual.
+
+export type SignDelivery = 'WHATSAPP' | 'QR';
+
+export type SignRequest = {
+  id: string;
+  job_id: string;
+  token: string;
+  collector_name: string;
+  collector_relationship: string | null;
+  delivery: SignDelivery;
+  created_at: string;
+  expires_at: string;
+  signature_svg: string | null;
+  signed_at: string | null;
+  cancelled_at: string | null;
+};
+
+// What the customer is asked to agree to. Saved word for word with the
+// signature, so the record shows exactly what they signed.
+export const REMOTE_SIGN_DECLARATION =
+  'I confirm I have received the watch for this repair, and that I did not present the repair receipt (chit).';
+
+export async function startSignRequest(args: {
+  jobId: string; collectorName: string; collectorRelationship?: string; delivery: SignDelivery;
+}): Promise<SignRequest> {
+  const { data, error } = await supabase.from('sign_requests').insert({
+    job_id: args.jobId,
+    collector_name: args.collectorName,
+    collector_relationship: args.collectorRelationship ?? null,
+    delivery: args.delivery,
+  }).select('*').single();
+  if (error) throw error;
+  return data as SignRequest;
+}
+
+export async function getSignRequest(id: string): Promise<SignRequest | null> {
+  const { data, error } = await supabase.from('sign_requests').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data as SignRequest | null;
+}
+
+export async function cancelSignRequest(id: string): Promise<void> {
+  const { error } = await supabase.from('sign_requests')
+    .update({ cancelled_at: new Date().toISOString() }).eq('id', id).is('signed_at', null);
+  if (error) throw error;
+}
+
+export function signLinkUrl(token: string): string {
+  return `${window.location.origin}/sign?t=${token}`;
+}
+
+export function signLinkMessage(job: Pick<RepairJob, 'customer_name' | 'job_no'>, token: string): string {
+  return `Hi ${job.customer_name}, please sign here to collect your watch (repair ${job.job_no}) `
+    + `from MPT Watches. The link works once and expires in 15 minutes: ${signLinkUrl(token)}`;
+}
+
 // The fields staff may correct after intake. Status, branch and money history
 // are not here: those move only through the proper actions.
 export type RepairDetailsPatch = {

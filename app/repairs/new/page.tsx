@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save, WifiOff, ArrowLeft } from 'lucide-react';
+import { Loader2, Save, WifiOff, ArrowLeft, Send, Printer } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import {
-  createRepairJob, jobNoFromChit, normalisePhone, balanceDue,
-  type CreateJobInput, type JobType, type ServiceRoute, type WarrantyDeclaration,
+  createRepairJob, jobNoFromChit, normalisePhone, balanceDue, waLink, customerCopyMessage,
+  type RepairJob, type CreateJobInput, type JobType, type ServiceRoute, type WarrantyDeclaration,
 } from '@/lib/repairs';
 import { queueJob } from '@/lib/repairs-outbox';
 
@@ -58,6 +58,7 @@ export default function NewRepairJobPage() {
   const [error, setError] = useState<string | null>(null);
   const [queuedOffline, setQueuedOffline] = useState(false);
   const [createdJobNo, setCreatedJobNo] = useState<string | null>(null);
+  const [createdJob, setCreatedJob] = useState<RepairJob | null>(null);
 
   // Staff have exactly one branch — their own — and it is not a choice on
   // this screen; it comes from the signed-in account, the same way the paper
@@ -143,7 +144,7 @@ export default function NewRepairJobPage() {
 
     setSubmitting(true);
     try {
-      await createRepairJob(input);
+      setCreatedJob(await createRepairJob(input));
       setCreatedJobNo(input.jobNo);
     } catch (err) {
       if (looksLikeNetworkFailure(err)) {
@@ -181,12 +182,24 @@ export default function NewRepairJobPage() {
         ) : (
           <p className="text-slate-500 text-sm mb-6">Saved. Give the customer this number for collection.</p>
         )}
+        {createdJob && (
+          <div className="flex gap-2 justify-center mb-3">
+            <a href={waLink(createdJob.customer_phone, customerCopyMessage(createdJob))} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white">
+              <Send size={15} /> Send copy on WhatsApp
+            </a>
+            <a href={`/repairs/slip?job=${createdJob.id}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-700">
+              <Printer size={15} /> Print slip
+            </a>
+          </div>
+        )}
         <div className="flex gap-2 justify-center">
           <button onClick={() => router.push('/repairs')} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white">
             Back to list
           </button>
           <button
-            onClick={() => { setCreatedJobNo(null); setQueuedOffline(false); setCustomerName(''); setCustomerPhone(''); setServicesRequired(''); }}
+            onClick={() => { setCreatedJobNo(null); setCreatedJob(null); setQueuedOffline(false); setCustomerName(''); setCustomerPhone(''); setServicesRequired(''); }}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-700"
           >
             New repair

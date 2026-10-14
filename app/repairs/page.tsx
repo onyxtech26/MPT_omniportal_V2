@@ -5,13 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Search, X, Phone, MessageCircle, ArrowRight, Ban, PackageX,
-  ShieldAlert, Clock, WifiOff, RefreshCw, CheckCircle2, Printer, Pencil, Trash2,
+  ShieldAlert, Clock, WifiOff, RefreshCw, CheckCircle2, Printer, Pencil, Trash2, Send,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import {
   listRepairJobs, getRepairJob, listJobEvents, listJobContacts, listStaffForBranch,
   transitionJob, collectJob, logContact, uploadSignature, getJobCollection, signatureUrl,
-  updateRepairDetails, deleteRepairJob, normalisePhone, type RepairDetailsPatch, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
+  updateRepairDetails, deleteRepairJob, customerCopyMessage, normalisePhone, type RepairDetailsPatch, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
   chitIsInJobNo, STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, FORWARD_PATH, PRE_READY_STATUSES, STEP_ACTION_LABELS,
   type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember, type CollectionRecord,
   type ContactChannel, type ContactPurpose, type ContactOutcome, type CollectionProof, type JobStatus,
@@ -301,6 +301,12 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
               <a href={waLink(job.customer_phone, `Hi ${job.customer_name}, this is MPT Watches regarding your repair ${job.job_no}.`)}
                 target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-emerald-600"><MessageCircle size={14} /></a>
             </div>
+            {/* The customer's copy of their intake record: the same page the
+                slip's QR opens. Staff press send in WhatsApp themselves. */}
+            <a href={waLink(job.customer_phone, customerCopyMessage(job))} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+              <Send size={13} /> Send copy on WhatsApp
+            </a>
           </Section>
 
           <Section title="Item">

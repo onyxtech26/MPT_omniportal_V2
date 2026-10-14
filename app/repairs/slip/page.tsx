@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { Printer } from 'lucide-react';
-import { getRepairJob, balanceDue, chitIsInJobNo, type RepairJob } from '@/lib/repairs';
+import { getRepairJob, balanceDue, chitIsInJobNo, customerCopyUrl, type RepairJob } from '@/lib/repairs';
 import { supabase } from '@/lib/supabase';
 
 // The record itself is digital, but the customer still walks away with
@@ -42,7 +42,7 @@ function SlipPageInner() {
       supabase.from('staff_members').select('full_name').eq('id', job.served_by).maybeSingle()
         .then(({ data }) => setServedByName((data as { full_name: string } | null)?.full_name ?? null));
     }
-    const statusUrl = `${window.location.origin}/status?token=${job.status_token}`;
+    const statusUrl = customerCopyUrl(job);
     QRCode.toDataURL(statusUrl, { margin: 1, width: 160 }).then(setQrDataUrl);
   }, [job]);
 
@@ -88,7 +88,7 @@ function SlipPageInner() {
             {/* eslint-disable-next-line @next/next/no-img-element -- a plain
                 <img> prints far more reliably across browsers than canvas */}
             <img src={qrDataUrl} alt="Scan to check status" width={100} height={100} />
-            <p className="text-center mt-1">Scan to check status</p>
+            <p className="text-center mt-1">Scan for your intake record and status</p>
           </div>
         )}
 
