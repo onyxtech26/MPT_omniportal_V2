@@ -129,12 +129,12 @@ export default function LeaderboardPage() {
       </header>
 
       {/* Board tabs */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 max-sm:grid max-sm:grid-cols-2">
         {BOARDS.map((b) => (
           <button
             key={b.id}
             onClick={() => setBoard(b.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+            className={`px-4 py-2 max-sm:py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
               board === b.id
                 ? 'bg-[#0f172a] text-white shadow-sm'
                 : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -151,7 +151,7 @@ export default function LeaderboardPage() {
             value={board === 'outlet' ? 'ALL' : scope}
             disabled={board === 'outlet'}
             onChange={(e) => setScope(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 max-sm:py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="ALL">All outlets</option>
             {outlets.map((o) => <option key={o.code} value={o.code}>{o.code}</option>)}
@@ -165,7 +165,7 @@ export default function LeaderboardPage() {
               <button
                 key={m}
                 onClick={() => setMetric(m)}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
+                className={`px-4 py-1.5 max-sm:py-2.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
                   metric === m ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >{m}</button>
@@ -198,20 +198,22 @@ export default function LeaderboardPage() {
         <p className="text-slate-400 text-xs font-medium mt-4">{activeBoard.hint}</p>
       </div>
 
-      {/* Ranking — sales, units and profit all shown; "Rank by" sets the order */}
+      {/* Ranking — sales, units and profit all shown; "Rank by" sets the order.
+          On phones each row becomes a two-line card (sales on the right, units
+          and profit underneath the name) instead of a table to scroll sideways. */}
       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-x-auto">
-        <div className="flex items-center gap-4 px-4 py-2.5 bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider min-w-[640px]">
+        <div className="flex items-center gap-4 max-sm:gap-3 px-4 max-sm:px-3 py-2.5 bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider sm:min-w-[640px]">
           <span className="w-7 shrink-0" />
           <span className="flex-1">{activeBoard.label}</span>
-          <span className="w-32 text-right shrink-0">Sales</span>
-          <span className="w-20 text-right shrink-0">Units</span>
-          <span className="w-32 text-right shrink-0">Profit</span>
+          <span className="w-32 max-sm:w-auto text-right shrink-0">Sales</span>
+          <span className="w-20 text-right shrink-0 max-sm:hidden">Units</span>
+          <span className="w-32 text-right shrink-0 max-sm:hidden">Profit</span>
         </div>
         {rows.map((r, i) => {
           const width = top ? (Math.abs(r.value) / top) * 100 : 0;
           const negative = r.value < 0;
           return (
-            <div key={r.name} className={`flex items-center gap-4 p-4 min-w-[640px] ${i ? 'border-t border-slate-50' : ''}`}>
+            <div key={r.name} className={`flex items-center gap-4 max-sm:gap-3 p-4 max-sm:px-3 sm:min-w-[640px] ${i ? 'border-t border-slate-50' : ''}`}>
               <span className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 ${
                 i < 3 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
               }`}>{i + 1}</span>
@@ -224,21 +226,26 @@ export default function LeaderboardPage() {
                     style={{ width: `${width}%` }}
                   />
                 </div>
+                <p className="sm:hidden mt-1.5 text-xs text-slate-500 font-medium">
+                  {r.units.toLocaleString()} units ·{' '}
+                  <span className={r.profit < 0 ? 'text-rose-600' : ''}>{money(r.profit)}</span>{' '}
+                  profit · {r.marginPct.toFixed(1)}%
+                </p>
               </div>
 
-              <div className="w-32 text-right shrink-0">
+              <div className="w-32 max-sm:w-auto text-right shrink-0">
                 <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{money(r.sales)}</p>
                 <p className="text-xs text-slate-400 font-medium">
                   {grand.sales ? ((r.sales / grand.sales) * 100).toFixed(1) : '0.0'}%
                 </p>
               </div>
-              <div className="w-20 text-right shrink-0">
+              <div className="w-20 text-right shrink-0 max-sm:hidden">
                 <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{r.units.toLocaleString()}</p>
                 <p className="text-xs text-slate-400 font-medium">
                   {grand.units ? ((r.units / grand.units) * 100).toFixed(1) : '0.0'}%
                 </p>
               </div>
-              <div className="w-32 text-right shrink-0">
+              <div className="w-32 text-right shrink-0 max-sm:hidden">
                 <p className={`font-bold text-sm whitespace-nowrap ${r.profit < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
                   {money(r.profit)}
                 </p>

@@ -93,10 +93,11 @@ export default function DailyReportPage() {
           </p>
         </div>
         {!isStaff && (
-          <label className="block">
+          // max-w-full: a long branch name must not push the select past a phone screen.
+          <label className="block max-w-full">
             <span className="block text-xs font-semibold text-slate-500 mb-1">Branch</span>
             <select value={branch} onChange={(e) => setBranch(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
+              className="max-w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
               {branches.map((b) => <option key={b.code} value={b.code}>{b.name ?? b.code}</option>)}
             </select>
           </label>

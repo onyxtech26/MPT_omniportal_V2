@@ -5,6 +5,8 @@ import { Check, Pencil, Plus, X } from 'lucide-react';
 import { addSalesman, renameSalesman, setSalesmanActive } from '@/lib/daily-report';
 import type { Salesman } from '../page';
 
+// Phones get >= 40px tap targets on the small icon and text buttons; desktop keeps its compact sizes.
+const tap = 'max-sm:inline-flex max-sm:items-center max-sm:justify-center max-sm:h-10 max-sm:min-w-10';
 const input = 'px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400';
 
 // The branch's salesmen. They are only ever deactivated, never deleted, so a
@@ -38,7 +40,7 @@ export function SalesmenTab(props: {
           if (!name.trim()) return;
           run(async () => { await addSalesman(branch, name); setName(''); });
         }}>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" maxLength={80} className={`${input} flex-1`} />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" maxLength={80} className={`${input} flex-1 min-w-0`} />
           <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700"><Plus size={15} /> Add</button>
         </form>
       ) : (
@@ -49,20 +51,20 @@ export function SalesmenTab(props: {
           <li key={s.id} className="flex items-center gap-2 py-2">
             {editing === s.id ? (
               <>
-                <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={80} className={`${input} flex-1 py-1.5`} autoFocus />
+                <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={80} className={`${input} flex-1 min-w-0 py-1.5`} autoFocus />
                 <button aria-label="Save name" onClick={() => draft.trim() && run(async () => { await renameSalesman(s.id, draft); setEditing(null); })}
-                  className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50"><Check size={16} /></button>
-                <button aria-label="Cancel" onClick={() => setEditing(null)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"><X size={16} /></button>
+                  className={`p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 ${tap}`}><Check size={16} /></button>
+                <button aria-label="Cancel" onClick={() => setEditing(null)} className={`p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 ${tap}`}><X size={16} /></button>
               </>
             ) : (
               <>
-                <span className={`flex-1 text-sm ${s.is_active ? 'text-slate-800 font-medium' : 'text-slate-400 line-through'}`}>{s.full_name}</span>
+                <span className={`flex-1 min-w-0 break-words text-sm ${s.is_active ? 'text-slate-800 font-medium' : 'text-slate-400 line-through'}`}>{s.full_name}</span>
                 {canManage && (
                   <>
                     <button aria-label={`Rename ${s.full_name}`} onClick={() => { setEditing(s.id); setDraft(s.full_name); }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Pencil size={14} /></button>
+                      className={`p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 shrink-0 ${tap}`}><Pencil size={14} /></button>
                     <button onClick={() => run(() => setSalesmanActive(s.id, !s.is_active))}
-                      className={`text-xs font-semibold underline ${s.is_active ? 'text-red-600 hover:text-red-800' : 'text-slate-500 hover:text-slate-900'}`}>
+                      className={`text-xs font-semibold underline shrink-0 ${tap} ${s.is_active ? 'text-red-600 hover:text-red-800' : 'text-slate-500 hover:text-slate-900'}`}>
                       {s.is_active ? 'Remove' : 'Reactivate'}
                     </button>
                   </>

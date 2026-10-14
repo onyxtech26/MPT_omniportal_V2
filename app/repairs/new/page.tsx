@@ -176,7 +176,7 @@ export default function NewRepairJobPage() {
         {queuedOffline ? (
           <p className="text-amber-700 text-sm mb-6 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
             No connection right now — this repair is saved on this device and will
-            sync automatically. The repair number above is final; it's safe to give
+            sync automatically. The repair number above is final; it&apos;s safe to give
             to the customer.
           </p>
         ) : (
@@ -229,7 +229,7 @@ export default function NewRepairJobPage() {
 
         <section className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Intake</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Branch">
               {isStaff ? (
                 <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 text-sm font-semibold text-slate-700 border border-slate-200">
@@ -331,7 +331,7 @@ export default function NewRepairJobPage() {
             asking for, not marketing use, which is a separate consent this
             build does not collect yet. */}
         <p className="text-xs text-slate-400 bg-slate-50 rounded-xl px-4 py-3 leading-relaxed">
-          The customer's name and phone number are collected to process this
+          The customer&apos;s name and phone number are collected to process this
           repair, including sharing with the vendor factory where the repair is
           sent out-of-house, and are kept only as long as needed. / Nama dan
           nombor telefon pelanggan dikumpul untuk memproses pembaikan ini,

@@ -56,18 +56,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
         <div className="ml-auto flex items-center gap-3">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide hidden sm:block">IT Admin Console</p>
-          <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+          {/* Phones: icon-only, so pad it out to a full 44px tap target. */}
+          <button onClick={handleLogout} aria-label="Sign out" className="flex items-center justify-center gap-2 px-3 py-2 max-sm:min-h-11 max-sm:min-w-11 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
             <LogOut size={16} /> <span className="hidden sm:inline">Sign Out</span>
           </button>
         </div>
       </header>
-      {/* Mobile nav — same links, stacked */}
-      <nav className="sm:hidden flex items-center gap-1 px-4 py-2 bg-white border-b border-slate-100 overflow-x-auto">
-        {NAV.map((item) => (
-          <Link key={item.href} href={item.href} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 whitespace-nowrap">
-            <item.icon size={14} /> {item.name}
-          </Link>
-        ))}
+      {/* Mobile nav: four equal cells (icon over label) so all four fit at
+          360px without a hidden scroll, each a full 44px tap target. */}
+      <nav className="sm:hidden grid grid-cols-4 gap-1 px-2 py-1.5 bg-white border-b border-slate-100">
+        {NAV.map((item) => {
+          const active = pathname === item.href || pathname === item.href + '/';
+          return (
+            <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined}
+              className={`flex flex-col items-center justify-center gap-0.5 min-h-11 px-1 py-1.5 rounded-lg text-[11px] whitespace-nowrap ${active ? 'bg-slate-900 text-white font-semibold' : 'text-slate-600 font-medium'}`}>
+              <item.icon size={16} /> {item.name}
+            </Link>
+          );
+        })}
       </nav>
       <main className="p-4 md:p-8 max-w-[1200px] mx-auto">{children}</main>
     </div>

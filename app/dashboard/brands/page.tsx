@@ -104,7 +104,7 @@ export default function BrandsPage() {
           <select
             value={outletCode}
             onChange={(e) => { setOutletCode(e.target.value); setOpenBrand(null); }}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
+            className="px-4 py-2 max-sm:py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
           >
             <option value="ALL">All outlets</option>
             {outlets.map((o) => <option key={o.code} value={o.code}>{o.code}</option>)}
@@ -118,7 +118,7 @@ export default function BrandsPage() {
               <button
                 key={k}
                 onClick={() => setMetric(k)}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
+                className={`px-4 py-1.5 max-sm:py-2.5 rounded-full text-xs font-bold transition-colors capitalize cursor-pointer ${
                   metric === k ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
                 }`}
               >{k}</button>
@@ -146,12 +146,14 @@ export default function BrandsPage() {
 
       {/* Ranking, biggest first — sales AND units shown together */}
       <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
-        <div className="flex items-center gap-4 px-4 py-2.5 bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+        {/* Phones drop the Units column (units go under the sales figure) and
+            the brand logo, which leaves the brand name room to be read. */}
+        <div className="flex items-center gap-4 max-sm:gap-3 px-4 max-sm:px-3 py-2.5 bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
           <span className="w-7 shrink-0" />
-          <span className="w-8 shrink-0" />
-          <span className="flex-1">Product line</span>
-          <span className="w-32 text-right shrink-0">Sales</span>
-          <span className="w-24 text-right shrink-0">Units</span>
+          <span className="w-8 shrink-0 max-sm:hidden" />
+          <span className="flex-1 whitespace-nowrap">Product line</span>
+          <span className="w-32 max-sm:w-auto text-right shrink-0">Sales</span>
+          <span className="w-24 text-right shrink-0 max-sm:hidden">Units</span>
           <span className="w-4 shrink-0" />
         </div>
         {rows.map((r, i) => {
@@ -166,23 +168,25 @@ export default function BrandsPage() {
             <div key={r.brand} className={i ? 'border-t border-slate-50' : ''}>
               <button
                 onClick={() => setOpenBrand(open ? null : r.brand)}
-                className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-4 max-sm:gap-3 p-4 max-sm:px-3 hover:bg-slate-50 transition-colors text-left cursor-pointer"
               >
                 <span className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 ${
                   i < 3 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
                 }`}>{i + 1}</span>
-                <BrandImage brand={r.brand} size={32} />
+                <span className="max-sm:hidden shrink-0"><BrandImage brand={r.brand} size={32} /></span>
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-slate-900 text-sm truncate">{r.brand}</p>
                   <div className="h-1.5 bg-slate-100 rounded-full mt-1.5 overflow-hidden max-w-xs">
                     <div className="h-full bg-slate-900 rounded-full" style={{ width: `${top ? (sortValue(r) / top) * 100 : 0}%` }} />
                   </div>
                 </div>
-                <div className="w-32 text-right shrink-0">
+                <div className="w-32 max-sm:w-auto text-right shrink-0">
                   <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{money(r.sales)}</p>
-                  <p className="text-xs text-slate-400 font-medium">{salesShare.toFixed(1)}%</p>
+                  <p className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                    <span className="sm:hidden">{r.units.toLocaleString()} units · </span>{salesShare.toFixed(1)}%
+                  </p>
                 </div>
-                <div className="w-24 text-right shrink-0">
+                <div className="w-24 text-right shrink-0 max-sm:hidden">
                   <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{r.units.toLocaleString()}</p>
                   <p className="text-xs text-slate-400 font-medium">{unitShare.toFixed(1)}%</p>
                 </div>

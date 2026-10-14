@@ -104,7 +104,7 @@ function RepairsListPageInner() {
         <div className="flex items-center gap-2 mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-100 text-amber-800 text-sm font-medium">
           {syncing ? <RefreshCw size={16} className="animate-spin" /> : <WifiOff size={16} />}
           {queuedCount} repair{queuedCount > 1 ? 's' : ''} saved on this device, not yet synced.
-          <button onClick={trySync} className="ml-auto underline font-semibold">Retry now</button>
+          <button onClick={trySync} className="ml-auto underline font-semibold max-sm:py-2">Retry now</button>
         </div>
       )}
 
@@ -117,7 +117,7 @@ function RepairsListPageInner() {
         </div>
         {canCreate && (
           <button onClick={() => router.push('/repairs/new')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 transition-colors">
+            className="flex items-center gap-2 px-4 py-2.5 max-sm:min-h-11 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 transition-colors">
             <Plus size={16} /> New Repair
           </button>
         )}
@@ -130,7 +130,7 @@ function RepairsListPageInner() {
             className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as JobStatus | 'ALL')}
-          className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm">
+          className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm max-sm:w-full">
           <option value="ALL">All statuses</option>
           {FORWARD_PATH.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
@@ -155,8 +155,8 @@ function RepairsListPageInner() {
                     {STATUS_LABELS[j.status]}
                   </span>
                 </div>
-                <div className="font-semibold text-slate-900 mt-1">{j.customer_name}</div>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="font-semibold text-slate-900 mt-1 break-words">{j.customer_name}</div>
+                <div className="text-xs text-slate-500 mt-0.5 break-words">
                   {[j.brand, j.model_no].filter(Boolean).join(' ') || 'No item details'}
                   {profile?.role !== 'staff' && ` · ${j.branch_code}`}
                   {j.promised_ready_date && ` · promised ${new Date(j.promised_ready_date).toLocaleDateString()}`}
@@ -297,23 +297,24 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
         className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40" onClick={onClose} />
       <motion.div
         initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-        className="fixed right-0 top-0 bottom-0 w-full sm:w-[480px] bg-white shadow-2xl z-50 overflow-y-auto"
+        className="fixed right-0 top-0 bottom-0 w-full sm:w-[480px] bg-white shadow-2xl z-50 overflow-y-auto overscroll-contain"
       >
-        <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between z-10">
-          <div>
+        <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 max-sm:py-2 max-sm:pr-2 flex items-center justify-between z-10">
+          <div className="min-w-0">
             <p className="font-mono text-sm font-bold text-slate-900">{job.job_no}</p>
             {!chitIsInJobNo(job.job_no, job.preprinted_chit_no) && <p className="text-xs text-slate-400">Chit No. {job.preprinted_chit_no}</p>}
           </div>
           <div className="flex items-center gap-1">
             <a href={`/repairs/slip?job=${job.id}`} target="_blank" rel="noopener noreferrer"
-              title="Print customer slip" className="p-2 hover:bg-slate-100 rounded-xl text-slate-500">
+              title="Print customer slip" className="p-2 max-sm:p-3.5 hover:bg-slate-100 rounded-xl text-slate-500">
               <Printer size={17} />
             </a>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X size={18} /></button>
+            <button onClick={onClose} aria-label="Close" className="p-2 max-sm:p-3.5 hover:bg-slate-100 rounded-xl"><X size={18} /></button>
           </div>
         </div>
 
-        <div className="p-5 space-y-5">
+        {/* Bottom padding clears the iPhone home indicator; still 1.25rem elsewhere. */}
+        <div className="p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-5">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[job.status]}`}>{STATUS_LABELS[job.status]}</span>
             <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">{CUSTODY_LABELS[job.custody_state]}</span>
@@ -321,32 +322,32 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
           </div>
 
           <Section title="Customer">
-            <p className="font-semibold text-slate-900">{job.customer_name}</p>
+            <p className="font-semibold text-slate-900 break-words">{job.customer_name}</p>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-sm text-slate-500">{job.customer_phone}</span>
-              <a href={`tel:${job.customer_phone}`} title="Call" className="p-2 -m-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100"><Phone size={16} /></a>
+              <a href={`tel:${job.customer_phone}`} title="Call" className="p-2 -m-1 max-sm:p-3.5 max-sm:-my-2.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100"><Phone size={16} /></a>
               <a href={waLink(job.customer_phone, `Hi ${job.customer_name}, this is MPT Watches regarding your repair ${job.job_no}.`)}
-                target="_blank" rel="noopener noreferrer" title="WhatsApp" className="p-2 -m-1 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"><MessageCircle size={16} /></a>
+                target="_blank" rel="noopener noreferrer" title="WhatsApp" className="p-2 -m-1 max-sm:p-3.5 max-sm:-my-2.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"><MessageCircle size={16} /></a>
             </div>
             {/* The customer's copy of their intake record: the same page the
                 slip's QR opens. Staff press send in WhatsApp themselves. */}
             <a href={waLink(job.customer_phone, customerCopyMessage(job))} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+              className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 max-sm:min-h-11 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
               <Send size={13} /> Send copy on WhatsApp
             </a>
           </Section>
 
           <Section title="Item">
-            <p className="text-sm text-slate-700">{[job.brand, job.model_no].filter(Boolean).join(' · ') || '—'}</p>
+            <p className="text-sm text-slate-700 break-words">{[job.brand, job.model_no].filter(Boolean).join(' · ') || '—'}</p>
             {job.serial_no && <p className="text-xs text-slate-400">S/N {job.serial_no}</p>}
           </Section>
 
           <Section title="Services Required">
-            <p className="text-sm text-slate-700 whitespace-pre-wrap">{job.services_required}</p>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{job.services_required}</p>
           </Section>
 
           {job.staff_observations && (
-            <Section title="Staff Observations"><p className="text-sm text-slate-700 whitespace-pre-wrap">{job.staff_observations}</p></Section>
+            <Section title="Staff Observations"><p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{job.staff_observations}</p></Section>
           )}
 
           {job.warranty_declaration && (
@@ -375,13 +376,13 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
             <div className="flex flex-wrap gap-2">
               {canEdit && (
                 <button onClick={() => setShowEdit(true)} disabled={busy}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-2 max-sm:min-h-11 rounded-xl text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50">
                   <Pencil size={14} /> Edit Details
                 </button>
               )}
               {canDelete && (
                 <button onClick={handleDelete} disabled={busy}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-2 max-sm:min-h-11 rounded-xl text-sm font-semibold bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50">
                   <Trash2 size={14} /> Delete Repair
                 </button>
               )}
@@ -446,7 +447,7 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
 
           {collection && (
             <Section title="Collection">
-              <p className="text-sm text-slate-700">
+              <p className="text-sm text-slate-700 break-words">
                 Collected by <span className="font-semibold text-slate-900">{collection.collector_name}</span>
                 {collection.collector_relationship && ` (${collection.collector_relationship})`}
                 {' · '}{new Date(collection.collected_at).toLocaleString()}
@@ -469,12 +470,12 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
           <Section title="History">
             <ul className="space-y-2">
               {events.map((e) => (
-                <li key={e.id} className="text-xs text-slate-500 border-l-2 border-slate-100 pl-3">
+                <li key={e.id} className="text-xs text-slate-500 border-l-2 border-slate-100 pl-3 break-words">
                   <span className="font-semibold text-slate-700">
                     {e.kind === 'VOID' ? 'Voided' : e.to_status ? STATUS_LABELS[e.to_status] : e.to_custody ? CUSTODY_LABELS[e.to_custody] : e.kind}
                   </span>
                   {' · '}{new Date(e.at).toLocaleString()}
-                  {e.reason && <div className="text-slate-400 italic">"{e.reason}"</div>}
+                  {e.reason && <div className="text-slate-400 italic">&quot;{e.reason}&quot;</div>}
                 </li>
               ))}
             </ul>
@@ -504,7 +505,7 @@ function ActionButton({ icon: Icon, children, onClick, busy, variant = 'default'
     danger: 'bg-red-50 text-red-700 hover:bg-red-100',
   }[variant];
   return (
-    <button onClick={onClick} disabled={busy} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 ${styles}`}>
+    <button onClick={onClick} disabled={busy} className={`flex items-center gap-2 px-4 py-2.5 max-sm:min-h-11 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 ${styles}`}>
       <Icon size={15} /> {children}
     </button>
   );
@@ -657,7 +658,7 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
           <div className="flex gap-1 mb-2">
             {(['COUNTER', 'PHONE'] as const).map((w) => (
               <button key={w} type="button" disabled={!!signReq} onClick={() => setSignWhere(w)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60 ${signWhere === w ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>
+                className={`px-3 py-1.5 max-sm:min-h-11 max-sm:flex-1 rounded-lg text-xs font-semibold disabled:opacity-60 ${signWhere === w ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>
                 {w === 'COUNTER' ? 'On this screen' : "On customer's phone"}
               </button>
             ))}
@@ -665,7 +666,7 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
           {signWhere === 'COUNTER' ? (
             <>
               <SignaturePadCanvas ref={padRef} width={340} height={130} />
-              <button type="button" onClick={() => padRef.current?.clear()} className="text-[11px] font-semibold text-slate-500 underline mt-1">
+              <button type="button" onClick={() => padRef.current?.clear()} className="text-[11px] font-semibold text-slate-500 underline mt-1 max-sm:mt-0 max-sm:py-3 max-sm:pr-4">
                 Clear
               </button>
             </>
@@ -677,11 +678,11 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
               </p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={starting || !collectorName.trim()} onClick={() => startPhoneSigning('WHATSAPP')}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-2 max-sm:min-h-11 rounded-lg text-xs font-semibold bg-emerald-600 text-white disabled:opacity-50">
                   <Send size={13} /> Send link by WhatsApp
                 </button>
                 <button type="button" disabled={starting || !collectorName.trim()} onClick={() => startPhoneSigning('QR')}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-2 max-sm:min-h-11 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 disabled:opacity-50">
                   <QrCode size={13} /> Show QR to scan
                 </button>
               </div>
@@ -700,11 +701,11 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
                 <img src={signQr} alt="Scan to sign" width={180} height={180} className="mx-auto" />
               )}
               <p className="text-xs text-slate-600 flex items-center gap-1.5">
-                <Loader2 size={13} className="animate-spin" />
+                <Loader2 size={13} className="animate-spin shrink-0" />
                 Waiting for {signReq.collector_name} to sign{signReq.delivery === 'WHATSAPP' ? ' (link sent by WhatsApp)' : ''}.
                 Link expires {new Date(signReq.expires_at).toLocaleTimeString()}.
               </p>
-              <button type="button" onClick={cancelPhoneSigning} className="text-[11px] font-semibold text-slate-500 underline">
+              <button type="button" onClick={cancelPhoneSigning} className="text-[11px] font-semibold text-slate-500 underline max-sm:py-3 max-sm:pr-4">
                 Cancel link
               </button>
             </div>
@@ -715,10 +716,10 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
       <div className="flex gap-2">
         <button disabled={busy || uploading || !collectorName.trim()}
           onClick={handleConfirm}
-          className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white disabled:opacity-50">
+          className="px-4 py-2 max-sm:min-h-11 max-sm:flex-1 rounded-lg text-sm font-semibold bg-emerald-600 text-white disabled:opacity-50">
           {uploading ? 'Saving signature…' : 'Confirm Collection'}
         </button>
-        <button onClick={() => { cancelPhoneSigning(); onCancel(); }} className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
+        <button onClick={() => { cancelPhoneSigning(); onCancel(); }} className="px-4 py-2 max-sm:min-h-11 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
       </div>
     </div>
   );
@@ -765,8 +766,8 @@ function EditDetailsForm({ job, busy, onCancel, onSubmit }: {
     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
       <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Edit details</p>
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Customer name"><input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className={smallInput} /></Field>
-        <Field label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" className={smallInput} /></Field>
+        <div className="col-span-2 sm:col-span-1"><Field label="Customer name"><input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className={smallInput} /></Field></div>
+        <div className="col-span-2 sm:col-span-1"><Field label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" className={smallInput} /></Field></div>
         <Field label="Brand"><input value={brand} onChange={(e) => setBrand(e.target.value)} className={smallInput} /></Field>
         <Field label="Model"><input value={modelNo} onChange={(e) => setModelNo(e.target.value)} className={smallInput} /></Field>
         <Field label="Serial no."><input value={serialNo} onChange={(e) => setSerialNo(e.target.value)} className={smallInput} /></Field>
@@ -779,8 +780,8 @@ function EditDetailsForm({ job, busy, onCancel, onSubmit }: {
       {error && <p className="text-xs font-medium text-red-600">{error}</p>}
       <div className="flex gap-2">
         <button disabled={busy} onClick={save}
-          className="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-900 text-white disabled:opacity-50">Save Changes</button>
-        <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
+          className="px-4 py-2 max-sm:min-h-11 max-sm:flex-1 rounded-lg text-sm font-semibold bg-slate-900 text-white disabled:opacity-50">Save Changes</button>
+        <button onClick={onCancel} className="px-4 py-2 max-sm:min-h-11 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
       </div>
     </div>
   );
@@ -794,8 +795,8 @@ function VoidForm({ busy, onCancel, onSubmit }: { busy: boolean; onCancel: () =>
       <Field label="Reason *"><input value={reason} onChange={(e) => setReason(e.target.value)} className={smallInput} /></Field>
       <div className="flex gap-2">
         <button disabled={busy || !reason.trim()} onClick={() => onSubmit(reason.trim())}
-          className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white disabled:opacity-50">Void</button>
-        <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
+          className="px-4 py-2 max-sm:min-h-11 max-sm:flex-1 rounded-lg text-sm font-semibold bg-red-600 text-white disabled:opacity-50">Void</button>
+        <button onClick={onCancel} className="px-4 py-2 max-sm:min-h-11 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
       </div>
     </div>
   );
@@ -824,7 +825,7 @@ function ContactLogSection({ jobId, contacts, staff, servedBy, canLog, onLogged 
     <Section title={`Contact Log (${contacts.length})`}>
       <div className="space-y-2 mb-2">
         {contacts.map((c) => (
-          <div key={c.id} className="text-xs bg-slate-50 rounded-lg px-3 py-2">
+          <div key={c.id} className="text-xs bg-slate-50 rounded-lg px-3 py-2 break-words">
             <span className="font-semibold text-slate-700">{c.channel}</span> · {c.outcome.replace(/_/g, ' ').toLowerCase()}
             <span className="text-slate-400"> · {new Date(c.at).toLocaleString()}</span>
             {c.note && <div className="text-slate-500 italic mt-0.5">{c.note}</div>}
@@ -833,13 +834,13 @@ function ContactLogSection({ jobId, contacts, staff, servedBy, canLog, onLogged 
         {contacts.length === 0 && <p className="text-xs text-slate-400">No contact attempts logged yet.</p>}
       </div>
       {!canLog ? null : !open ? (
-        <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
+        <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 max-sm:min-h-11 text-xs font-semibold text-slate-600 hover:text-slate-900">
           <Clock size={13} /> Log a contact attempt
         </button>
       ) : (
         <div className="bg-slate-50 rounded-xl p-3 space-y-2">
           <p className="text-[11px] text-slate-400">
-            Opening WhatsApp doesn't log anything by itself — record it here once you've actually reached out.
+            Opening WhatsApp doesn&apos;t log anything by itself — record it here once you&apos;ve actually reached out.
           </p>
           <div className="grid grid-cols-2 gap-2">
             <select value={channel} onChange={(e) => setChannel(e.target.value as ContactChannel)} className={smallInput}>
@@ -858,8 +859,8 @@ function ContactLogSection({ jobId, contacts, staff, servedBy, canLog, onLogged 
           </select>
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" className={smallInput} />
           <div className="flex gap-2">
-            <button disabled={saving} onClick={submit} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white disabled:opacity-50">Save</button>
-            <button onClick={() => setOpen(false)} className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-500">Cancel</button>
+            <button disabled={saving} onClick={submit} className="px-3 py-1.5 max-sm:min-h-11 max-sm:flex-1 rounded-lg text-xs font-semibold bg-slate-900 text-white disabled:opacity-50">Save</button>
+            <button onClick={() => setOpen(false)} className="px-3 py-1.5 max-sm:min-h-11 max-sm:px-4 rounded-lg text-xs font-medium text-slate-500">Cancel</button>
           </div>
         </div>
       )}
@@ -867,7 +868,8 @@ function ContactLogSection({ jobId, contacts, staff, servedBy, canLog, onLogged 
   );
 }
 
-const smallInput = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/10';
+// max-sm:py-2.5: 44px tall on phones, where globals.css already makes the text 16px.
+const smallInput = 'w-full px-3 py-2 max-sm:py-2.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/10';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block"><span className="block text-[11px] font-semibold text-slate-500 mb-1">{label}</span>{children}</label>;

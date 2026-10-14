@@ -1,12 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Compass, Upload, SlidersHorizontal } from 'lucide-react';
+import { Compass, Upload, SlidersHorizontal, X } from 'lucide-react';
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
 import { useData } from '../data-context';
 import { ExplorerFilters } from '@/components/explorer-filters';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   applyFilters, facetValues, listYears, DIMENSION_VALUE, customerLabel,
   type Row, type Dimension, type Selection, type RowFilters,
@@ -104,6 +105,8 @@ export default function ExplorerPage() {
   const [dateTo, setDateTo] = useState<string | null>(null);
   const [granularity, setGranularity] = useState<Granularity>('monthly');
   const [showFilters, setShowFilters] = useState(false);   // mobile only
+  // Axis widths are numbers to Recharts, so narrow them in code on phones.
+  const isMobile = useIsMobile();
 
   const filters: RowFilters = useMemo(
     () => ({ dateFrom, dateTo, years, months, selected }),
@@ -211,7 +214,9 @@ export default function ExplorerPage() {
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-6">
+    // The layout already pads the page by 16px on phones; doubling it here left the
+    // KPI cards too narrow for an 8-figure ringgit amount.
+    <div className="max-w-[1600px] mx-auto px-0 sm:px-4 md:px-8 py-2 sm:py-6">
       <div className="flex items-center justify-between gap-3 mb-5">
         <h1 className="text-3xl md:text-4xl font-bold text-slate-900 flex items-center gap-3 tracking-tight">
           <Compass className="text-[#0f172a]" size={30} />
@@ -219,7 +224,7 @@ export default function ExplorerPage() {
         </h1>
         <button
           onClick={() => setShowFilters((v) => !v)}
-          className="lg:hidden flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold cursor-pointer"
+          className="lg:hidden flex items-center gap-2 px-3 py-2 max-sm:py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold cursor-pointer"
         >
           <SlidersHorizontal size={16} />
           Filters{activeCount > 0 && ` (${activeCount})`}
@@ -227,7 +232,23 @@ export default function ExplorerPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className={showFilters ? 'block' : 'hidden lg:block'}>
+        {/* Below lg the filters open as a full-screen sheet over the results,
+            rather than pushing every figure several screens down; "Show results"
+            closes it. From lg up it is the plain sidebar, open or not. */}
+        <div className={showFilters
+          ? 'fixed inset-0 z-[60] bg-slate-50 overflow-y-auto overscroll-contain lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:overflow-visible lg:overscroll-auto'
+          : 'hidden lg:block'}>
+          <div className="lg:hidden sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-2 bg-white border-b border-slate-200">
+            <span className="text-base font-bold text-slate-900">Filters</span>
+            <button
+              onClick={() => setShowFilters(false)}
+              aria-label="Close filters"
+              className="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="max-lg:p-4">
           <ExplorerFilters
             facets={facets}
             selected={selected}
@@ -241,6 +262,15 @@ export default function ExplorerPage() {
             onClearAll={onClearAll}
             activeCount={activeCount}
           />
+          </div>
+          <div className="lg:hidden sticky bottom-0 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-slate-200">
+            <button
+              onClick={() => setShowFilters(false)}
+              className="w-full py-3 rounded-xl bg-slate-900 text-white text-sm font-bold cursor-pointer"
+            >
+              Show {visible.length.toLocaleString()} result{visible.length === 1 ? '' : 's'}
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 min-w-0 space-y-6">
@@ -252,9 +282,9 @@ export default function ExplorerPage() {
               { label: 'Transactions', value: kpis.transactions.toLocaleString('en-MY'), hint: 'Distinct transaction numbers' },
               { label: 'Avg selling price', value: money(kpis.asp), hint: 'Sales ÷ units' },
             ].map((k) => (
-              <div key={k.label} className="bg-white border border-slate-200 rounded-2xl p-4">
+              <div key={k.label} className="bg-white border border-slate-200 rounded-2xl p-4 max-sm:p-3 min-w-0">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{k.label}</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1 break-words">{k.value}</p>
+                <p className="text-2xl max-sm:text-lg font-bold text-slate-900 mt-1 break-words">{k.value}</p>
                 <p className="text-[11px] text-slate-400 mt-1">{k.hint}</p>
               </div>
             ))}
@@ -269,13 +299,13 @@ export default function ExplorerPage() {
           </p>
 
           {/* Trend */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 max-sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <h2 className="text-xl font-bold text-slate-900">Sales trend</h2>
               <select
                 value={granularity}
                 onChange={(e) => setGranularity(e.target.value as Granularity)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
+                className="px-3 py-1.5 max-sm:py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
               >
                 {GRANULARITIES.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
               </select>
@@ -285,7 +315,7 @@ export default function ExplorerPage() {
                 Nothing matches the current filters.
               </p>
             ) : (
-              <ResponsiveContainer width="100%" height={320}>
+              <ResponsiveContainer width="100%" height={isMobile ? 260 : 320}>
                 <ComposedChart data={chart} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                   {/* Do NOT add `interval` here. In Recharts 3.x `interval="preserveStartEnd"`
@@ -293,9 +323,11 @@ export default function ExplorerPage() {
                       pixels while the Bars stay correct — no error, just a broken chart.
                       `minTickGap` thins the labels on the 200-bucket daily view safely. */}
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} minTickGap={28} />
-                  <YAxis yAxisId="sales" tick={{ fontSize: 11, fill: '#64748b' }}
+                  <YAxis yAxisId="sales" tick={{ fontSize: isMobile ? 10 : 11, fill: '#64748b' }}
+                    width={isMobile ? 44 : 60}
                     tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`} />
-                  <YAxis yAxisId="units" orientation="right" tick={{ fontSize: 11, fill: '#64748b' }} />
+                  <YAxis yAxisId="units" orientation="right" tick={{ fontSize: isMobile ? 10 : 11, fill: '#64748b' }}
+                    width={isMobile ? 32 : 60} />
                   <Tooltip
                     cursor={{ fill: '#f8fafc' }}
                     formatter={(v, name) => {
@@ -319,7 +351,7 @@ export default function ExplorerPage() {
           {/* Breakdowns */}
           <div className="grid md:grid-cols-2 gap-4">
             {breakdowns.map(({ dim, label, list, max }) => (
-              <div key={dim} className="bg-white border border-slate-200 rounded-2xl p-5">
+              <div key={dim} className="bg-white border border-slate-200 rounded-2xl p-5 max-sm:p-4">
                 <h2 className="text-base font-bold text-slate-900 mb-4">{label}</h2>
                 {list.length === 0 && (
                   <p className="text-sm text-slate-400">Nothing matches the current filters.</p>

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, TrendingUp, Package, ChevronRight, ChevronDown, Download, Users, Award, DollarSign, Medal, Calendar, X, Trophy, Zap, Info, Upload } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { useData } from './data-context';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // No auth guard here on purpose — app/dashboard/layout.tsx already owns that
 // (it wraps every page under /dashboard). A second, independent check here
@@ -17,6 +18,9 @@ export default function DashboardPage() {
   const [selectedSalesmanId, setSelectedSalesmanId] = useState<string | null>(null);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  // Recharts takes axis sizes as numbers, not classes; on a phone the default
+  // 70px + 55px of axis left the bars about 150px to draw in.
+  const isMobile = useIsMobile();
 
   // Collapse any open month when switching salesperson.
   useEffect(() => { setExpandedMonth(null); }, [selectedSalesmanId]);
@@ -536,7 +540,7 @@ export default function DashboardPage() {
 
               {/* Monthly Performance */}
               {monthlyNetwork.length > 0 && (
-                <div className="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100">
+                <div className="bg-white p-6 max-sm:p-4 rounded-[24px] shadow-sm border border-slate-100">
                   <div className="mb-6">
                     <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                       <TrendingUp className="text-slate-400" />
@@ -548,26 +552,28 @@ export default function DashboardPage() {
                   </div>
                   <div className="h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={monthlyNetwork} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                      <ComposedChart data={monthlyNetwork} margin={isMobile ? { top: 8, right: 0, left: 0, bottom: 0 } : { top: 8, right: 8, left: 8, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                        <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
+                        <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: isMobile ? 10 : 12 }} axisLine={false} tickLine={false} />
                         {/* Sales in ringgit and units as a count cannot share one scale,
-                            so each gets its own axis: money left, quantity right. */}
+                            so each gets its own axis: money left, quantity right.
+                            On phones the "RM" is dropped from the ticks ("RM 6.0M"
+                            wraps in a narrow axis); the tooltip still says it. */}
                         <YAxis
                           yAxisId="sales"
-                          tick={{ fill: '#94a3b8', fontSize: 12 }}
+                          tick={{ fill: '#94a3b8', fontSize: isMobile ? 10 : 12 }}
                           axisLine={false}
                           tickLine={false}
-                          width={70}
-                          tickFormatter={(v: number) => formatCurrencyCompact(v)}
+                          width={isMobile ? 40 : 70}
+                          tickFormatter={(v: number) => isMobile ? formatCurrencyCompact(v).replace(/^RM\s*/, '') : formatCurrencyCompact(v)}
                         />
                         <YAxis
                           yAxisId="units"
                           orientation="right"
-                          tick={{ fill: '#10b981', fontSize: 12 }}
+                          tick={{ fill: '#10b981', fontSize: isMobile ? 10 : 12 }}
                           axisLine={false}
                           tickLine={false}
-                          width={55}
+                          width={isMobile ? 32 : 55}
                           tickFormatter={(v: number) => v.toLocaleString()}
                         />
                         <Tooltip
@@ -582,8 +588,8 @@ export default function DashboardPage() {
                           contentStyle={{ borderRadius: 16, border: '1px solid #e2e8f0' }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12, fontWeight: 600, paddingTop: 8 }} />
-                        <Bar yAxisId="sales" dataKey="sales" name="Sales" radius={[8, 8, 0, 0]} fill="#0f172a" />
-                        <Line yAxisId="units" dataKey="units" name="Units" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
+                        <Bar yAxisId="sales" dataKey="sales" name="Sales" radius={isMobile ? [3, 3, 0, 0] : [8, 8, 0, 0]} fill="#0f172a" />
+                        <Line yAxisId="units" dataKey="units" name="Units" stroke="#10b981" strokeWidth={2.5} dot={isMobile ? { r: 2 } : { r: 3 }} />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
@@ -711,7 +717,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="grid gap-8 lg:grid-cols-3"
+              className="grid grid-cols-1 gap-8 lg:grid-cols-3"
             >
               {/* Main Content - Salesman Leaderboard */}
               <div className="lg:col-span-2 space-y-6">
@@ -740,13 +746,13 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="bg-white p-6 md:p-8 rounded-[32px] shadow-sm border border-slate-100">
-                  <div className="flex items-center justify-between mb-8">
+                <div className="bg-white p-6 max-sm:p-4 md:p-8 rounded-[32px] shadow-sm border border-slate-100">
+                  <div className="flex items-center justify-between mb-8 max-sm:mb-4">
                     <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                       <Users className="text-slate-400" size={24} />
                       Salesman Leaderboard
                     </h2>
-                    <div className="text-xs font-medium px-3 py-1 bg-slate-100 text-slate-500 rounded-full">
+                    <div className="text-xs font-medium px-3 py-1 bg-slate-100 text-slate-500 rounded-full max-sm:hidden">
                       Click row for details
                     </div>
                   </div>
@@ -754,10 +760,10 @@ export default function DashboardPage() {
                     <table className="w-full text-left">
                       <thead>
                         <tr className="border-b border-slate-100">
-                          <th className="pb-4 font-bold text-slate-400 text-xs uppercase tracking-wider w-16">Rank</th>
-                          <th className="pb-4 font-bold text-slate-400 text-xs uppercase tracking-wider">Salesman ID</th>
-                          <th className="pb-4 font-bold text-slate-400 text-xs uppercase tracking-wider text-right">Total Revenue</th>
-                          <th className="pb-4 font-bold text-slate-400 text-xs uppercase tracking-wider w-10"></th>
+                          <th className="pb-4 font-bold text-slate-400 text-xs uppercase tracking-wider w-16 max-sm:w-10">Rank</th>
+                          <th className="pb-4 font-bold text-slate-400 text-xs uppercase tracking-wider max-sm:whitespace-nowrap">Salesman ID</th>
+                          <th className="pb-4 font-bold text-slate-400 text-xs uppercase tracking-wider text-right max-sm:whitespace-nowrap">Total Revenue</th>
+                          <th className="pb-4 font-bold text-slate-400 text-xs uppercase tracking-wider w-10 max-sm:w-5"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
@@ -769,8 +775,8 @@ export default function DashboardPage() {
                           >
                             <td className="py-5 font-bold text-slate-400">#{i + 1}</td>
                             <td className="py-5">
-                              <div className="flex items-center gap-3 font-bold text-slate-900">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                              <div className="flex items-center gap-3 max-sm:gap-2 font-bold text-slate-900">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 max-sm:hidden ${
                                   i === 0 ? 'bg-amber-100 text-amber-700' :
                                   i === 1 ? 'bg-slate-200 text-slate-600' :
                                   i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500'
@@ -783,14 +789,14 @@ export default function DashboardPage() {
                                   i === 1 ? 'text-slate-400' : 'text-orange-500'
                                 } />}
                               </div>
-                              <div className="mt-1.5 ml-11 h-1 w-32 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="mt-1.5 ml-11 max-sm:ml-0 h-1 w-32 max-sm:w-20 bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-slate-300 rounded-full transition-all"
                                   style={{ width: `${salesmanLeaderboard[0] ? (salesman.sales / salesmanLeaderboard[0].sales) * 100 : 0}%` }}
                                 />
                               </div>
                             </td>
-                            <td className="py-5 text-slate-900 font-bold text-right text-lg">
+                            <td className="py-5 text-slate-900 font-bold text-right text-lg max-sm:text-sm max-sm:whitespace-nowrap">
                               {formatCurrencyFull(salesman.sales)}
                               <span className="block text-xs font-medium text-slate-400">{salesman.units.toLocaleString()} units</span>
                             </td>
@@ -954,9 +960,10 @@ export default function DashboardPage() {
 
                   {/* Key Metrics Grid — the panel is only 326px wide inside its
                       padding on a phone, so both the padding and the figure size
-                      step down rather than forcing the cells apart. */}
+                      step down rather than forcing the cells apart; revenue and
+                      best day take a full row there so they never split mid-number. */}
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-10">
-                    <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0">
+                    <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0 max-sm:col-span-2">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Total Revenue</p>
                       <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight break-words">{formatCurrencyFull(selectedSalesman.totalRevenue)}</p>
                       <p className="text-xs font-medium text-slate-400 mt-0.5">{Math.round(selectedSalesman.totalUnits ?? 0).toLocaleString()} units</p>
@@ -971,7 +978,7 @@ export default function DashboardPage() {
                         {selectedOutlet ? ((selectedSalesman.totalRevenue / selectedOutlet.totalRevenue) * 100).toFixed(1) : '0'}%
                       </p>
                     </div>
-                    <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0">
+                    <div className="p-4 sm:p-6 bg-slate-50 rounded-[24px] border border-slate-100 min-w-0 max-sm:col-span-2">
                       <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Best Day</p>
                       <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight break-words">{salesmanMetrics.bestDay}</p>
                     </div>

@@ -97,7 +97,7 @@ function SignPageInner() {
         <p className="text-sm text-slate-700 bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4">{REMOTE_SIGN_DECLARATION}</p>
         <p className="text-[11px] font-semibold text-slate-500 mb-1">Sign below</p>
         <div><SignaturePadCanvas ref={padRef} width={360} height={170} /></div>
-        <button type="button" onClick={() => padRef.current?.clear()} className="text-[11px] font-semibold text-slate-500 underline mt-1">
+        <button type="button" onClick={() => padRef.current?.clear()} className="text-[11px] font-semibold text-slate-500 underline mt-1 max-sm:mt-0 max-sm:py-3 max-sm:pr-4">
           Clear
         </button>
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
@@ -111,7 +111,7 @@ function SignPageInner() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 font-sans text-slate-900">
-      <div className="w-full max-w-sm bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-6">
+      <div className="w-full max-w-sm bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 break-words">
         <div className="flex justify-center mb-6"><Logo textClassName="text-xl" /></div>
         {body}
       </div>

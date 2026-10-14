@@ -44,12 +44,13 @@ export default function AdminAuditPage() {
         <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50">
           {entries.map((e) => (
             <div key={e.id} className="px-4 py-3 text-sm">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between max-sm:flex-wrap max-sm:gap-x-2">
                 <span className="font-semibold text-slate-900">{ACTION_LABELS[e.action] ?? e.action}</span>
                 <span className="text-xs text-slate-400">{new Date(e.at).toLocaleString()}</span>
               </div>
               {e.details && Object.keys(e.details).length > 0 && (
-                <pre className="mt-1 text-xs text-slate-500 bg-slate-50 rounded-lg px-2.5 py-1.5 overflow-x-auto">
+                // Phones: wrap the one-line JSON rather than make the reader scroll a strip sideways.
+                <pre className="mt-1 text-xs text-slate-500 bg-slate-50 rounded-lg px-2.5 py-1.5 overflow-x-auto max-sm:whitespace-pre-wrap max-sm:break-words">
                   {JSON.stringify(e.details, null, 0)}
                 </pre>
               )}

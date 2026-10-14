@@ -111,7 +111,7 @@ export default function LoginPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 md:p-10">
+        <div className="bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 sm:p-8 md:p-10">
           <div className="text-center mb-8 flex flex-col items-center">
             <Logo className="mb-4" textClassName="text-2xl" />
             <p className="text-slate-500 text-sm font-medium">Sign in to continue</p>
@@ -190,7 +190,7 @@ export default function LoginPage() {
               ) : (
                 <div className="text-center">
                   <button type="button" onClick={handleForgotPassword} disabled={forgotBusy}
-                    className="text-xs font-semibold text-slate-500 hover:text-slate-900 underline disabled:opacity-60">
+                    className="text-xs font-semibold text-slate-500 hover:text-slate-900 underline disabled:opacity-60 max-sm:px-2 max-sm:py-3">
                     {forgotBusy ? 'Sending…' : 'Forgot password?'}
                   </button>
                   {forgotError && <p className="text-xs text-red-600 mt-1">{forgotError}</p>}
