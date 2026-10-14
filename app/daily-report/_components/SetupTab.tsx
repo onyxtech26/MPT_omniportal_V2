@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Pencil, Plus, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowDownAZ, Check, GripVertical, Pencil, Plus, X } from 'lucide-react';
 import {
   addBrand, renameBrand, setBrandActive, deleteBrand, reorderBrands,
   type ReportBrand,
@@ -61,12 +61,48 @@ export function SetupTab(props: {
     setMoving(false);
   };
 
+  // Drag and drop (mouse; phones use the arrows). Dropping a brand on another
+  // moves it to that spot and renumbers the whole list, same as the arrows.
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const drop = async (targetId: string) => {
+    const from = dragId;
+    setDragId(null); setOverId(null);
+    if (!from || from === targetId) return;
+    const ids = brands.map((b) => b.id);
+    ids.splice(ids.indexOf(from), 1);
+    ids.splice(ids.indexOf(targetId), 0, from);
+    setMoving(true);
+    await run(() => reorderBrands(branch, ids));
+    setMoving(false);
+  };
+
+  // One tap puts the whole list A to Z (handy after brands are added or removed).
+  const sortAlphabetically = async () => {
+    const ids = [...brands].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).map((b) => b.id);
+    if (ids.every((id, i) => id === brands[i].id)) return;
+    setMoving(true);
+    await run(() => reorderBrands(branch, ids));
+    setMoving(false);
+  };
+
   return (
     <div className="max-w-xl">
       {error && <p className="text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>}
 
       <section className="bg-white rounded-2xl border border-slate-100 p-5">
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Brands · {branch}</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Brands · {branch}</h2>
+          {canEditBrands && brands.length > 1 && (
+            <button onClick={sortAlphabetically} disabled={moving}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40">
+              <ArrowDownAZ size={14} /> Sort A to Z
+            </button>
+          )}
+        </div>
+        {canEditBrands && brands.length > 1 && (
+          <p className="text-xs text-slate-400 mb-3">Drag a brand by its handle to move it, or use the arrows.</p>
+        )}
         {canEditBrands && (
           <form className="flex gap-2 mb-4" onSubmit={(e) => {
             e.preventDefault();
@@ -90,7 +126,16 @@ export function SetupTab(props: {
         )}
         <ul className="divide-y divide-slate-50">
           {brands.map((b, i) => (
-            <li key={b.id} className="flex items-center gap-2 py-2">
+            <li key={b.id}
+              draggable={canEditBrands && editing !== b.id && !moving}
+              onDragStart={(e) => { setDragId(b.id); e.dataTransfer.effectAllowed = 'move'; }}
+              onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverId(b.id); } }}
+              onDrop={(e) => { e.preventDefault(); drop(b.id); }}
+              onDragEnd={() => { setDragId(null); setOverId(null); }}
+              className={`flex items-center gap-2 py-2 ${dragId === b.id ? 'opacity-40' : ''} ${overId === b.id && dragId && dragId !== b.id ? 'border-t-2 border-slate-900' : ''}`}>
+              {canEditBrands && editing !== b.id && (
+                <GripVertical size={16} className="text-slate-300 cursor-grab shrink-0 hidden sm:block" aria-hidden />
+              )}
               {canEditBrands && editing !== b.id && (
                 <span className="flex flex-col -my-1">
                   <button aria-label={`Move ${b.name} up`} disabled={moving || i === 0} onClick={() => move(i, -1)}
