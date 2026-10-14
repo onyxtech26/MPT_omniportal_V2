@@ -233,25 +233,26 @@ in the project files. Being built in two PRs.
   outgrow Supabase's free 1 GB storage within about a month, and the owner
   is staying on the free plan. Staff observations (text) remain the record
   of the watch's condition.
-- **Customer copy (PR 1, being built):** the status page the slip's QR
+- **Customer copy (PR #13):** the status page the slip's QR
   already opens gains an "Intake record" section (date, outlet, item,
   serial no., services, staff observations, warranty declaration), text
   only. After saving, staff get a **Send copy on WhatsApp** button that
   sends the link to the phone number on the repair. The copy never shows the
   phone number, fee or deposit.
-- **Signing on the customer's phone (PR 2, being built):** at collection with
+- **Signing on the customer's phone (PR #13):** at collection with
   no chit, staff choose "Sign on customer's phone". A one-time link (works
   once, expires in 15 minutes, can be cancelled, unusable once collected)
   goes by WhatsApp to the number on the repair, or staff show a QR on the
   counter screen when someone else collects. The customer signs at
   `/sign?t=…`, the counter screen updates to "Signed", and staff confirm
   collection. Signatures are a few KB each, so this stays within the free plan.
-- **Supabase work expected:** one migration (widen
-  `get_job_status_by_token` to return the intake fields; a new
-  `sign_requests` table with staff-only policies and Realtime; a staff
-  function to start a signing link; let `collect_repair_job` accept a
-  signature from a signing link), plus deploying one Edge Function,
-  `customer-sign`.
+- **Supabase work:** two SQL files, run in order:
+  `repair_customer_copy.sql` (a new `get_intake_record_by_token`; the
+  original status function is untouched) and `repair_remote_signing.sql`
+  (the `sign_requests` table, staff-only policies, and the two public
+  functions the customer's phone calls). No Edge Function and no Realtime:
+  the counter screen checks every few seconds, and `collect_repair_job` is
+  unchanged.
 - **Open:** "receipt" was read as the repair chit at collection, not the
   purchase receipt. Owner to correct if that's wrong.
 
@@ -265,8 +266,7 @@ in the project files. Being built in two PRs.
 - Confirm the outlet-code prefix on repair numbers (or switch to the bare
   chit number).
 - Decide whether to remove the 2 leftover signature images in storage.
-- Finish and ship item 15 (customer copy, then phone signing), including its
-  SQL file and the `customer-sign` Edge Function.
+- Merge PR #13 (customer copy and phone signing) and run its two SQL files.
 - Carried over from `PROJECT_STATUS.md`: staff logins for the outlets that
   still have none; Daily Report follow-ups (MIL branch, CS status, duplicate
   brands); Vercel Pro and Phase 6 (retention, backups, paperwork) before real

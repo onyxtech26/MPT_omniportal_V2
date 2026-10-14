@@ -17,19 +17,25 @@ Format:
 
 ---
 
-## Repair intake photos dropped; customer copy and phone signing planned (in progress)
-- Owner's idea: staff photograph the watch (front, back, side, condition) at
-  intake, the customer gets a copy, and a customer without their chit can sign
-  on their own phone.
-- Photos dropped at the owner's request: at the spec's volumes they would
-  outgrow Supabase's free 1 GB storage within about a month, and the owner is
-  staying on the free plan. Staff observations (text) stay the condition record.
-- In progress, two PRs: (1) the slip's QR status page shows the intake record
-  as text and staff get "Send copy on WhatsApp"; (2) one-time, 15-minute
-  signing link by WhatsApp or counter QR, signed through a new `customer-sign`
-  Edge Function. Will need one migration and that function deployed.
-- Plan: `plans/repair-intake-photos-and-remote-signing.md` in the project files.
-  Full summary of all recent work: `docs/WORK_SO_FAR.md`.
+## Customer copy of the intake record, and signing on the customer's phone
+- Owner's request: the customer should get a copy of what was recorded at
+  intake, and a customer who comes without the chit should be able to sign on
+  their own phone. (Intake photos were planned too, then dropped: they would
+  outgrow the Supabase free plan's 1 GB of storage.)
+- Customer copy: `/status` (what the slip's QR opens) now also shows the intake
+  record: item, serial, services, condition noted, warranty. Never the phone
+  number, fee or deposit. New `get_intake_record_by_token()`; the original
+  status function is untouched. "Send copy on WhatsApp" on the repair panel and
+  straight after saving.
+- Signing on the phone: Mark Collected -> Customer signed -> "On customer's
+  phone". Staff send a one-time link (15 minutes, works once) by WhatsApp to the
+  number on the repair, or show a QR. The customer signs at `/sign`, the counter
+  screen picks it up and Confirm Collection works as before; the snapshot saved
+  with the signature records it was signed on their phone and the declaration
+  they saw. New `sign_requests` table plus `get_sign_request()` and
+  `submit_sign_request()`, the only things a signed-out phone can call.
+- SQL to run: `supabase/migrations/repair_customer_copy.sql`, then
+  `supabase/migrations/repair_remote_signing.sql`.
 
 ---
 

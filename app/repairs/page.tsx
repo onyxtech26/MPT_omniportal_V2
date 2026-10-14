@@ -5,19 +5,21 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Search, X, Phone, MessageCircle, ArrowRight, Ban, PackageX,
-  ShieldAlert, Clock, WifiOff, RefreshCw, CheckCircle2, Printer, Pencil, Trash2,
+  ShieldAlert, Clock, WifiOff, RefreshCw, CheckCircle2, Printer, Pencil, Trash2, Send, QrCode, Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import {
   listRepairJobs, getRepairJob, listJobEvents, listJobContacts, listStaffForBranch,
   transitionJob, collectJob, logContact, uploadSignature, getJobCollection, signatureUrl,
-  updateRepairDetails, deleteRepairJob, normalisePhone, type RepairDetailsPatch, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
+  updateRepairDetails, deleteRepairJob, customerCopyMessage, startSignRequest, getSignRequest, cancelSignRequest, signLinkMessage, signLinkUrl,
+  REMOTE_SIGN_DECLARATION, type SignRequest, type SignDelivery, normalisePhone, type RepairDetailsPatch, waLink, nextStatus, CUSTODY_FOR_STATUS, balanceDue,
   chitIsInJobNo, STATUS_LABELS, STATUS_COLORS, CUSTODY_LABELS, FORWARD_PATH, PRE_READY_STATUSES, STEP_ACTION_LABELS,
   type RepairJob, type RepairEvent, type ContactLogEntry, type StaffMember, type CollectionRecord,
   type ContactChannel, type ContactPurpose, type ContactOutcome, type CollectionProof, type JobStatus,
 } from '@/lib/repairs';
 import { flushOutbox, listQueued } from '@/lib/repairs-outbox';
 import { SignaturePadCanvas, type SignaturePadHandle } from '@/components/signature-pad';
+import QRCode from 'qrcode';
 
 // useSearchParams() (used for the ?job=<id> detail panel — see
 // docs/REPAIR_MODULE_SPEC.md §11's note on why job detail is a query
@@ -301,6 +303,12 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
               <a href={waLink(job.customer_phone, `Hi ${job.customer_name}, this is MPT Watches regarding your repair ${job.job_no}.`)}
                 target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-emerald-600"><MessageCircle size={14} /></a>
             </div>
+            {/* The customer's copy of their intake record: the same page the
+                slip's QR opens. Staff press send in WhatsApp themselves. */}
+            <a href={waLink(job.customer_phone, customerCopyMessage(job))} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+              <Send size={13} /> Send copy on WhatsApp
+            </a>
           </Section>
 
           <Section title="Item">
@@ -492,6 +500,49 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
   const [uploading, setUploading] = useState(false);
   const [sigError, setSigError] = useState<string | null>(null);
   const padRef = useRef<SignaturePadHandle>(null);
+  // Where the customer signs: on this screen, or on their own phone through a
+  // one-time link (supabase/migrations/repair_remote_signing.sql).
+  const [signWhere, setSignWhere] = useState<'COUNTER' | 'PHONE'>('COUNTER');
+  const [signReq, setSignReq] = useState<SignRequest | null>(null);
+  const [signQr, setSignQr] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const waitingOnPhone = !!signReq && !signReq.signed_at && !signReq.cancelled_at;
+
+  // While the link is out, check every few seconds whether they have signed.
+  useEffect(() => {
+    if (!waitingOnPhone || !signReq) return;
+    const t = window.setInterval(() => {
+      getSignRequest(signReq.id).then((r) => { if (r) setSignReq(r); }).catch(() => {});
+    }, 2500);
+    return () => window.clearInterval(t);
+  }, [waitingOnPhone, signReq]);
+
+  const startPhoneSigning = async (delivery: SignDelivery) => {
+    setSigError(null);
+    // Opened before the await so the browser does not block it as a pop-up.
+    const waWindow = delivery === 'WHATSAPP' ? window.open('about:blank', '_blank') : null;
+    setStarting(true);
+    try {
+      const req = await startSignRequest({
+        jobId: job.id, collectorName: collectorName.trim(),
+        collectorRelationship: collectorRelationship.trim() || undefined, delivery,
+      });
+      setSignReq(req);
+      if (waWindow) waWindow.location.href = waLink(job.customer_phone, signLinkMessage(job, req.token));
+      setSignQr(delivery === 'QR' ? await QRCode.toDataURL(signLinkUrl(req.token), { margin: 1, width: 220 }) : null);
+    } catch (err) {
+      waWindow?.close();
+      setSigError(err instanceof Error ? err.message : 'Could not create the signing link.');
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const cancelPhoneSigning = async () => {
+    if (signReq && !signReq.signed_at) await cancelSignRequest(signReq.id).catch(() => {});
+    setSignReq(null);
+    setSignQr(null);
+  };
 
   const handleConfirm = async () => {
     setSigError(null);
@@ -505,6 +556,34 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
 
     if (proofMethod !== 'SIGNATURE') {
       onSubmit(base);
+      return;
+    }
+
+    if (signWhere === 'PHONE') {
+      if (!signReq?.signed_at || !signReq.signature_svg) {
+        setSigError('Waiting for the customer to sign on their phone.');
+        return;
+      }
+      setUploading(true);
+      try {
+        const signaturePath = await uploadSignature(job.id, signReq.signature_svg);
+        // Bound to what their phone showed them, word for word (spec §9).
+        const signedSnapshot = {
+          job_no: job.job_no, customer_name: job.customer_name, brand: job.brand,
+          model_no: job.model_no, collector_name: signReq.collector_name,
+          collector_relationship: signReq.collector_relationship,
+          declaration: REMOTE_SIGN_DECLARATION, signed_at: signReq.signed_at,
+          signed_on: 'CUSTOMER_PHONE', link_sent_by: signReq.delivery, sign_request_id: signReq.id,
+        };
+        onSubmit({
+          ...base, collectorName: signReq.collector_name,
+          collectorRelationship: signReq.collector_relationship ?? undefined, signaturePath, signedSnapshot,
+        });
+      } catch (err) {
+        setSigError(err instanceof Error ? err.message : 'Could not save the signature.');
+      } finally {
+        setUploading(false);
+      }
       return;
     }
 
@@ -533,12 +612,12 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
   return (
     <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 space-y-3">
       <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Mark Collected</p>
-      <Field label="Collected by"><input value={collectorName} onChange={(e) => setCollectorName(e.target.value)} className={smallInput} /></Field>
+      <Field label="Collected by"><input value={collectorName} disabled={!!signReq} onChange={(e) => setCollectorName(e.target.value)} className={smallInput} /></Field>
       {collectorName !== job.customer_name && (
-        <Field label="Relationship to customer"><input value={collectorRelationship} onChange={(e) => setCollectorRelationship(e.target.value)} placeholder="e.g. spouse, colleague" className={smallInput} /></Field>
+        <Field label="Relationship to customer"><input value={collectorRelationship} disabled={!!signReq} onChange={(e) => setCollectorRelationship(e.target.value)} placeholder="e.g. spouse, colleague" className={smallInput} /></Field>
       )}
       <Field label="Proof">
-        <select value={proofMethod} onChange={(e) => setProofMethod(e.target.value as CollectionProof)} className={smallInput}>
+        <select value={proofMethod} disabled={!!signReq} onChange={(e) => setProofMethod(e.target.value as CollectionProof)} className={smallInput}>
           <option value="CHIT_SURRENDERED">Chit surrendered (destroyed)</option>
           <option value="SIGNATURE">Customer signed (no chit brought)</option>
         </select>
@@ -550,10 +629,61 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
       {proofMethod === 'SIGNATURE' && (
         <div>
           <p className="text-[11px] font-semibold text-slate-500 mb-1">Customer signature</p>
-          <SignaturePadCanvas ref={padRef} width={340} height={130} />
-          <button type="button" onClick={() => padRef.current?.clear()} className="text-[11px] font-semibold text-slate-500 underline mt-1">
-            Clear
-          </button>
+          <div className="flex gap-1 mb-2">
+            {(['COUNTER', 'PHONE'] as const).map((w) => (
+              <button key={w} type="button" disabled={!!signReq} onClick={() => setSignWhere(w)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60 ${signWhere === w ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>
+                {w === 'COUNTER' ? 'On this screen' : "On customer's phone"}
+              </button>
+            ))}
+          </div>
+          {signWhere === 'COUNTER' ? (
+            <>
+              <SignaturePadCanvas ref={padRef} width={340} height={130} />
+              <button type="button" onClick={() => padRef.current?.clear()} className="text-[11px] font-semibold text-slate-500 underline mt-1">
+                Clear
+              </button>
+            </>
+          ) : !signReq || signReq.cancelled_at ? (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-600">
+                Send a one-time link (works for 15 minutes). WhatsApp goes to the number on this repair,
+                {' '}{job.customer_phone}. Use the QR when someone else is collecting.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={starting || !collectorName.trim()} onClick={() => startPhoneSigning('WHATSAPP')}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white disabled:opacity-50">
+                  <Send size={13} /> Send link by WhatsApp
+                </button>
+                <button type="button" disabled={starting || !collectorName.trim()} onClick={() => startPhoneSigning('QR')}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 disabled:opacity-50">
+                  <QrCode size={13} /> Show QR to scan
+                </button>
+              </div>
+            </div>
+          ) : signReq.signed_at && signReq.signature_svg ? (
+            <div>
+              <p className="text-xs font-semibold text-emerald-700 mb-1">Signed on the customer&apos;s phone at {new Date(signReq.signed_at).toLocaleTimeString()}</p>
+              {/* eslint-disable-next-line @next/next/no-img-element -- an SVG shown as an image never runs scripts */}
+              <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(signReq.signature_svg)}`} alt="Customer signature"
+                className="w-full max-w-xs h-28 object-contain bg-white border border-slate-200 rounded-xl" />
+            </div>
+          ) : (
+            <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+              {signQr && (
+                // eslint-disable-next-line @next/next/no-img-element -- QR as a data URL
+                <img src={signQr} alt="Scan to sign" width={180} height={180} className="mx-auto" />
+              )}
+              <p className="text-xs text-slate-600 flex items-center gap-1.5">
+                <Loader2 size={13} className="animate-spin" />
+                Waiting for {signReq.collector_name} to sign{signReq.delivery === 'WHATSAPP' ? ' (link sent by WhatsApp)' : ''}.
+                Link expires {new Date(signReq.expires_at).toLocaleTimeString()}.
+              </p>
+              <button type="button" onClick={cancelPhoneSigning} className="text-[11px] font-semibold text-slate-500 underline">
+                Cancel link
+              </button>
+            </div>
+          )}
           {sigError && <p className="text-xs text-red-600 mt-1">{sigError}</p>}
         </div>
       )}
@@ -563,7 +693,7 @@ function CollectForm({ job, staff, busy, onCancel, onSubmit }: {
           className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white disabled:opacity-50">
           {uploading ? 'Saving signature…' : 'Confirm Collection'}
         </button>
-        <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
+        <button onClick={() => { cancelPhoneSigning(); onCancel(); }} className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600">Cancel</button>
       </div>
     </div>
   );
