@@ -7,6 +7,8 @@ Companion documents:
 - `docs/REPAIR_MODULE_SPEC.md` — the repair module + login design (read before building it)
 - `docs/V2_REQUIREMENTS.md` — V2 sales-dashboard requirements and history
 - `docs/CHANGELOG.md` — running log of what changed and why
+- `docs/WORK_SO_FAR.md` — summary of every owner request since PR #1: what
+  changed, who can do what, SQL run, open items
 
 > **Recording convention:** entries here and in the changelog carry **no dates or
 > times**. Order carries the sequence.
@@ -26,6 +28,18 @@ never puts that key anywhere near a browser.
 Supabase project **`mpt-omniportal`** (ref `qetoquashslxdliyxgyb`), Singapore
 `ap-southeast-1`, free tier, in `kunacosta's Org`.
 
+**In progress:** repair customer copy (intake record on the QR status page,
+"Send copy on WhatsApp") and signing on the customer's phone when they have no
+chit. Intake photos were dropped to stay on Supabase free. See
+`docs/WORK_SO_FAR.md` §15.
+
+**Owner changes since PR #1 (all live, all SQL run):** Director locked out of
+Repairs and Daily Report; Manager view-only; deposit and balance; three-step
+repair flow; signature view; Job → Repair wording; edit and delete repairs;
+status filter; Meeting Agenda back for the Manager; shared top bar; login
+flash fix; Salesmen tab; Brands drag and drop and Sort A to Z; chit number as
+repair number. Details per item in `docs/WORK_SO_FAR.md`.
+
 Everything is specified in `docs/REPAIR_MODULE_SPEC.md`. Blocked on nothing.
 Waiting on the Director only for items that do not block the build — see spec §13.
 
@@ -34,7 +48,7 @@ Waiting on the Director only for items that do not block the build — see spec 
 > outlets that still have none (JCI, AM, GPL, MRT, SAT, TBT — the console now
 > makes this a five-minute task, just not yet done); photos, the condition
 > grid, and quotations (explicitly deferred — see spec's "Phase 1 = logbook,
-> not the full chit" decision); Phase 6 (retention job, off-Supabase backup,
+> not the full chit" decision; photos since dropped to stay on Supabase free); Phase 6 (retention job, off-Supabase backup,
 > TIA/DPA paperwork).
 
 ---
@@ -51,6 +65,13 @@ In order. Full detail in spec §11.
       near-duplicate brands at MRT and JCI; deactivate the 3 old "Counter Staff"
       test salesmen (KLT, KMT). Not built: receipt-photo scanning (needs a server
       function and an AI key).
+- [ ] **Owner to try signed in on the live site** — Meeting Agenda as Manager;
+      Salesmen tab, Add a salesman, Brands drag and drop and a new repair with
+      a chit number as staff; confirm the login flash is gone. Also: confirm the
+      outlet-code prefix on repair numbers (`KMT-54279`) or switch to the bare
+      chit number; decide on removing 2 leftover signature images in storage.
+- [ ] **Repair customer copy, then phone signing** — in progress, two PRs;
+      needs one migration and the `customer-sign` Edge Function deployed.
 - [ ] **"View as user"** for IT Admin (spec §4.3) — specified, not built.
 - [ ] **Small code fixes found in review:** admin function does not check its
       audit-log writes succeeded; nothing stops an admin deactivating their own
@@ -370,6 +391,10 @@ In order. Full detail in spec §11.
 | **`/repairs` is its own layout, sibling of `/dashboard`** | Not nested under the dashboard layout, and never wrapped in `<DataProvider>`. Keeps the CSV-only invariant structurally true rather than relying on nobody importing the wrong thing later. |
 | **Each role has its own landing page, not one hardcoded destination** | Staff cannot reach `/dashboard` (fail-closed `canAccess`). Redirecting everyone there after login would have stranded staff logins the moment that fix took effect. |
 | **RLS proven with live signed-in accounts, not reasoned about** | This architecture has no second security wall — RLS is it. "The policy looks right" isn't the same claim as "five real logins behaved correctly against the real API," so the second one is what got done. |
+| **Director sees no branch data; Manager is view-only** | Owner's call: outlet staff do all input, the Manager watches status, the boss uses only the sales dashboard. Enforced in RLS (`boss_no_branch_ops.sql`, `manager_view_only.sql`), not just hidden buttons. |
+| **Chit number is the repair number, prefixed with the outlet code** | Owner's call: staff key the chit number first. The prefix (`KMT-54279`) stops two outlets' identical chit numbers clashing. Pending the owner's confirmation of the prefix. |
+| **No intake photos** | Owner is staying on Supabase free; photos would fill the 1 GB storage within about a month. Text observations are the condition record. |
+| **Every update is merged straight away** | Owner's instruction. Changes that need SQL wait until the owner has run it in the Supabase SQL Editor. |
 
 ---
 
