@@ -17,6 +17,26 @@ Format:
 
 ---
 
+## Customer copy of the intake record, and signing on the customer's phone
+- Owner's request: the customer should get a copy of what was recorded at
+  intake, and a customer who comes without the chit should be able to sign on
+  their own phone. (Intake photos were planned too, then dropped: they would
+  outgrow the Supabase free plan's 1 GB of storage.)
+- Customer copy: `/status` (what the slip's QR opens) now also shows the intake
+  record: item, serial, services, condition noted, warranty. Never the phone
+  number, fee or deposit. New `get_intake_record_by_token()`; the original
+  status function is untouched. "Send copy on WhatsApp" on the repair panel and
+  straight after saving.
+- Signing on the phone: Mark Collected -> Customer signed -> "On customer's
+  phone". Staff send a one-time link (15 minutes, works once) by WhatsApp to the
+  number on the repair, or show a QR. The customer signs at `/sign`, the counter
+  screen picks it up and Confirm Collection works as before; the snapshot saved
+  with the signature records it was signed on their phone and the declaration
+  they saw. New `sign_requests` table plus `get_sign_request()` and
+  `submit_sign_request()`, the only things a signed-out phone can call.
+- SQL to run: `supabase/migrations/repair_customer_copy.sql`, then
+  `supabase/migrations/repair_remote_signing.sql`.
+
 ## One shared top bar across the dashboard, Repairs and Daily Report
 - Owner's question: why does clicking Repairs or Daily Report jump to a different
   page? They are separate layouts on purpose (never inside the sales dashboard's
