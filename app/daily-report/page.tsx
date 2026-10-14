@@ -9,14 +9,16 @@ import {
 } from '@/lib/daily-report';
 import { EntryTab } from './_components/EntryTab';
 import { MonthlyTab } from './_components/MonthlyTab';
+import { SalesmenTab } from './_components/SalesmenTab';
 import { SetupTab } from './_components/SetupTab';
 
 export type Salesman = { id: string; full_name: string; is_active: boolean };
-type Tab = 'entry' | 'monthly' | 'setup';
+type Tab = 'entry' | 'monthly' | 'salesmen' | 'setup';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'entry', label: 'Daily entry' },
   { id: 'monthly', label: 'Monthly' },
-  { id: 'setup', label: 'Setup' },
+  { id: 'salesmen', label: 'Salesmen' },
+  { id: 'setup', label: 'Brands' },
 ];
 
 // Who may do what is decided by Postgres RLS (supabase/migrations/daily_report.sql);
@@ -29,7 +31,7 @@ export default function DailyReportPage() {
   // Outlet staff key in the figures; the Manager only views (owner's decision).
   const canEnter = role === 'staff';
   const canEditBrands = role === 'staff' || role === 'admin'; // staff for their own branch
-  const canManageSalesmen = role === 'admin';     // staff_members is IT Admin only
+  const canManageSalesmen = role === 'staff' || role === 'admin'; // staff for their own branch (RLS: can_work_branch)
 
   const [branches, setBranches] = useState<ReportBranch[]>([]);
   const [branch, setBranch] = useState('');
@@ -73,6 +75,12 @@ export default function DailyReportPage() {
   }, [branch, month]);
 
   useEffect(() => { reload(); }, [reload]);
+
+  // Refreshes only the salesmen list, so adding someone from the entry screen
+  // does not reload the day's figures and wipe what is half typed.
+  const reloadSalesmen = useCallback(async () => {
+    if (branch) setSalesmen(await listAllSalesmen(branch));
+  }, [branch]);
 
   return (
     <div>
@@ -121,14 +129,16 @@ export default function DailyReportPage() {
       ) : tab === 'entry' ? (
         <EntryTab branch={branch} date={date} canEnter={canEnter}
           brands={brands} salesmen={salesmen} brandFigures={brandFigures}
-          salesmanFigures={salesmanFigures} onSaved={reload} />
+          salesmanFigures={salesmanFigures} onSaved={reload}
+          canAddSalesman={canManageSalesmen} onSalesmenChanged={reloadSalesmen} />
       ) : tab === 'monthly' ? (
         <MonthlyTab month={month} brands={brands} salesmen={salesmen}
           brandFigures={brandFigures} salesmanFigures={salesmanFigures}
           onPickDate={(d) => { setDate(d); setTab('entry'); }} />
+      ) : tab === 'salesmen' ? (
+        <SalesmenTab branch={branch} salesmen={salesmen} canManage={canManageSalesmen} onChanged={reload} />
       ) : (
-        <SetupTab branch={branch} brands={brands} salesmen={salesmen}
-          canEditBrands={canEditBrands} canManageSalesmen={canManageSalesmen} onChanged={reload} />
+        <SetupTab branch={branch} brands={brands} canEditBrands={canEditBrands} onChanged={reload} />
       )}
     </div>
   );

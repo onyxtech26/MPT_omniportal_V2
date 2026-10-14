@@ -900,6 +900,13 @@ automated policy tests get written **before** any feature code.
 
 
 
+
+## 2026-10-14 — Salesmen: own tab, staff can manage their branch
+- Onyxx: staff should add/remove salesmen, and the flow inside Daily Report setup was awkward.
+- New "Salesmen" tab (add, rename, Remove = deactivate, Reactivate); the old Setup tab is now "Brands". Daily entry also has an "Add a salesman" box under "Who sold", which refreshes only the salesmen list so half-typed figures survive.
+- Staff manage their own branch, IT Admin any; Manager/Director stay view-only.
+- **Needs SQL:** run `supabase/migrations/salesmen_staff_manage.sql` (switches the staff_members policies to `app.can_work_branch`). Until it is run, staff adds/renames are refused by the database.
+
 ## 2026-10-14 — No more red flash right after login
 - Onyxx saw an error flash for a split second after signing in.
 - Cause: Supabase hands over the session a moment before the profile row loads, so the login page briefly read "signed in, no active access" and showed the red box. `lib/auth-context.tsx` now stays in `loading` until that profile arrives (only for a new sign-in, not token refreshes).

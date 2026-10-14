@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, Check, Copy, Loader2, MessageCircle, Pencil, Save, Search, X } from 'lucide-react';
 import {
-  saveDailyReport, buildWhatsappSummary, rm,
+  saveDailyReport, buildWhatsappSummary, rm, addSalesman,
   type ReportBrand, type BrandFigure, type SalesmanFigure,
 } from '@/lib/daily-report';
 import type { Salesman } from '../page';
@@ -23,8 +23,19 @@ export function EntryTab(props: {
   brands: ReportBrand[]; salesmen: Salesman[];
   brandFigures: BrandFigure[]; salesmanFigures: SalesmanFigure[];
   onSaved: () => Promise<void>;
+  canAddSalesman: boolean; onSalesmenChanged: () => Promise<void>;
 }) {
-  const { branch, date, canEnter, brands, salesmen, brandFigures, salesmanFigures, onSaved } = props;
+  const { branch, date, canEnter, brands, salesmen, brandFigures, salesmanFigures, onSaved, canAddSalesman, onSalesmenChanged } = props;
+
+  const [newSalesman, setNewSalesman] = useState('');
+  const [addError, setAddError] = useState<string | null>(null);
+  const handleAddSalesman = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSalesman.trim()) return;
+    setAddError(null);
+    try { await addSalesman(branch, newSalesman); setNewSalesman(''); await onSalesmenChanged(); }
+    catch (err) { setAddError(err instanceof Error ? err.message : 'Could not add that salesman.'); }
+  };
 
   const dayBrand = useMemo(() => brandFigures.filter((f) => f.sale_date === date), [brandFigures, date]);
   const daySalesman = useMemo(() => salesmanFigures.filter((f) => f.sale_date === date), [salesmanFigures, date]);
@@ -238,7 +249,7 @@ export function EntryTab(props: {
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">{canEnter ? "3 · " : ""}Who sold (each salesman&apos;s total for the day)</h2>
           <p className="text-xs text-slate-400 mb-4">Enter the RM each salesman sold in total. This is checked against the brand total.</p>
           {shownSalesmen.length === 0 ? (
-            <p className="text-sm text-slate-500">No salesmen are set up for this branch yet. A manager can add them on the Setup tab.</p>
+            <p className="text-sm text-slate-500">No salesmen are set up for this branch yet. Add one below{canAddSalesman ? '' : ' (outlet staff can do this)'}.</p>
           ) : (
             <div className="space-y-2">
               {shownSalesmen.map((s) => (
@@ -253,6 +264,14 @@ export function EntryTab(props: {
               ))}
             </div>
           )}
+          {canAddSalesman && (
+            <form onSubmit={handleAddSalesman} className="mt-4 pt-4 border-t border-slate-50 flex gap-2">
+              <input value={newSalesman} onChange={(e) => setNewSalesman(e.target.value)} placeholder="Someone missing? Add a salesman" maxLength={80}
+                className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
+              <button className="px-3.5 py-2 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700">Add</button>
+            </form>
+          )}
+          {addError && <p className="mt-2 text-xs font-medium text-red-600">{addError}</p>}
         </section>
       </div>
 

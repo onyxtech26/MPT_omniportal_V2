@@ -3,26 +3,23 @@
 import { useState } from 'react';
 import { ArrowDown, ArrowUp, Check, Pencil, Plus, X } from 'lucide-react';
 import {
-  addBrand, renameBrand, setBrandActive, deleteBrand, reorderBrands, addSalesman, setSalesmanActive,
+  addBrand, renameBrand, setBrandActive, deleteBrand, reorderBrands,
   type ReportBrand,
 } from '@/lib/daily-report';
-import type { Salesman } from '../page';
 
 const input = 'px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400';
 
 // A brand can be deleted only if it has never been used: the database refuses to
 // delete one with sales recorded, so history is never erased (that case offers
-// Deactivate instead). Salesmen are only ever deactivated, never deleted, so a
-// leaver's name still resolves on the past days it appears in.
+// Deactivate instead). Salesmen live on their own tab (SalesmenTab).
 export function SetupTab(props: {
-  branch: string; brands: ReportBrand[]; salesmen: Salesman[];
-  canEditBrands: boolean; canManageSalesmen: boolean;
+  branch: string; brands: ReportBrand[];
+  canEditBrands: boolean;
   onChanged: () => Promise<void>;
 }) {
-  const { branch, brands, salesmen, canEditBrands, canManageSalesmen, onChanged } = props;
+  const { branch, brands, canEditBrands, onChanged } = props;
   const [error, setError] = useState<string | null>(null);
   const [newBrand, setNewBrand] = useState('');
-  const [newSalesman, setNewSalesman] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
 
@@ -65,8 +62,8 @@ export function SetupTab(props: {
   };
 
   return (
-    <div className="grid md:grid-cols-2 gap-6 items-start">
-      {error && <p className="md:col-span-2 text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>}
+    <div className="max-w-xl">
+      {error && <p className="text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>}
 
       <section className="bg-white rounded-2xl border border-slate-100 p-5">
         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Brands · {branch}</h2>
@@ -132,33 +129,6 @@ export function SetupTab(props: {
         </ul>
       </section>
 
-      <section className="bg-white rounded-2xl border border-slate-100 p-5">
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Salesmen · {branch}</h2>
-        {canManageSalesmen ? (
-          <form className="flex gap-2 mb-4" onSubmit={(e) => {
-            e.preventDefault();
-            if (!newSalesman.trim()) return;
-            run(async () => { await addSalesman(branch, newSalesman); setNewSalesman(''); });
-          }}>
-            <input value={newSalesman} onChange={(e) => setNewSalesman(e.target.value)} placeholder="Full name" className={`${input} flex-1`} />
-            <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700"><Plus size={15} /> Add</button>
-          </form>
-        ) : (
-          <p className="text-xs text-slate-400 mb-3">Only a manager can add or remove salesmen. Ask yours if someone is missing.</p>
-        )}
-        <ul className="divide-y divide-slate-50">
-          {salesmen.map((s) => (
-            <li key={s.id} className="flex items-center gap-2 py-2">
-              <span className={`flex-1 text-sm ${s.is_active ? 'text-slate-800 font-medium' : 'text-slate-400 line-through'}`}>{s.full_name}</span>
-              {canManageSalesmen && (
-                <button onClick={() => run(() => setSalesmanActive(s.id, !s.is_active))}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-900 underline">{s.is_active ? 'Deactivate' : 'Reactivate'}</button>
-              )}
-            </li>
-          ))}
-          {salesmen.length === 0 && <li className="text-sm text-slate-400 py-3">No salesmen yet.</li>}
-        </ul>
-      </section>
     </div>
   );
 }
