@@ -901,6 +901,11 @@ automated policy tests get written **before** any feature code.
 
 
 
+
+## 2026-10-14 — Brands: drag and drop, Sort A to Z
+- Onyxx wanted to arrange brands by dragging, and an auto alphabetical order for after brands are added or removed.
+- Brands tab: drag a brand by its grip handle to drop it in a new spot (arrows stay for phones); "Sort A to Z" renumbers the whole list in one go. Uses the existing `reorder_report_brands` function, so no SQL is needed.
+
 ## 2026-10-14 — Salesmen: own tab, staff can manage their branch
 - Onyxx: staff should add/remove salesmen, and the flow inside Daily Report setup was awkward.
 - New "Salesmen" tab (add, rename, Remove = deactivate, Reactivate); the old Setup tab is now "Brands". Daily entry also has an "Add a salesman" box under "Who sold", which refreshes only the salesmen list so half-typed figures survive.
