@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { Role } from './roles';
@@ -56,6 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  // Which user's profile is already in memory, so a token refresh or a tab
+  // refocus (same user) does not put the whole app back into "loading".
+  const loadedUserId = useRef<string | null>(null);
 
   // Look up the profile for whichever session we currently hold. RLS already
   // guarantees this can only ever return the caller's own row (see
@@ -63,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // the client here, the database would refuse a different row regardless.
   const loadProfile = useCallback(async (activeSession: Session | null) => {
     if (!activeSession) {
+      loadedUserId.current = null;
       setProfile(null);
       return;
     }
@@ -79,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       return;
     }
+    loadedUserId.current = activeSession.user.id;
     setProfile(data as Profile);
   }, []);
 
@@ -101,7 +106,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // rather than each needing its own copy of this check.
     const { data: subscription } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next);
-      loadProfile(next);
+      // A fresh sign-in delivers the session a moment BEFORE its profile row
+      // arrives. Without this, that gap read as "signed in with no access" and
+      // flashed the red "no active access" box on the login page right after
+      // pressing Sign in. Staying in `loading` until the profile is back closes it.
+      if (next && loadedUserId.current !== next.user.id) {
+        setLoading(true);
+        loadProfile(next).finally(() => { if (!cancelled) setLoading(false); });
+      } else {
+        loadProfile(next);
+      }
       if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
     });
 
