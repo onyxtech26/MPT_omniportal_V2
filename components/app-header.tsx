@@ -130,8 +130,9 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto pl-3">
           {actions}
+          {actions && <span aria-hidden className="hidden sm:block w-px h-6 bg-slate-200" />}
 
           <div className="relative">
             <button

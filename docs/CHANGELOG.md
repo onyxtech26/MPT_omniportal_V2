@@ -898,6 +898,12 @@ automated policy tests get written **before** any feature code.
 
 ---
 
+
+## 2026-10-14 — History moved next to Load Data
+- Onyxx: History sat jammed against the Daily Report tab and read like a nav tab.
+- It is now a small icon button on the right beside Load Data / Change Data, with a divider before the profile menu. The "Data loaded." note only shows on very wide screens (1700px+).
+- Files: `components/saved-reports.tsx`, `components/app-header.tsx`, `app/dashboard/layout.tsx`.
+
 ## 2026-09-07 — Explorer page: filter by anything, and a saved-report history
 
 Ported the two things the Director's own `sales-pulse` tool does that OmniPortal

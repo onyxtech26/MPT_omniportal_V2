@@ -35,11 +35,11 @@ export function SavedReports() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        title="Reports saved on this machine"
-        className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+        title="Reports saved on this computer"
+        aria-label="Saved reports"
+        className="flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
       >
         <History size={16} />
-        <span className="hidden sm:inline lg:hidden 2xl:inline">History</span>
       </button>
 
       {open && (

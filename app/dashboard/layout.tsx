@@ -98,7 +98,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             {profile && (
               <div className="flex items-center gap-2">
                 {uploadMsg && (
-                  <span className={`hidden 2xl:inline text-xs font-medium whitespace-nowrap ${uploadMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <span className={`hidden min-[1700px]:inline text-xs font-medium whitespace-nowrap ${uploadMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
                     {uploadMsg.text}
                   </span>
                 )}
