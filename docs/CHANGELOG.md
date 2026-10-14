@@ -902,6 +902,12 @@ automated policy tests get written **before** any feature code.
 
 
 
+
+## 2026-10-14 — Chit number is the repair number
+- Onyxx: the chit number is the repair number, and it is the first thing staff key in.
+- New Repair now starts with a required "Chit no." box (autofocused). The repair number becomes `BRANCH-CHITNO` (e.g. KMT-54279) instead of a random code; a chit number already used at the same outlet is refused with a clear message. Old repairs keep their old numbers, and the separate "Chit No." line is hidden where it would just repeat the number.
+- No SQL needed: `job_no` already has a UNIQUE constraint and the chit still saves to `preprinted_chit_no`.
+
 ## 2026-10-14 — Brands: drag and drop, Sort A to Z
 - Onyxx wanted to arrange brands by dragging, and an auto alphabetical order for after brands are added or removed.
 - Brands tab: drag a brand by its grip handle to drop it in a new spot (arrows stay for phones); "Sort A to Z" renumbers the whole list in one go. Uses the existing `reorder_report_brands` function, so no SQL is needed.

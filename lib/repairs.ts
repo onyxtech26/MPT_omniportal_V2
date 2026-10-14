@@ -95,26 +95,26 @@ export type StaffMember = {
 };
 
 // ---------------------------------------------------------------------------
-// job_no is generated HERE, on the device, deliberately — not by the server.
-// That is what lets a slip print even when the connection is down: the
-// number exists the instant the form is filled in, and an offline write can
-// queue under this same number and sync later without waiting on a server
-// round-trip to learn what its own reference number is.
-// Format: BRANCH-YYMM-XXXX, e.g. KMT-2609-7F3K. Not a security token —
-// collisions are astronomically unlikely at real branch volumes, and the
-// database's own job_no UNIQUE constraint is the actual backstop.
-export function generateJobNo(branchCode: string): string {
-  const now = new Date();
-  const yymm = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const suffix = Array.from({ length: 4 }, () =>
-    '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 34)] // no O/I, easy to misread
-  ).join('');
-  return `${branchCode}-${yymm}-${suffix}`;
+// job_no is built HERE, on the device, deliberately — not by the server.
+// The repair number IS the number printed on the paper chit, which staff key
+// in first. Prefixed with the branch (e.g. KMT-54279) so two outlets whose chit
+// books overlap can never collide on the database's UNIQUE job_no constraint,
+// which is the real backstop against a chit number typed twice at one outlet.
+// It still exists the instant the form is filled in, so a slip can print and an
+// offline write can queue under this same number with no server round-trip.
+export function jobNoFromChit(branchCode: string, chitNo: string): string {
+  return `${branchCode}-${chitNo.trim()}`;
+}
+
+// Older jobs carry a separate chit number beside a generated job_no; newer ones
+// have the chit inside the job_no. True when the chit adds nothing to show.
+export function chitIsInJobNo(jobNo: string, chitNo: string | null): boolean {
+  return !chitNo || jobNo.endsWith(`-${chitNo}`);
 }
 
 // Malaysian mobile numbers, however typed, become plain digits starting with
 // 60 — matches the CHECK constraint on repair_jobs.customer_phone. Kept next
-// to generateJobNo() because both run on whatever the counter typed, before
+// to jobNoFromChit() because both run on whatever the counter typed, before
 // anything reaches the database.
 export function normalisePhone(raw: string): string {
   let digits = raw.replace(/[^0-9]/g, '');
@@ -218,7 +218,7 @@ export async function signatureUrl(path: string): Promise<string> {
 // plain inserts; there's nothing to make atomic.
 
 export type CreateJobInput = {
-  // Generated ONCE by the caller (generateJobNo()) before the first attempt,
+  // Generated ONCE by the caller (jobNoFromChit()) before the first attempt,
   // and reused verbatim on every retry — including from the offline outbox.
   // createRepairJob() deliberately does NOT generate its own: if it did, a
   // job that failed offline and retried later would get a SECOND, different
