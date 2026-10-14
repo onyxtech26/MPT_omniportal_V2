@@ -149,6 +149,11 @@ export async function addSalesman(branch: string, fullName: string): Promise<voi
   if (error) throw error;
 }
 
+export async function renameSalesman(id: string, fullName: string): Promise<void> {
+  const { error } = await supabase.from('staff_members').update({ full_name: fullName.trim() }).eq('id', id);
+  if (error) throw error;
+}
+
 export async function setSalesmanActive(id: string, isActive: boolean): Promise<void> {
   const { error } = await supabase.from('staff_members').update({ is_active: isActive }).eq('id', id);
   if (error) throw error;
