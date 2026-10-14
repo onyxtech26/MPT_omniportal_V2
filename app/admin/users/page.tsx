@@ -81,9 +81,9 @@ export default function AdminUsersPage() {
               <thead>
                 <tr className="border-b border-slate-100 text-left text-xs font-bold text-slate-400 uppercase tracking-wide">
                   <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3 hidden sm:table-cell">Email</th>
                   <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Branch</th>
+                  <th className="px-4 py-3 hidden sm:table-cell">Branch</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -91,12 +91,16 @@ export default function AdminUsersPage() {
               <tbody>
                 {profiles.map((p) => (
                   <tr key={p.id} className="border-b border-slate-50 last:border-0">
-                    <td className="px-4 py-3 font-semibold text-slate-900">{p.display_name}</td>
-                    <td className="px-4 py-3 text-slate-500">{p.email ?? '—'}</td>
+                    <td className="px-3 sm:px-4 py-3 font-semibold text-slate-900">
+                      {p.display_name}
+                      {/* Phones: email and branch fold under the name instead of their own columns. */}
+                      <div className="sm:hidden text-xs font-normal text-slate-500">{[p.branch_code, p.email].filter(Boolean).join(' · ')}</div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 hidden sm:table-cell">{p.email ?? '—'}</td>
                     <td className="px-4 py-3 text-slate-600">{ROLE_LABELS[p.role]}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.branch_code ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-600 hidden sm:table-cell">{p.branch_code ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${p.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                           {p.is_active ? 'Active' : 'Disabled'}
                         </span>

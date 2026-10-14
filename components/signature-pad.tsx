@@ -15,7 +15,8 @@ export type SignaturePadHandle = {
 // (1) touch-action: none, or the page scrolls under the finger on a phone;
 // (2) canvas must be sized to devicePixelRatio or it's blurry on any modern
 //     screen; (3) resizing a canvas clears it, so this component intentionally
-//     does NOT resize after mount — it is sized once, at the size it's given.
+//     does NOT resize after mount — it is sized once, at the size it's given
+//     or the width of its container, whichever is smaller.
 export const SignaturePadCanvas = forwardRef<SignaturePadHandle, { width?: number; height?: number }>(
   function SignaturePadCanvas({ width = 400, height = 150 }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -25,9 +26,13 @@ export const SignaturePadCanvas = forwardRef<SignaturePadHandle, { width?: numbe
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
-      canvas.width = width * ratio;
+      // Never wider than the space it sits in, so it fits a phone screen
+      // (the width given is the most it will take, not a fixed size).
+      const fit = canvas.parentElement ? canvas.parentElement.clientWidth - 2 : width; // 2px: its border
+      const w = Math.min(width, fit);
+      canvas.width = w * ratio;
       canvas.height = height * ratio;
-      canvas.style.width = `${width}px`;
+      canvas.style.width = `${w}px`;
       canvas.style.height = `${height}px`;
       const ctx = canvas.getContext('2d');
       ctx?.scale(ratio, ratio);

@@ -4,6 +4,16 @@
   --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
+/* Phones: form fields at 16px. Below that, iPhone Safari zooms the whole page
+   in when a field is tapped and leaves it zoomed, which is the most common
+   "this site is awkward on my phone" complaint. Desktop keeps the smaller,
+   denser text the screens were designed with. */
+@media (max-width: 639px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Customer repair slip (app/repairs/slip). 80mm is a standard thermal
    receipt width; margin:0 stops the browser adding its own header/footer
    whitespace. .no-print hides the app's own chrome (nav, buttons) so only

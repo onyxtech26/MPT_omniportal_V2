@@ -17,6 +17,20 @@ Format:
 
 ---
 
+## Phone-friendly screens
+- Owner's request: make the system easy to use on a phone. Every screen was
+  checked at phone width (375px) and fixed where it was awkward.
+- Repairs list: a card per repair on phones (status was hidden off the side of
+  the table before). New Repair: one field per row where boxes were cramped,
+  phone keypad for the phone number, number pad for money.
+- Signature pads (counter and the customer's phone) now fit the screen instead
+  of running off the edge. Bigger tap targets for Call and WhatsApp.
+- Form fields are 16px on phones so iPhones no longer zoom in when one is
+  tapped. Daily Report tabs stay on one line; IT Admin's account list folds
+  email and branch under the name.
+
+---
+
 ## Customer copy of the intake record, and signing on the customer's phone
 - Owner's request: the customer should get a copy of what was recorded at
   intake, and a customer who comes without the chit should be able to sign on

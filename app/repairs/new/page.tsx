@@ -253,20 +253,20 @@ export default function NewRepairJobPage() {
 
         <section className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Customer</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Name *"><input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className={inputClass} /></Field>
-            <Field label="Phone *"><input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="012-345 6789" className={inputClass} /></Field>
+            <Field label="Phone *"><input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="012-345 6789" type="tel" inputMode="tel" autoComplete="off" className={inputClass} /></Field>
           </div>
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Item</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Brand"><input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputClass} /></Field>
             <Field label="Model No."><input value={modelNo} onChange={(e) => setModelNo(e.target.value)} className={inputClass} /></Field>
-            <Field label="Serial No."><input value={serialNo} onChange={(e) => setSerialNo(e.target.value)} className={inputClass} /></Field>
+            <div className="col-span-2 sm:col-span-1"><Field label="Serial No."><input value={serialNo} onChange={(e) => setSerialNo(e.target.value)} className={inputClass} /></Field></div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Type">
               <select value={jobType} onChange={(e) => setJobType(e.target.value as JobType)} className={inputClass}>
                 <option value="REPAIR_SERVICE">Repair / Service</option>
@@ -285,14 +285,14 @@ export default function NewRepairJobPage() {
               placeholder="In the customer's own words — what do they say is wrong?" className={inputClass} />
           </Field>
           <Field label="Staff observations">
-            <textarea value={staffObservations} onChange={(e) => setStaffObservations(e.target.value)} rows={2}
+            <textarea value={staffObservations} onChange={(e) => setStaffObservations(e.target.value)} rows={3}
               placeholder="What you noticed — kept separate from the customer's complaint on purpose" className={inputClass} />
           </Field>
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Warranty</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Declaration">
               <select value={warrantyDeclaration} onChange={(e) => setWarrantyDeclaration(e.target.value as WarrantyDeclaration)} className={inputClass}>
                 <option value="">— Not stated —</option>
@@ -313,13 +313,13 @@ export default function NewRepairJobPage() {
         <section className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Fee &amp; Timing</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <Field label="Total fee (RM)"><input type="number" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} className={inputClass} /></Field>
-            <Field label="Deposit paid (RM)"><input type="number" min="0" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0.00" className={inputClass} /></Field>
+            <Field label="Total fee (RM)"><input type="number" inputMode="decimal" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} className={inputClass} /></Field>
+            <Field label="Deposit paid (RM)"><input type="number" inputMode="decimal" min="0" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0.00" className={inputClass} /></Field>
             <Field label="Balance to pay (RM)">
               <input readOnly tabIndex={-1} value={fee ? (balanceDue(Number(fee), deposit ? Number(deposit) : 0) ?? 0).toFixed(2) : ''}
                 placeholder="—" className={`${inputClass} bg-slate-50 font-semibold text-slate-900`} />
             </Field>
-            <Field label="Declared value (RM)"><input type="number" min="0" step="0.01" value={declaredItemValue} onChange={(e) => setDeclaredItemValue(e.target.value)} className={inputClass} /></Field>
+            <Field label="Declared value (RM)"><input type="number" inputMode="decimal" min="0" step="0.01" value={declaredItemValue} onChange={(e) => setDeclaredItemValue(e.target.value)} className={inputClass} /></Field>
             <Field label="Promised ready date"><input type="date" value={promisedReadyDate} onChange={(e) => setPromisedReadyDate(e.target.value)} className={inputClass} /></Field>
           </div>
         </section>

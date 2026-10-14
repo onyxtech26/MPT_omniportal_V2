@@ -124,7 +124,7 @@ function RepairsListPageInner() {
       </div>
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative flex-1 min-w-[200px]">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search repair no., name, phone, brand…"
             className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
@@ -141,7 +141,31 @@ function RepairsListPageInner() {
       ) : filtered.length === 0 ? (
         <p className="text-sm text-slate-400 py-12 text-center">No repairs match.</p>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <>
+        {/* Phones: one card per repair, so status and promised date are
+            visible without scrolling a table sideways. */}
+        <ul className="sm:hidden space-y-2">
+          {filtered.map((j) => (
+            <li key={j.id}>
+              <button onClick={() => setOpenJob(j.id)}
+                className="w-full text-left bg-white rounded-2xl border border-slate-100 px-4 py-3 active:bg-slate-50">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-semibold text-slate-700">{j.job_no}</span>
+                  <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[j.status]}`}>
+                    {STATUS_LABELS[j.status]}
+                  </span>
+                </div>
+                <div className="font-semibold text-slate-900 mt-1">{j.customer_name}</div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {[j.brand, j.model_no].filter(Boolean).join(' ') || 'No item details'}
+                  {profile?.role !== 'staff' && ` · ${j.branch_code}`}
+                  {j.promised_ready_date && ` · promised ${new Date(j.promised_ready_date).toLocaleDateString()}`}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -179,6 +203,7 @@ function RepairsListPageInner() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       <AnimatePresence>
@@ -299,9 +324,9 @@ function JobDetailPanel({ jobId, onClose, onChanged }: { jobId: string; onClose:
             <p className="font-semibold text-slate-900">{job.customer_name}</p>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-sm text-slate-500">{job.customer_phone}</span>
-              <a href={`tel:${job.customer_phone}`} className="text-slate-400 hover:text-slate-900"><Phone size={14} /></a>
+              <a href={`tel:${job.customer_phone}`} title="Call" className="p-2 -m-1 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100"><Phone size={16} /></a>
               <a href={waLink(job.customer_phone, `Hi ${job.customer_name}, this is MPT Watches regarding your repair ${job.job_no}.`)}
-                target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-emerald-600"><MessageCircle size={14} /></a>
+                target="_blank" rel="noopener noreferrer" title="WhatsApp" className="p-2 -m-1 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"><MessageCircle size={16} /></a>
             </div>
             {/* The customer's copy of their intake record: the same page the
                 slip's QR opens. Staff press send in WhatsApp themselves. */}
@@ -741,13 +766,13 @@ function EditDetailsForm({ job, busy, onCancel, onSubmit }: {
       <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Edit details</p>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Customer name"><input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className={smallInput} /></Field>
-        <Field label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} className={smallInput} /></Field>
+        <Field label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" className={smallInput} /></Field>
         <Field label="Brand"><input value={brand} onChange={(e) => setBrand(e.target.value)} className={smallInput} /></Field>
         <Field label="Model"><input value={modelNo} onChange={(e) => setModelNo(e.target.value)} className={smallInput} /></Field>
         <Field label="Serial no."><input value={serialNo} onChange={(e) => setSerialNo(e.target.value)} className={smallInput} /></Field>
         <Field label="Promised ready date"><input type="date" value={promised} onChange={(e) => setPromised(e.target.value)} className={smallInput} /></Field>
-        <Field label="Total fee (RM)"><input type="number" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} className={smallInput} /></Field>
-        <Field label="Deposit paid (RM)"><input type="number" min="0" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} className={smallInput} /></Field>
+        <Field label="Total fee (RM)"><input type="number" inputMode="decimal" min="0" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} className={smallInput} /></Field>
+        <Field label="Deposit paid (RM)"><input type="number" inputMode="decimal" min="0" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} className={smallInput} /></Field>
       </div>
       <Field label="Services required"><textarea rows={2} value={services} onChange={(e) => setServices(e.target.value)} className={smallInput} /></Field>
       <Field label="Staff observations"><textarea rows={2} value={observations} onChange={(e) => setObservations(e.target.value)} className={smallInput} /></Field>
