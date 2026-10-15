@@ -31,6 +31,9 @@ Format:
   on phones. Long names, emails, model numbers and notes wrap instead of
   widening the page.
 - Repairs detail panel: action and form buttons full height, home-bar spacing.
+- Repairs contact log: "Log a contact attempt" is now a full-width outlined
+  button (it looked like plain text before), and its form has a heading and
+  a label on every field (How, Result, Reason, Note). Phone and desktop.
 - Daily Report: brand name above its RM and quantity boxes on phones; reorder
   arrows usable by touch; Save day pinned to the bottom of the screen on phones
   with the brands total beside it.

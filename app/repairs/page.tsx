@@ -834,32 +834,35 @@ function ContactLogSection({ jobId, contacts, staff, servedBy, canLog, onLogged 
         {contacts.length === 0 && <p className="text-xs text-slate-400">No contact attempts logged yet.</p>}
       </div>
       {!canLog ? null : !open ? (
-        <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 max-sm:min-h-11 text-xs font-semibold text-slate-600 hover:text-slate-900">
-          <Clock size={13} /> Log a contact attempt
+        // A real button, not a text link: staff were missing it entirely.
+        <button onClick={() => setOpen(true)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 max-sm:min-h-11 rounded-xl text-sm font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-colors">
+          <Clock size={15} /> Log a contact attempt
         </button>
       ) : (
-        <div className="bg-slate-50 rounded-xl p-3 space-y-2">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+          <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Log a contact attempt</p>
           <p className="text-[11px] text-slate-400">
             Opening WhatsApp doesn&apos;t log anything by itself — record it here once you&apos;ve actually reached out.
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <select value={channel} onChange={(e) => setChannel(e.target.value as ContactChannel)} className={smallInput}>
+            <Field label="How"><select value={channel} onChange={(e) => setChannel(e.target.value as ContactChannel)} className={smallInput}>
               <option value="WHATSAPP">WhatsApp</option><option value="CALL">Call</option><option value="SMS">SMS</option><option value="IN_PERSON">In Person</option>
-            </select>
-            <select value={outcome} onChange={(e) => setOutcome(e.target.value as ContactOutcome)} className={smallInput}>
+            </select></Field>
+            <Field label="Result"><select value={outcome} onChange={(e) => setOutcome(e.target.value as ContactOutcome)} className={smallInput}>
               <option value="ANSWERED">Answered</option><option value="NO_ANSWER">No Answer</option><option value="WRONG_NUMBER">Wrong Number</option>
               <option value="LEFT_MESSAGE">Left Message</option><option value="MESSAGE_SENT">Message Sent</option><option value="CUSTOMER_REPLIED">Customer Replied</option>
               <option value="PROMISED_TO_COLLECT">Promised to Collect</option><option value="UNREACHABLE">Unreachable</option>
-            </select>
+            </select></Field>
           </div>
-          <select value={purpose} onChange={(e) => setPurpose(e.target.value as ContactPurpose)} className={smallInput}>
+          <Field label="Reason"><select value={purpose} onChange={(e) => setPurpose(e.target.value as ContactPurpose)} className={smallInput}>
             <option value="READY_FOR_COLLECTION">Ready for Collection</option><option value="DELAY_UPDATE">Delay Update</option>
             <option value="UNCLAIMED_REMINDER">Unclaimed Reminder</option><option value="FINAL_NOTICE">Final Notice</option>
             <option value="CUSTOMER_ENQUIRY">Customer Enquiry</option><option value="OTHER">Other</option>
-          </select>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" className={smallInput} />
+          </select></Field>
+          <Field label="Note (optional)"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. will collect Saturday" className={smallInput} /></Field>
           <div className="flex gap-2">
-            <button disabled={saving} onClick={submit} className="px-3 py-1.5 max-sm:min-h-11 max-sm:flex-1 rounded-lg text-xs font-semibold bg-slate-900 text-white disabled:opacity-50">Save</button>
+            <button disabled={saving} onClick={submit} className="px-3 py-1.5 max-sm:min-h-11 max-sm:flex-1 rounded-lg text-xs font-semibold bg-slate-900 text-white disabled:opacity-50">Save contact</button>
             <button onClick={() => setOpen(false)} className="px-3 py-1.5 max-sm:min-h-11 max-sm:px-4 rounded-lg text-xs font-medium text-slate-500">Cancel</button>
           </div>
         </div>
