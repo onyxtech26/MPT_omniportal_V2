@@ -63,23 +63,25 @@ export default function StatusPage() {
 
 function StatusPageInner() {
   const token = useSearchParams().get('token');
-  const [result, setResult] = useState<PublicStatus | 'not_found' | 'loading'>('loading');
+  const [fetched, setResult] = useState<PublicStatus | 'not_found' | 'loading'>('loading');
+  // No token means nothing to look up: decided while rendering, not in the effect.
+  const result = token ? fetched : 'not_found';
 
   useEffect(() => {
-    if (!token) { setResult('not_found'); return; }
+    if (!token) return;
     fetchByToken(token).then((row) => setResult(row ?? 'not_found'), () => setResult('not_found'));
   }, [token]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 font-sans text-slate-900">
-      <div className="w-full max-w-sm bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 text-center">
+      <div className="w-full max-w-sm bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 sm:p-8 text-center break-words">
         <div className="flex justify-center mb-6"><Logo textClassName="text-xl" /></div>
 
         {result === 'loading' && <p className="text-sm text-slate-400">Checking…</p>}
 
         {result === 'not_found' && (
           <p className="text-sm text-slate-500">
-            We couldn't find a repair for this link. Please check the QR
+            We couldn&apos;t find a repair for this link. Please check the QR
             code or contact the branch you left your watch at.
           </p>
         )}

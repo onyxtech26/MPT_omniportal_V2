@@ -7,6 +7,8 @@ import {
   type ReportBrand,
 } from '@/lib/daily-report';
 
+// Phones get >= 40px tap targets on the small icon and text buttons; desktop keeps its compact sizes.
+const tap = 'max-sm:inline-flex max-sm:items-center max-sm:justify-center max-sm:h-10 max-sm:min-w-10';
 const input = 'px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400';
 
 // A brand can be deleted only if it has never been used: the database refuses to
@@ -95,7 +97,7 @@ export function SetupTab(props: {
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Brands · {branch}</h2>
           {canEditBrands && brands.length > 1 && (
             <button onClick={sortAlphabetically} disabled={moving}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40">
+              className="flex items-center gap-1.5 px-2.5 py-1.5 max-sm:py-3 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40">
               <ArrowDownAZ size={14} /> Sort A to Z
             </button>
           )}
@@ -109,7 +111,7 @@ export function SetupTab(props: {
             if (!newBrand.trim()) return;
             run(async () => { await addBrand(branch, newBrand, nextOrder); setNewBrand(''); });
           }}>
-            <input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} placeholder="New brand" maxLength={60} className={`${input} flex-1`} />
+            <input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} placeholder="New brand" maxLength={60} className={`${input} flex-1 min-w-0`} />
             <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700"><Plus size={15} /> Add</button>
           </form>
         )}
@@ -117,10 +119,10 @@ export function SetupTab(props: {
           <div className="mb-3 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
             <p><strong>{inUse.name}</strong> already has sales recorded, so it can&apos;t be deleted without erasing that history.</p>
             <div className="flex gap-3 mt-1.5">
-              <button className="font-semibold underline" onClick={() => { const b = inUse; setInUse(null); run(() => setBrandActive(b.id, false)); }}>
+              <button className="font-semibold underline max-sm:py-2" onClick={() => { const b = inUse; setInUse(null); run(() => setBrandActive(b.id, false)); }}>
                 Deactivate it instead
               </button>
-              <button className="font-semibold underline text-slate-500" onClick={() => setInUse(null)}>Cancel</button>
+              <button className="font-semibold underline text-slate-500 max-sm:py-2" onClick={() => setInUse(null)}>Cancel</button>
             </div>
           </div>
         )}
@@ -132,38 +134,38 @@ export function SetupTab(props: {
               onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverId(b.id); } }}
               onDrop={(e) => { e.preventDefault(); drop(b.id); }}
               onDragEnd={() => { setDragId(null); setOverId(null); }}
-              className={`flex items-center gap-2 py-2 ${dragId === b.id ? 'opacity-40' : ''} ${overId === b.id && dragId && dragId !== b.id ? 'border-t-2 border-slate-900' : ''}`}>
+              className={`flex max-sm:flex-wrap items-center gap-2 py-2 ${dragId === b.id ? 'opacity-40' : ''} ${overId === b.id && dragId && dragId !== b.id ? 'border-t-2 border-slate-900' : ''}`}>
               {canEditBrands && editing !== b.id && (
                 <GripVertical size={16} className="text-slate-300 cursor-grab shrink-0 hidden sm:block" aria-hidden />
               )}
               {canEditBrands && editing !== b.id && (
-                <span className="flex flex-col -my-1">
+                <span className="flex sm:flex-col sm:-my-1 shrink-0">
                   <button aria-label={`Move ${b.name} up`} disabled={moving || i === 0} onClick={() => move(i, -1)}
-                    className="p-0.5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-25 disabled:hover:bg-transparent"><ArrowUp size={14} /></button>
+                    className={`p-0.5 rounded text-slate-400 ${tap} hover:text-slate-900 hover:bg-slate-100 disabled:opacity-25 disabled:hover:bg-transparent`}><ArrowUp size={14} /></button>
                   <button aria-label={`Move ${b.name} down`} disabled={moving || i === brands.length - 1} onClick={() => move(i, 1)}
-                    className="p-0.5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-25 disabled:hover:bg-transparent"><ArrowDown size={14} /></button>
+                    className={`p-0.5 rounded text-slate-400 ${tap} hover:text-slate-900 hover:bg-slate-100 disabled:opacity-25 disabled:hover:bg-transparent`}><ArrowDown size={14} /></button>
                 </span>
               )}
               {editing === b.id ? (
                 <>
-                  <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={60} className={`${input} flex-1 py-1.5`} autoFocus />
+                  <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={60} className={`${input} flex-1 min-w-0 py-1.5`} autoFocus />
                   <button aria-label="Save name" onClick={() => run(async () => { await renameBrand(b.id, draft); setEditing(null); })}
-                    className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50"><Check size={16} /></button>
-                  <button aria-label="Cancel" onClick={() => setEditing(null)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"><X size={16} /></button>
+                    className={`p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 ${tap}`}><Check size={16} /></button>
+                  <button aria-label="Cancel" onClick={() => setEditing(null)} className={`p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 ${tap}`}><X size={16} /></button>
                 </>
               ) : (
                 <>
-                  <span className={`flex-1 text-sm ${b.is_active ? 'text-slate-800 font-medium' : 'text-slate-400 line-through'}`}>{b.name}</span>
+                  <span className={`flex-1 min-w-0 max-sm:min-w-24 break-words text-sm ${b.is_active ? 'text-slate-800 font-medium' : 'text-slate-400 line-through'}`}>{b.name}</span>
                   {canEditBrands && (
                     <>
                       <button aria-label={`Rename ${b.name}`} onClick={() => { setEditing(b.id); setDraft(b.name); }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Pencil size={14} /></button>
+                        className={`p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 shrink-0 ${tap}`}><Pencil size={14} /></button>
                       {!b.is_active && (
                         <button onClick={() => run(() => setBrandActive(b.id, true))}
-                          className="text-xs font-semibold text-slate-500 hover:text-slate-900 underline">Reactivate</button>
+                          className={`text-xs font-semibold text-slate-500 hover:text-slate-900 underline shrink-0 max-sm:ml-auto ${tap}`}>Reactivate</button>
                       )}
                       <button onClick={() => handleDelete(b)}
-                        className="text-xs font-semibold text-red-600 hover:text-red-800 underline">Delete</button>
+                        className={`text-xs font-semibold text-red-600 hover:text-red-800 underline shrink-0 ${tap}`}>Delete</button>
                     </>
                   )}
                 </>

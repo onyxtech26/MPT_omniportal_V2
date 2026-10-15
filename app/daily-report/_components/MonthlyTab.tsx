@@ -50,13 +50,14 @@ export function MonthlyTab(props: {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-3">
+      {/* Phones: Sales gets a full row so a six-figure RM total fits. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
           ['Sales', `RM ${rm(totalRM)}`],
           ['Items sold', String(totalQty)],
           ['Days reported', String(days.length)],
         ].map(([label, value]) => (
-          <div key={label} className="bg-white rounded-2xl border border-slate-100 p-4">
+          <div key={label} className={`bg-white rounded-2xl border border-slate-100 p-4 ${label === 'Sales' ? 'col-span-2 sm:col-span-1' : ''}`}>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">{label}</p>
             <p className="text-lg font-bold text-slate-900 tabular-nums mt-1">{value}</p>
             {label === 'Sales' && <p className="text-xs text-slate-400">{monthLabel}</p>}
@@ -70,13 +71,14 @@ export function MonthlyTab(props: {
           {days.length === 0 ? (
             <p className="text-sm text-slate-500 px-5 pb-5">Nothing has been reported this month yet.</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-y border-slate-100 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wide">
-                  <th className="px-5 py-2">Date</th>
+                  <th className="px-3 sm:px-5 py-2">Date</th>
                   <th className="px-3 py-2 text-right">Brands RM</th>
                   <th className="px-3 py-2 text-right">Qty</th>
-                  <th className="px-5 py-2 text-right">Salesmen RM</th>
+                  <th className="px-3 sm:px-5 py-2 text-right">Salesmen RM</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,10 +86,10 @@ export function MonthlyTab(props: {
                   const off = r.rm > 0 && r.salesmen > 0 && Math.abs(r.rm - r.salesmen) > 0.005;
                   return (
                     <tr key={d} onClick={() => onPickDate(d)} className="border-b border-slate-50 hover:bg-slate-50 cursor-pointer">
-                      <td className="px-5 py-2.5 font-medium text-slate-700">{d.slice(8)}/{d.slice(5, 7)}</td>
+                      <td className="px-3 sm:px-5 py-2.5 font-medium text-slate-700">{d.slice(8)}/{d.slice(5, 7)}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums">{rm(r.rm)}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums">{r.qty}</td>
-                      <td className={`px-5 py-2.5 text-right tabular-nums ${off ? 'text-amber-700 font-semibold' : ''}`}>
+                      <td className={`px-3 sm:px-5 py-2.5 text-right tabular-nums whitespace-nowrap ${off ? 'text-amber-700 font-semibold' : ''}`}>
                         {r.salesmen ? rm(r.salesmen) : '-'}{off && ' ⚠'}
                       </td>
                     </tr>
@@ -95,6 +97,7 @@ export function MonthlyTab(props: {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </section>
 

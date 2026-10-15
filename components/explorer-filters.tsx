@@ -46,19 +46,22 @@ export function ExplorerFilters({
   const selectedMonths = filters.months ?? [];
   const rangeActive = Boolean(filters.dateFrom || filters.dateTo);
 
+  // Below lg this panel is a full-screen sheet used by touch, so chips grow
+  // to a 40px tap target there; the desktop sidebar keeps its dense chips.
   const chipClass = (on: boolean, dimmed = false) =>
-    `px-2.5 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+    `px-2.5 py-1 max-lg:px-3 max-lg:py-2.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${
       on ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
     }${dimmed ? ' opacity-40' : ''}`;
 
   return (
     <aside className="w-full lg:w-72 lg:shrink-0 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-bold text-slate-900">Filters</h2>
+        {/* Below lg the sheet's own top bar already says "Filters". */}
+        <h2 className="text-sm font-bold text-slate-900 max-lg:sr-only">Filters</h2>
         {activeCount > 0 && (
           <button
             onClick={onClearAll}
-            className="text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+            className="text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer max-lg:py-2.5 max-lg:px-1"
           >
             Clear all ({activeCount})
           </button>
@@ -74,7 +77,7 @@ export function ExplorerFilters({
         {years.length > 1 && (
           <>
             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Year</p>
-            <div className="flex flex-wrap gap-1.5 mb-3">
+            <div className="flex flex-wrap gap-1.5 max-lg:gap-2 mb-3">
               {years.map((y) => (
                 <button key={y} onClick={() => onToggleYear(y)}
                   className={chipClass(selectedYears.includes(y), rangeActive)}>{y}</button>
@@ -84,7 +87,7 @@ export function ExplorerFilters({
         )}
 
         <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Month</p>
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        <div className="flex flex-wrap gap-1.5 max-lg:gap-2 mb-3">
           {MONTH_NAMES.map((m, i) => (
             <button key={m} onClick={() => onToggleMonth(String(i))}
               className={chipClass(selectedMonths.includes(String(i)), rangeActive)}>{m}</button>
@@ -98,13 +101,13 @@ export function ExplorerFilters({
           <input
             type="date" value={filters.dateFrom ?? ''}
             onChange={(e) => onDateRange(e.target.value || null, filters.dateTo ?? null)}
-            className="flex-1 min-w-0 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
+            className="flex-1 min-w-0 px-2 py-1.5 max-lg:py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
           />
           <span className="text-slate-400 text-xs">to</span>
           <input
             type="date" value={filters.dateTo ?? ''}
             onChange={(e) => onDateRange(filters.dateFrom ?? null, e.target.value || null)}
-            className="flex-1 min-w-0 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
+            className="flex-1 min-w-0 px-2 py-1.5 max-lg:py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
           />
         </div>
       </div>

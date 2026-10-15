@@ -110,14 +110,16 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                   className="hidden"
                 />
                 {/* Dark "Load Data" until a report is in; then a quiet button
-                    naming the loaded file, which still swaps it for another. */}
+                    naming the loaded file, which still swaps it for another.
+                    Icon-only and a fixed 40px square on phones so the header
+                    keeps room for the profile avatar. */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
                   title={hasData && fileName
                     ? `Loaded: ${fileName}. Click to load a different report (stays on this computer).`
                     : 'Load sales data (CSV) — stays on this computer'}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-60 ${
+                  className={`flex items-center justify-center gap-2 px-3 py-2 max-sm:w-10 max-sm:h-10 max-sm:px-0 rounded-xl text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-60 ${
                     hasData
                       ? 'border border-slate-200 text-slate-700 hover:bg-slate-50'
                       : 'bg-slate-900 text-white hover:bg-slate-700'

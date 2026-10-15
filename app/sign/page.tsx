@@ -38,7 +38,6 @@ export default function SignPage() {
 function SignPageInner() {
   const token = useSearchParams().get('t');
   const [info, setInfo] = useState<SignInfo | 'not_found' | 'loading'>('loading');
-  const [padWidth, setPadWidth] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -48,8 +47,6 @@ function SignPageInner() {
     if (!token) return;
     supabase.rpc('get_sign_request', { p_token: token }).then(({ data, error: err }) => {
       const row = Array.isArray(data) ? data[0] : null;
-      // The pad is sized once (resizing would wipe it), so fit it to the phone first.
-      setPadWidth(Math.min(360, window.innerWidth - 64));
       setInfo(err || !row ? 'not_found' : (row as SignInfo));
     });
   }, [token]);
@@ -99,8 +96,8 @@ function SignPageInner() {
         </dl>
         <p className="text-sm text-slate-700 bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4">{REMOTE_SIGN_DECLARATION}</p>
         <p className="text-[11px] font-semibold text-slate-500 mb-1">Sign below</p>
-        {padWidth > 0 && <SignaturePadCanvas ref={padRef} width={padWidth} height={160} />}
-        <button type="button" onClick={() => padRef.current?.clear()} className="text-[11px] font-semibold text-slate-500 underline mt-1">
+        <div><SignaturePadCanvas ref={padRef} width={360} height={170} /></div>
+        <button type="button" onClick={() => padRef.current?.clear()} className="text-[11px] font-semibold text-slate-500 underline mt-1 max-sm:mt-0 max-sm:py-3 max-sm:pr-4">
           Clear
         </button>
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
@@ -114,7 +111,7 @@ function SignPageInner() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 font-sans text-slate-900">
-      <div className="w-full max-w-sm bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-6">
+      <div className="w-full max-w-sm bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 break-words">
         <div className="flex justify-center mb-6"><Logo textClassName="text-xl" /></div>
         {body}
       </div>

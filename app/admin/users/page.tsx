@@ -75,7 +75,32 @@ export default function AdminUsersPage() {
       {loading ? (
         <p className="text-sm text-slate-400 py-12 text-center">Loading…</p>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <>
+        {/* Phones: one card per account. The table's six columns would leave
+            the status and the reset/disable buttons scrolled off to the right. */}
+        <ul className="sm:hidden space-y-2">
+          {profiles.map((p) => (
+            <li key={p.id} className="bg-white rounded-2xl border border-slate-100 p-4">
+              <p className="font-semibold text-slate-900 break-words">{p.display_name}</p>
+              <p className="text-xs text-slate-500 break-all">{p.email ?? '—'}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
+                <span>{ROLE_LABELS[p.role]}{p.branch_code ? ` · ${p.branch_code}` : ''}</span>
+                <StatusBadges p={p} />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button onClick={() => handleReset(p)} disabled={busyId === p.id}
+                  className="flex items-center justify-center gap-1.5 min-h-11 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 disabled:opacity-50">
+                  <KeyRound size={15} /> Reset password
+                </button>
+                <button onClick={() => handleToggleActive(p)} disabled={busyId === p.id}
+                  className={`flex items-center justify-center gap-1.5 min-h-11 rounded-xl border border-slate-200 text-sm font-medium disabled:opacity-50 ${p.is_active ? 'text-red-600' : 'text-emerald-600'}`}>
+                  <Power size={15} /> {p.is_active ? 'Disable' : 'Re-enable'}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -96,15 +121,8 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3 text-slate-600">{ROLE_LABELS[p.role]}</td>
                     <td className="px-4 py-3 text-slate-600">{p.branch_code ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${p.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                          {p.is_active ? 'Active' : 'Disabled'}
-                        </span>
-                        {p.must_change_password && (
-                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
-                            Password pending
-                          </span>
-                        )}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadges p={p} />
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -126,6 +144,7 @@ export default function AdminUsersPage() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {showCreate && (
@@ -168,10 +187,10 @@ function CreateAccountModal({ branches, onClose, onCreated }: {
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-slate-900">New Account</h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Close" className="p-1.5 max-sm:p-2.5 max-sm:-mr-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           <Field label="Email">
@@ -213,13 +232,13 @@ function RevealPasswordModal({ email, password, onClose }: { email: string; pass
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 text-center">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 text-center max-h-[90dvh] overflow-y-auto">
         <p className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-2">Shown once — will not be shown again</p>
         <p className="text-sm text-slate-500 mb-1">Login for</p>
-        <p className="font-semibold text-slate-900 mb-4">{email}</p>
+        <p className="font-semibold text-slate-900 mb-4 break-all">{email}</p>
         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-4">
-          <code className="flex-1 font-mono text-sm text-slate-900 text-left">{password}</code>
-          <button onClick={copy} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500">
+          <code className="flex-1 min-w-0 break-all font-mono text-sm text-slate-900 text-left">{password}</code>
+          <button onClick={copy} aria-label="Copy password" className="p-1.5 max-sm:p-2.5 max-sm:-mr-2 hover:bg-slate-200 rounded-lg text-slate-500">
             {copied ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
           </button>
         </div>
@@ -233,6 +252,21 @@ function RevealPasswordModal({ email, password, onClose }: { email: string; pass
         <button onClick={onClose} className="w-full px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white">Done</button>
       </div>
     </div>
+  );
+}
+
+function StatusBadges({ p }: { p: Profile }) {
+  return (
+    <>
+      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${p.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+        {p.is_active ? 'Active' : 'Disabled'}
+      </span>
+      {p.must_change_password && (
+        <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
+          Password pending
+        </span>
+      )}
+    </>
   );
 }
 

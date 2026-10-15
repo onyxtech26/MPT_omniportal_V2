@@ -11,6 +11,9 @@ import type { Salesman } from '../page';
 type BrandDraft = Record<string, { rm: string; qty: string }>;
 type SalesmanDraft = Record<string, string>;
 
+// Phone columns first (RM gets the spare width), sm: restores the desktop grid.
+const cols = 'grid-cols-[1fr_88px_40px] sm:grid-cols-[1fr_110px_70px_28px]';
+const colsView = 'grid-cols-[1fr_88px] sm:grid-cols-[1fr_110px_70px]';
 const cell = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 disabled:bg-slate-50 disabled:text-slate-500';
 
 // An empty box counts as 0; anything else must parse as a number >= 0.
@@ -170,12 +173,12 @@ export function EntryTab(props: {
             </>
           ) : step === 'pick' ? (
             <>
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex flex-wrap items-center gap-3 mb-1">
                 <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mr-auto">1 · Which brands sold?</h2>
-                <div className="relative">
+                <div className="relative max-sm:w-full">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find brand"
-                    className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 text-sm w-40" />
+                    className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 text-sm w-40 max-sm:w-full max-sm:py-2" />
                 </div>
               </div>
               <p className="text-xs text-slate-400 mb-4">Tap every brand that sold on this day, then continue.</p>
@@ -184,7 +187,7 @@ export function EntryTab(props: {
                   const on = selected.includes(b.id);
                   return (
                     <button key={b.id} type="button" onClick={() => (on ? removeBrand(b.id) : toggleBrand(b.id))}
-                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium border transition-colors ${on ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                      className={`flex items-center gap-1.5 px-3.5 py-2 max-sm:py-2.5 rounded-xl text-sm font-medium border transition-colors ${on ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
                       {on && <Check size={14} />}{b.name}
                       {!b.is_active && <span className="text-[10px] font-bold uppercase opacity-60">inactive</span>}
                     </button>
@@ -205,7 +208,7 @@ export function EntryTab(props: {
                 </h2>
                 {canEnter && (
                   <button type="button" onClick={() => setStep('pick')}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 underline">
+                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 underline max-sm:-my-3 max-sm:py-3">
                     <Pencil size={13} /> Change brands
                   </button>
                 )}
@@ -214,16 +217,18 @@ export function EntryTab(props: {
                 <p className="text-sm text-slate-500 py-2">No brand sales recorded for this day.</p>
               ) : (
                 <div className="divide-y divide-slate-50">
-                  <div className={`grid gap-2 pb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wide ${canEnter ? 'grid-cols-[1fr_110px_70px_28px]' : 'grid-cols-[1fr_110px_70px]'}`}>
-                    <span>Brand</span><span className="text-right">RM</span><span className="text-right">Qty</span>{canEnter && <span />}
+                  {/* On phones the brand name sits on its own line above its inputs, so long
+                      names are not cut off and the RM box gets the spare width. */}
+                  <div className={`grid gap-2 pb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wide ${canEnter ? cols : colsView}`}>
+                    <span className="max-sm:hidden">Brand</span><span className="text-right">RM</span><span className="text-right">Qty</span>{canEnter && <span />}
                   </div>
                   {selectedBrands.map((b) => {
                     const d = brandDraft[b.id] ?? { rm: '', qty: '' };
                     const set = (patch: Partial<{ rm: string; qty: string }>) =>
                       setBrandDraft((prev) => ({ ...prev, [b.id]: { ...d, ...patch } }));
                     return (
-                      <div key={b.id} className={`grid gap-2 py-1.5 items-center ${canEnter ? 'grid-cols-[1fr_110px_70px_28px]' : 'grid-cols-[1fr_110px_70px]'}`}>
-                        <span className="text-sm font-medium text-slate-700 truncate">
+                      <div key={b.id} className={`grid gap-2 max-sm:gap-y-1 py-1.5 max-sm:py-2.5 items-center ${canEnter ? cols : colsView}`}>
+                        <span className={`text-sm font-medium text-slate-700 sm:truncate max-sm:break-words ${canEnter ? 'max-sm:col-span-3' : 'max-sm:col-span-2'}`}>
                           {b.name}{!b.is_active && <span className="ml-1.5 text-[10px] font-bold text-slate-400 uppercase">inactive</span>}
                         </span>
                         <input inputMode="decimal" value={d.rm} disabled={!canEnter} placeholder="0.00"
@@ -234,7 +239,7 @@ export function EntryTab(props: {
                           className={`${cell} ${badQty(d.qty) ? 'border-red-400 bg-red-50' : ''}`} />
                         {canEnter && (
                           <button type="button" aria-label={`Remove ${b.name}`} onClick={() => removeBrand(b.id)}
-                            className="p-1 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50"><X size={16} /></button>
+                            className="p-1 max-sm:p-3 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50"><X size={16} /></button>
                         )}
                       </div>
                     );
@@ -294,9 +299,10 @@ export function EntryTab(props: {
               {message.text}
             </p>
           )}
+          {/* On phones the pinned bar below carries Save, so it is always in reach. */}
           {canEnter && (
             <button onClick={handleSave} disabled={saving}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-60 transition-colors">
+              className="max-sm:hidden w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-60 transition-colors">
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
               {saving ? 'Saving…' : 'Save day'}
             </button>
@@ -319,6 +325,31 @@ export function EntryTab(props: {
           <p className="text-[11px] text-slate-400">Built from the saved figures. Save first if you have just changed something.</p>
         </section>
       </aside>
+
+      {/* Phones: Save pinned to the bottom, clear of the iPhone home bar, so
+          staff don't have to scroll past every brand and salesman to reach it.
+          The spacer keeps the last card from sitting underneath the bar. */}
+      {canEnter && (
+        <>
+          <div aria-hidden className="sm:hidden h-16" />
+          <div className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(15,23,42,0.06)] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {message && (
+              <p className={`mb-2 text-xs font-medium ${message.ok ? 'text-emerald-700' : 'text-red-600'}`}>{message.text}</p>
+            )}
+            <div className="flex items-center gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] text-slate-500">Brands total</p>
+                <p className="text-sm font-bold tabular-nums truncate">RM {rm(brandTotal)}</p>
+              </div>
+              <button onClick={handleSave} disabled={saving}
+                className="ml-auto flex items-center justify-center gap-2 px-5 min-h-11 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-60 transition-colors">
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                {saving ? 'Saving…' : 'Save day'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

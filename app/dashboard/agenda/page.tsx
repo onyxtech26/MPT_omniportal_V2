@@ -176,7 +176,8 @@ function FileSlot({
           <button
             type="button"
             aria-label="Remove"
-            className="ml-auto shrink-0 text-slate-400 hover:text-rose-500 cursor-pointer"
+            // Padding with matching negative margin gives phones a ~40px target without moving the icon.
+            className="ml-auto shrink-0 text-slate-400 hover:text-rose-500 cursor-pointer max-sm:p-3 max-sm:-m-3"
             onClick={(e) => { e.stopPropagation(); onClear(); }}
           >
             <X size={16} />
@@ -189,7 +190,7 @@ function FileSlot({
           <select
             value=""
             onChange={(e) => { if (e.target.value) onSaved(Number(e.target.value)); }}
-            className="min-w-0 flex-1 text-xs bg-transparent text-slate-500 font-medium focus:outline-none cursor-pointer"
+            className="min-w-0 flex-1 text-xs bg-transparent text-slate-500 font-medium focus:outline-none cursor-pointer max-sm:py-2.5"
           >
             <option value="">or use a report saved on this computer…</option>
             {saved.map((r) => <option key={r.id} value={r.id}>{r.fileName}</option>)}
@@ -220,7 +221,7 @@ function MessageCard({ msg }: { msg: AgendaMessage }) {
         </div>
         <button
           onClick={copy}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer active:scale-95 ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 max-sm:py-3 rounded-full text-xs font-bold transition-colors cursor-pointer active:scale-95 ${
             copied ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
@@ -228,7 +229,7 @@ function MessageCard({ msg }: { msg: AgendaMessage }) {
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <pre className="px-5 py-4 text-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed flex-1 overflow-x-auto">
+      <pre className="px-5 py-4 text-sm text-slate-700 whitespace-pre-wrap max-sm:break-words font-sans leading-relaxed flex-1 overflow-x-auto">
         {msg.text}
       </pre>
     </div>
@@ -502,7 +503,7 @@ export default function AgendaPage() {
               <button
                 type="button"
                 onClick={() => { setOutlets(TARGET_BRANCHES.filter((o) => available.includes(o))); setResult(null); }}
-                className="text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+                className="text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer max-sm:py-3 max-sm:-my-3"
               >
                 Reset to main {NUM_SLOTS}
               </button>
@@ -518,7 +519,7 @@ export default function AgendaPage() {
                     key={code}
                     type="button"
                     onClick={() => toggleOutlet(code)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer active:scale-95 ${
+                    className={`px-3.5 py-1.5 max-sm:px-4 max-sm:py-3 rounded-full text-xs font-bold transition-colors cursor-pointer active:scale-95 ${
                       active
                         ? 'bg-slate-900 text-white'
                         : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
@@ -552,7 +553,8 @@ export default function AgendaPage() {
           )}
         </AnimatePresence>
 
-        <div className="mt-8 flex flex-col sm:flex-row flex-wrap gap-3">
+        {/* No wrap while stacked: a wrapping column is as wide as its longest button, which overflowed phones. */}
+        <div className="mt-8 flex flex-col sm:flex-row sm:flex-wrap gap-3">
           <button
             onClick={handleGenerate}
             disabled={isGenerating || !prev || Object.values(busy).some(Boolean)}
@@ -642,7 +644,7 @@ export default function AgendaPage() {
                 </h2>
                 <button
                   onClick={copyAll}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer active:scale-95 ${
+                  className={`flex items-center gap-1.5 px-4 py-2 max-sm:py-3 rounded-full text-xs font-bold transition-colors cursor-pointer active:scale-95 ${
                     copiedAll ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >

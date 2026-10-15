@@ -53,13 +53,13 @@ function SlipPageInner() {
       <div className="no-print flex items-center justify-between mb-4 max-w-[320px] mx-auto">
         <p className="text-xs text-slate-400">80mm slip preview</p>
         <button onClick={() => window.print()}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-900 text-white">
+          className="flex items-center gap-1.5 px-3 py-2 max-sm:min-h-11 max-sm:px-4 rounded-lg text-xs font-semibold bg-slate-900 text-white">
           <Printer size={14} /> Print
         </button>
       </div>
 
       {/* Everything below is what actually comes out of the printer. */}
-      <div className="mx-auto bg-white border border-slate-200 p-4 text-black" style={{ width: '80mm', fontFamily: 'monospace', fontSize: '11px', lineHeight: 1.4 }}>
+      <div className="mx-auto bg-white border border-slate-200 p-4 text-black break-words" style={{ width: '80mm', fontFamily: 'monospace', fontSize: '11px', lineHeight: 1.4 }}>
         <p className="text-center font-bold" style={{ fontSize: '14px' }}>MPT WATCHES</p>
         <p className="text-center">www.mptwatches.com</p>
         <hr className="my-2 border-dashed" />

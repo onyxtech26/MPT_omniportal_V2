@@ -68,7 +68,7 @@ export default function ChangePasswordPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 font-sans text-slate-900">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 md:p-10">
+        <div className="bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 sm:p-8 md:p-10">
           <div className="text-center mb-6 flex flex-col items-center">
             <Logo className="mb-4" textClassName="text-2xl" />
             <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center mb-3">

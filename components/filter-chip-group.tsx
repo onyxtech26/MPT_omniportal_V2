@@ -75,7 +75,7 @@ export function FilterChipGroup({
           <button
             onClick={onClear}
             aria-label={`Clear ${title} filter`}
-            className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer max-lg:p-2.5 max-lg:-m-2.5"
           >
             <X size={14} />
           </button>
@@ -87,17 +87,17 @@ export function FilterChipGroup({
           value={term}
           onChange={(e) => setTerm(e.target.value)}
           placeholder={`Search ${title.toLowerCase()}…`}
-          className="w-full mb-2 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20"
+          className="w-full mb-2 px-2.5 py-1.5 max-lg:py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20"
         />
       )}
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 max-lg:gap-2">
         {visible.map((v) => (
           <button
             key={v}
             onClick={() => onToggle(v)}
             title={label(v)}
-            className={`px-2.5 py-1 rounded-full text-xs font-bold max-w-full truncate transition-colors cursor-pointer ${
+            className={`px-2.5 py-1 max-lg:px-3 max-lg:py-2.5 rounded-full text-xs font-bold max-w-full truncate transition-colors cursor-pointer ${
               selectedSet.has(v)
                 ? 'bg-slate-900 text-white'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -114,7 +114,7 @@ export function FilterChipGroup({
       {hidden > 0 && (
         <button
           onClick={() => setShowAll(true)}
-          className="mt-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+          className="mt-2 max-lg:py-2.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
         >
           Show all {matches.length.toLocaleString()}
         </button>

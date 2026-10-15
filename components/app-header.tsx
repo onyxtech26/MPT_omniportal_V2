@@ -73,6 +73,10 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
     const path = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
     return path === href || (href !== '/dashboard' && path.startsWith(`${href}/`));
   };
+  // On phones the bar has room for the mark plus two or three controls, not
+  // the wordmark as well: drop it when the dashboard's actions or the admin's
+  // Console link are also in the bar.
+  const crowded = Boolean(actions) || profile?.role === 'admin';
   const roleLine = profile
     ? `${ROLE_LABELS[profile.role]}${profile.branch_code ? ` · ${profile.branch_code}` : ''}`
     : 'User';
@@ -80,7 +84,7 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
   return (
     <>
       {/* no-print: keeps the app's chrome off the printed repair slip. */}
-      <header className="no-print fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 px-4 flex items-center gap-4 shadow-sm">
+      <header className="no-print fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] flex items-center gap-2 sm:gap-4 shadow-sm">
         <button
           onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
           className="p-2 hover:bg-slate-100 rounded-lg lg:hidden text-slate-600 shrink-0"
@@ -90,14 +94,14 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
         </button>
 
         {/* The wordmark steps aside on mid-size screens so the nav labels fit on one line. */}
-        <Logo className="min-w-0 shrink-0" textClassName="text-base sm:text-xl truncate lg:max-[1439px]:hidden" />
+        <Logo className="min-w-0 shrink-0" textClassName={`text-base sm:text-xl truncate lg:max-[1439px]:hidden ${crowded ? 'max-sm:hidden' : ''}`} />
 
         {/* IT Admin has no sales screens; it arrives from its own console. */}
         {profile?.role === 'admin' && (
           <Link
             href="/admin/users"
             aria-label="Back to admin console"
-            className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+            className="flex items-center justify-center gap-1.5 px-2.5 py-2 max-sm:min-w-10 max-sm:min-h-10 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
           >
             <ArrowLeft size={16} /> <span className="hidden sm:inline">Console</span>
           </Link>
@@ -149,6 +153,10 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
               <ChevronDown size={16} className="text-slate-400 hidden md:block lg:hidden 2xl:block" />
             </button>
 
+            {/* Invisible click-away layer: a tap anywhere else closes the menu. */}
+            {isProfileOpen && (
+              <div aria-hidden className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+            )}
             <AnimatePresence>
               {isProfileOpen && (
                 <motion.div
@@ -159,13 +167,13 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
                   className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 overflow-hidden"
                 >
                   <div className="px-4 py-3 border-b border-slate-50 md:hidden lg:block 2xl:hidden bg-slate-50/50">
-                    <p className="text-sm font-bold text-slate-900">{profile?.display_name || 'User'}</p>
-                    <p className="text-xs text-slate-500">{roleLine}</p>
+                    <p className="text-sm font-bold text-slate-900 break-words">{profile?.display_name || 'User'}</p>
+                    <p className="text-xs text-slate-500 break-words">{roleLine}</p>
                   </div>
                   <div className="p-1">
                     <button
                       onClick={handleLogout}
-                      className="w-full px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 rounded-xl flex items-center gap-2.5 transition-colors font-medium"
+                      className="w-full px-3 py-2.5 max-sm:py-3 text-left text-sm text-red-600 hover:bg-red-50 rounded-xl flex items-center gap-2.5 transition-colors font-medium"
                     >
                       <LogOut size={16} />
                       Sign Out
@@ -181,12 +189,13 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
       <AnimatePresence>
         {isMobileNavOpen && (
           <>
+            {/* Scrolls inside itself when taller than a short (landscape) phone screen. */}
             <motion.nav
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.15 }}
-              className="no-print fixed top-16 left-0 right-0 z-40 bg-white border-b border-slate-200 shadow-lg p-3 lg:hidden"
+              className="no-print fixed top-16 left-0 right-0 z-40 bg-white border-b border-slate-200 shadow-lg p-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain lg:hidden"
             >
               <div className="space-y-1">
                 {profile?.role === 'admin' && (

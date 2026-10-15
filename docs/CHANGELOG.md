@@ -17,6 +17,45 @@ Format:
 
 ---
 
+## Phone-friendly screens, second pass
+- Owner's request: make the whole system mobile responsive. Every screen was
+  checked at 360, 390 and 430px with sample data; none scrolls sideways now.
+  Desktop (1024px and up) is unchanged, checked against before-screenshots.
+- Top bar: everything fits at 360px (the avatar used to fall off the right on
+  the sales dashboard); the wordmark hides when the bar is crowded; the menu
+  scrolls on short screens; tapping outside closes the profile menu. Added a
+  viewport setting so iPhone notch and home-bar spacing works; zoom still allowed.
+- Bigger tap targets (about 44px) for buttons, icon buttons and row actions
+  across Repairs, Daily Report, IT Admin, the agenda and the dashboard.
+- Tables: IT Admin accounts and branches, and the leaderboards, become cards
+  on phones. Long names, emails, model numbers and notes wrap instead of
+  widening the page.
+- Repairs detail panel: action and form buttons full height, home-bar spacing.
+- Repairs contact log: "Log a contact attempt" is now a full-width outlined
+  button (it looked like plain text before), and its form has a heading and
+  a label on every field (How, Result, Reason, Note). Phone and desktop.
+- Daily Report: brand name above its RM and quantity boxes on phones; reorder
+  arrows usable by touch; Save day pinned to the bottom of the screen on phones
+  with the brands total beside it.
+- Sales dashboard: Explorer filters open as a full-screen sheet on phones;
+  month chips scroll in one row; History list fits the screen; charts use
+  narrower axes on phones; RM totals in Explorer stay on one line.
+- Print slip layout unchanged.
+
+## Phone-friendly screens
+- Owner's request: make the system easy to use on a phone. Every screen was
+  checked at phone width (375px) and fixed where it was awkward.
+- Repairs list: a card per repair on phones (status was hidden off the side of
+  the table before). New Repair: one field per row where boxes were cramped,
+  phone keypad for the phone number, number pad for money.
+- Signature pads (counter and the customer's phone) now fit the screen instead
+  of running off the edge. Bigger tap targets for Call and WhatsApp.
+- Form fields are 16px on phones so iPhones no longer zoom in when one is
+  tapped. Daily Report tabs stay on one line; IT Admin's account list folds
+  email and branch under the name.
+
+---
+
 ## Customer copy of the intake record, and signing on the customer's phone
 - Owner's request: the customer should get a copy of what was recorded at
   intake, and a customer who comes without the chit should be able to sign on

@@ -48,18 +48,18 @@ export function PeriodFilter() {
       <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
         <button
           onClick={() => setOpen(!open)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 px-3 py-1.5 max-sm:py-2.5 min-w-0 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
             filtered ? 'bg-[#0f172a] text-white' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
           <CalendarRange size={16} />
-          <span>Period: {summary}</span>
+          <span className="truncate">Period: {summary}</span>
         </button>
 
         {filtered && (
           <button
             onClick={() => setDateRange(null, null)}
-            className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
+            className="flex items-center gap-1 max-sm:px-2 max-sm:py-3 text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
           >
             <X size={14} /> Clear
           </button>
@@ -67,11 +67,13 @@ export function PeriodFilter() {
 
         {open && (
           <div className="w-full flex flex-wrap items-center gap-x-4 gap-y-3 pt-3 mt-1 border-t border-slate-100">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wide mr-1">Month</span>
+            {/* Two years of months is six rows of chips on a phone; there they
+                scroll sideways in one row instead. */}
+            <div className="flex flex-wrap items-center gap-1.5 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:-mx-4 max-sm:px-4 max-sm:pb-1 max-sm:w-[calc(100%+2rem)]">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wide mr-1 shrink-0">Month</span>
               <button
                 onClick={() => setDateRange(null, null)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                className={`px-3 py-1.5 max-sm:py-3 shrink-0 rounded-full text-xs font-bold transition-colors cursor-pointer ${
                   !filtered ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >All</button>
@@ -79,27 +81,27 @@ export function PeriodFilter() {
                 <button
                   key={m}
                   onClick={() => pickMonth(m)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 max-sm:py-3 shrink-0 rounded-full text-xs font-bold transition-colors cursor-pointer ${
                     activeMonth === m ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >{monthLabel(m)}</button>
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Range</span>
+            <div className="flex flex-wrap items-center gap-2 max-sm:w-full">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wide max-sm:w-full">Range</span>
               <input
                 type="date"
                 value={dateFrom ?? ''}
                 onChange={(e) => setDateRange(e.target.value || null, dateTo)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
+                className="px-3 py-1.5 max-sm:py-2 max-sm:flex-1 max-sm:min-w-0 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
               />
               <span className="text-slate-400 text-xs">to</span>
               <input
                 type="date"
                 value={dateTo ?? ''}
                 onChange={(e) => setDateRange(dateFrom, e.target.value || null)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
+                className="px-3 py-1.5 max-sm:py-2 max-sm:flex-1 max-sm:min-w-0 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
               />
             </div>
           </div>
