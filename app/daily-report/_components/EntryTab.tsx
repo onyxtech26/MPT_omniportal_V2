@@ -299,9 +299,10 @@ export function EntryTab(props: {
               {message.text}
             </p>
           )}
+          {/* On phones the pinned bar below carries Save, so it is always in reach. */}
           {canEnter && (
             <button onClick={handleSave} disabled={saving}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-60 transition-colors">
+              className="max-sm:hidden w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-60 transition-colors">
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
               {saving ? 'Saving…' : 'Save day'}
             </button>
@@ -324,6 +325,31 @@ export function EntryTab(props: {
           <p className="text-[11px] text-slate-400">Built from the saved figures. Save first if you have just changed something.</p>
         </section>
       </aside>
+
+      {/* Phones: Save pinned to the bottom, clear of the iPhone home bar, so
+          staff don't have to scroll past every brand and salesman to reach it.
+          The spacer keeps the last card from sitting underneath the bar. */}
+      {canEnter && (
+        <>
+          <div aria-hidden className="sm:hidden h-16" />
+          <div className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(15,23,42,0.06)] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {message && (
+              <p className={`mb-2 text-xs font-medium ${message.ok ? 'text-emerald-700' : 'text-red-600'}`}>{message.text}</p>
+            )}
+            <div className="flex items-center gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] text-slate-500">Brands total</p>
+                <p className="text-sm font-bold tabular-nums truncate">RM {rm(brandTotal)}</p>
+              </div>
+              <button onClick={handleSave} disabled={saving}
+                className="ml-auto flex items-center justify-center gap-2 px-5 min-h-11 rounded-xl text-sm font-semibold bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-60 transition-colors">
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                {saving ? 'Saving…' : 'Save day'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

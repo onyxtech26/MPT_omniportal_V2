@@ -281,8 +281,10 @@ export default function ExplorerPage() {
               { label: 'Units sold', value: kpis.units.toLocaleString('en-MY'), hint: 'Quantity, returns netted' },
               { label: 'Transactions', value: kpis.transactions.toLocaleString('en-MY'), hint: 'Distinct transaction numbers' },
               { label: 'Avg selling price', value: money(kpis.asp), hint: 'Sales ÷ units' },
-            ].map((k) => (
-              <div key={k.label} className="bg-white border border-slate-200 rounded-2xl p-4 max-sm:p-3 min-w-0">
+            ].map((k, i) => (
+              // Total sales and the average price get the full row on phones so an RM
+              // amount stays on one line instead of splitting after "RM".
+              <div key={k.label} className={`bg-white border border-slate-200 rounded-2xl p-4 max-sm:p-3 min-w-0 ${i === 0 || i === 3 ? 'max-sm:col-span-2' : ''}`}>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">{k.label}</p>
                 <p className="text-2xl max-sm:text-lg font-bold text-slate-900 mt-1 break-words">{k.value}</p>
                 <p className="text-[11px] text-slate-400 mt-1">{k.hint}</p>

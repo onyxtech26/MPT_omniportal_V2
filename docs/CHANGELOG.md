@@ -32,10 +32,11 @@ Format:
   widening the page.
 - Repairs detail panel: action and form buttons full height, home-bar spacing.
 - Daily Report: brand name above its RM and quantity boxes on phones; reorder
-  arrows usable by touch.
+  arrows usable by touch; Save day pinned to the bottom of the screen on phones
+  with the brands total beside it.
 - Sales dashboard: Explorer filters open as a full-screen sheet on phones;
   month chips scroll in one row; History list fits the screen; charts use
-  narrower axes on phones.
+  narrower axes on phones; RM totals in Explorer stay on one line.
 - Print slip layout unchanged.
 
 ## Phone-friendly screens
