@@ -28,17 +28,19 @@ never puts that key anywhere near a browser.
 Supabase project **`mpt-omniportal`** (ref `qetoquashslxdliyxgyb`), Singapore
 `ap-southeast-1`, free tier, in `kunacosta's Org`.
 
-**In progress:** repair customer copy (intake record on the QR status page,
-"Send copy on WhatsApp") and signing on the customer's phone when they have no
-chit. Intake photos were dropped to stay on Supabase free. See
-`docs/WORK_SO_FAR.md` §15.
+**In progress:** nothing. Latest work, all live: repair customer copy and
+signing on the customer's phone (PR #13, SQL run; intake photos dropped to
+stay on Supabase free) and two phone-friendly passes over every screen
+(PRs #15, #16). See `docs/WORK_SO_FAR.md` §15 and §16. Uploaded sales reports
+live only in the browser (IndexedDB); repairs and the Daily Report live in
+Supabase (`docs/WORK_SO_FAR.md`, "Where the data lives").
 
 **Owner changes since PR #1 (all live, all SQL run):** Director locked out of
 Repairs and Daily Report; Manager view-only; deposit and balance; three-step
 repair flow; signature view; Job → Repair wording; edit and delete repairs;
 status filter; Meeting Agenda back for the Manager; shared top bar; login
 flash fix; Salesmen tab; Brands drag and drop and Sort A to Z; chit number as
-repair number. Details per item in `docs/WORK_SO_FAR.md`.
+repair number; customer copy and phone signing; phone-friendly screens. Details per item in `docs/WORK_SO_FAR.md`.
 
 Everything is specified in `docs/REPAIR_MODULE_SPEC.md`. Blocked on nothing.
 Waiting on the Director only for items that do not block the build — see spec §13.
@@ -70,8 +72,11 @@ In order. Full detail in spec §11.
       a chit number as staff; confirm the login flash is gone. Also: confirm the
       outlet-code prefix on repair numbers (`KMT-54279`) or switch to the bare
       chit number; decide on removing 2 leftover signature images in storage.
-- [ ] **Repair customer copy, then phone signing** — in progress, two PRs;
-      needs one migration and the `customer-sign` Edge Function deployed.
+- [x] **Repair customer copy and phone signing** — live (PR #13), both SQL
+      files run; built without an Edge Function. Owner still to try a full
+      signing run on a phone.
+- [x] **Phone-friendly screens** — live (PRs #15, #16). Not yet checked on a
+      phone with a real sales report loaded.
 - [ ] **"View as user"** for IT Admin (spec §4.3) — specified, not built.
 - [ ] **Small code fixes found in review:** admin function does not check its
       audit-log writes succeeded; nothing stops an admin deactivating their own
