@@ -1,8 +1,8 @@
-# Work so far: owner requests, PRs #1 to #12
+# Work so far: owner requests, PRs #1 to #16
 
 One place that records everything asked for and built since the project moved
 to the project threads: what changed, who can do what, which Supabase SQL had
-to be run, and what is still open. Sources: merged PRs #1 to #12, the git
+to be run, and what is still open. Sources: merged PRs #1 to #16, the git
 history on `main`, and the project threads.
 
 Companion documents: `PROJECT_STATUS.md` (status board), `docs/CHANGELOG.md`
@@ -42,7 +42,9 @@ enforces the same rules, so a hidden button is never the only barrier.
 
 Every file below lives in `supabase/migrations/` and was pasted into the
 Supabase SQL Editor for **mpt-omniportal** by the owner. Each was confirmed
-live afterwards.
+live afterwards. The two repair files from PR #13 must run in the order
+listed; the project files also hold them joined into one,
+`sql/customer-copy-and-phone-signing.sql`.
 
 | File | Came with | Run |
 |---|---|---|
@@ -51,6 +53,8 @@ live afterwards.
 | `repair_deposit.sql` | Deposit and balance on repairs | Yes |
 | `repair_delete.sql` | Edit and delete repairs | Yes |
 | `salesmen_staff_manage.sql` | Salesmen tab, staff manage their outlet | Yes |
+| `repair_customer_copy.sql` | Customer copy of the intake record | Yes |
+| `repair_remote_signing.sql` | Signing on the customer's phone | Yes |
 
 Earlier files (`daily_report.sql`, `daily_report_brand_delete.sql`,
 `daily_report_reorder.sql`) belong to the Daily Report build before this
@@ -58,7 +62,7 @@ period and were already applied.
 
 Changes with **no SQL**: three-step repair flow, signature view, Job to Repair
 wording, status filter, Meeting Agenda, top bar work, login flash fix, Brands
-drag and drop, chit number as repair number.
+drag and drop, chit number as repair number, both phone-friendly passes.
 
 ---
 
@@ -224,37 +228,93 @@ only changes that need SQL wait for the owner to run it.
   (the alternative is the bare chit number). Not yet tested signed in as
   staff.
 
-## 15. Repair customer copy and signing on the customer's phone — In progress
+## 15. Repair customer copy and signing on the customer's phone — Live (PR #13)
 
 Plan: `/mnt/project-files/plans/repair-intake-photos-and-remote-signing.md`
-in the project files. Being built in two PRs.
+in the project files. The plan's two steps shipped together in one PR.
 
 - **Intake photos: dropped.** Front, back, side and condition photos would
   outgrow Supabase's free 1 GB storage within about a month, and the owner
   is staying on the free plan. Staff observations (text) remain the record
   of the watch's condition.
-- **Customer copy (PR #13):** the status page the slip's QR
-  already opens gains an "Intake record" section (date, outlet, item,
-  serial no., services, staff observations, warranty declaration), text
-  only. After saving, staff get a **Send copy on WhatsApp** button that
-  sends the link to the phone number on the repair. The copy never shows the
-  phone number, fee or deposit.
-- **Signing on the customer's phone (PR #13):** at collection with
-  no chit, staff choose "Sign on customer's phone". A one-time link (works
-  once, expires in 15 minutes, can be cancelled, unusable once collected)
-  goes by WhatsApp to the number on the repair, or staff show a QR on the
-  counter screen when someone else collects. The customer signs at
-  `/sign?t=…`, the counter screen updates to "Signed", and staff confirm
-  collection. Signatures are a few KB each, so this stays within the free plan.
-- **Supabase work:** two SQL files, run in order:
-  `repair_customer_copy.sql` (a new `get_intake_record_by_token`; the
-  original status function is untouched) and `repair_remote_signing.sql`
-  (the `sign_requests` table, staff-only policies, and the two public
-  functions the customer's phone calls). No Edge Function and no Realtime:
-  the counter screen checks every few seconds, and `collect_repair_job` is
-  unchanged.
-- **Open:** "receipt" was read as the repair chit at collection, not the
-  purchase receipt. Owner to correct if that's wrong.
+- **Customer copy:** the `/status` page the slip's QR already opens gains an
+  "Intake record" section (date, outlet, item, serial no., services, staff
+  observations, warranty declaration), text only. After saving, and on the
+  repair panel, staff get **Send copy on WhatsApp**, which sends the link to
+  the phone number on the repair. The copy never shows the phone number, fee
+  or deposit.
+- **Signing on the customer's phone:** Mark Collected, then Customer signed,
+  then **On customer's phone**. A one-time link (works once, expires in 15
+  minutes, can be cancelled, unusable once collected) goes by WhatsApp to the
+  number on the repair, or staff show a QR on the counter screen when someone
+  else collects. The customer signs at `/sign?t=…`, the counter screen
+  updates to "Signed", and staff press Confirm Collection as before. The
+  snapshot saved with the signature records that it was signed on the phone
+  and the declaration the customer saw.
+- **Changed from the plan:** no Edge Function and no Realtime. The phone
+  calls two public database functions (`get_sign_request`,
+  `submit_sign_request`), the counter screen checks every few seconds, and
+  `collect_repair_job` is unchanged.
+- **SQL:** `repair_customer_copy.sql` (a new `get_intake_record_by_token`;
+  the original status function is untouched), then
+  `repair_remote_signing.sql` (the `sign_requests` table, staff-only
+  policies and the two public functions). The QR button failed with "could
+  not create the signing link" until these were run; the database was
+  checked afterwards and everything was there.
+- **Open:** a full phone signing run (scan, sign, Confirm Collection) was not
+  reported back after the SQL went in. "Receipt" was read as the repair chit
+  at collection, not the purchase receipt; owner to correct if that's wrong.
+
+## 16. Phone-friendly screens — Live (PRs #15, #16)
+
+- **First pass (PR #15):** Repairs list shows a card per repair on phones
+  (the status was off the side of the table before). New Repair stacks
+  cramped boxes one per row, opens the phone keypad for the phone number and
+  the number pad for money. Signature pads, on the counter and on the
+  customer's phone, fit the screen. Form fields are 16px so iPhones stop
+  zooming in. Bigger Call and WhatsApp buttons; Daily Report tabs on one
+  line; IT Admin account list fits.
+- **Full audit (PR #16):** every screen checked at 360, 390 and 430px; none
+  scrolls sideways. The top bar fits at 360px (the avatar used to fall off
+  the sales dashboard), its menu scrolls on short screens, and tapping
+  outside closes the profile menu. Tap targets about 44px across the app.
+  IT Admin tables and the leaderboards become cards. Explorer filters open
+  as a full-screen sheet; month chips scroll in one row; charts use narrower
+  axes; History fits the screen. The print slip is unchanged.
+- **Daily Report Save day (PR #16):** on phones, Save day is pinned to the
+  bottom of the screen with the brands total beside it, so staff don't scroll
+  to save. Managers don't see the bar because they can't enter figures.
+- **Explorer totals (PR #16):** on phones, Total sales and Avg selling price
+  each take a full row, so a figure like RM 85,960,087.82 stays on one line.
+- **Contact log (PR #16):** "Log a contact attempt" is a full-width outlined
+  button with an icon (it looked like plain text before). Its form has a
+  heading, a label on every field (How, Result, Reason, Note) and a **Save
+  contact** button. Desktop too.
+- **Who:** everyone; desktop (1024px and up) is unchanged, checked against
+  before-screenshots. Phone screenshots are in the project files under
+  `screenshots/mobile/`.
+- **SQL:** none.
+- **Open:** the sales dashboard was not checked on a phone with the owner's
+  real CSV loaded (sample data only).
+
+---
+
+## Where the data lives
+
+- **Uploaded sales reports stay in the browser.** The POS CSV picked with
+  Load Data is saved in that browser's IndexedDB, in a database called
+  `mpt-omniportal`, and never goes to Supabase or any server. The current
+  report is under the `sales-csv` key of the `kv` store; the last 5 uploads
+  are kept as history (`reportMeta` for name, date and size, `reportData` for
+  the text). The Meeting Agenda reads from the same history. See
+  `lib/csvStore.ts` and `app/dashboard/data-context.tsx`.
+- So a report exists only on the one browser and machine it was loaded on.
+  Clearing site data, or using another PC or browser, means loading it again.
+- **Repairs and the Daily Report use Supabase.** Repairs, their history,
+  contact log, collections and sign requests are Supabase tables, and
+  signatures are files in the private `signatures` storage bucket. A new
+  repair saved while the network is down waits in a separate browser
+  database, `mpt-repairs-outbox`, until it can sync (`lib/repairs-outbox.ts`).
 
 ---
 
@@ -266,7 +326,9 @@ in the project files. Being built in two PRs.
 - Confirm the outlet-code prefix on repair numbers (or switch to the bare
   chit number).
 - Decide whether to remove the 2 leftover signature images in storage.
-- Merge PR #13 (customer copy and phone signing) and run its two SQL files.
+- Try a full signing run on the customer's phone: scan or WhatsApp link,
+  sign, Confirm Collection.
+- Open the sales dashboard on a phone with a real report loaded.
 - Carried over from `PROJECT_STATUS.md`: staff logins for the outlets that
   still have none; Daily Report follow-ups (MIL branch, CS status, duplicate
   brands); Vercel Pro and Phase 6 (retention, backups, paperwork) before real
