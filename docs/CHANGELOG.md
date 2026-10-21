@@ -25,8 +25,11 @@ Format:
   and a call with no signed-in user is still refused (401).
 - An IT Admin can no longer disable their own account or change their own role.
   The console greys out their own Disable button, and a new trigger refuses it
-  in the database (`supabase/migrations/admin_no_self_lockout.sql`, **to run in
-  the SQL Editor**). Another admin can still disable the account.
+  in the database (`supabase/migrations/admin_no_self_lockout.sql`, applied).
+  Tested as the real admin in a rolled-back transaction: disabling self and
+  changing own role were refused; disabling another account went through.
+  Afterwards all 10 accounts were still active and no audit entries were
+  written, so the test left nothing behind.
 - The profile no longer loads twice at startup: `lib/auth-context.tsx` dropped
   its separate `getSession()` call and relies on the `INITIAL_SESSION` event
   the auth listener already receives.

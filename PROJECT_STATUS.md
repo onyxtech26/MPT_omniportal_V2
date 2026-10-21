@@ -70,8 +70,6 @@ In order. Full detail in spec §11.
       outlet-code prefix on repair numbers (`KMT-54279`) or switch to the bare
       chit number; decide on removing 2 leftover signature images in storage.
 - [ ] **"View as user"** for IT Admin (spec §4.3) — specified, not built.
-- [ ] **Finish the review fixes** (code merged and function deployed, see
-      Done): run `admin_no_self_lockout.sql` in the SQL Editor.
 - [x] **Phase 0 — repo hygiene** — three of four done, see Done below.
   - [ ] Upgrade Vercel to Pro — **billing action, needs the account owner.** I do
         not act on payment/plan changes without explicit sign-off each time; this
@@ -97,8 +95,8 @@ In order. Full detail in spec §11.
   own account or change their own role (greyed-out button plus a database
   trigger); the profile loads once at startup, not twice; the forgot-password
   comment is corrected; lint has 0 errors. Build passes; `admin-users`
-  redeployed (version 4). **Still to do:** run `admin_no_self_lockout.sql`
-  (see Next).
+  redeployed (version 4); `admin_no_self_lockout.sql` applied and tested as the
+  real admin in a rolled-back transaction.
 - **Repair customer copy and signing on the customer's phone** (PR #13). The
   QR status page shows the intake record (text only, never phone, fee or
   deposit), with a "Send copy on WhatsApp" button after saving. At collection
