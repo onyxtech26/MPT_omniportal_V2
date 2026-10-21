@@ -28,9 +28,8 @@ never puts that key anywhere near a browser.
 Supabase project **`mpt-omniportal`** (ref `qetoquashslxdliyxgyb`), Singapore
 `ap-southeast-1`, free tier, in `kunacosta's Org`.
 
-**In progress:** repair customer copy (intake record on the QR status page,
-"Send copy on WhatsApp") and signing on the customer's phone when they have no
-chit. Intake photos were dropped to stay on Supabase free. See
+**Repair customer copy and phone signing are done** (PR #13, both SQL files
+run). Intake photos were dropped to stay on Supabase free. See
 `docs/WORK_SO_FAR.md` §15.
 
 **Owner changes since PR #1 (all live, all SQL run):** Director locked out of
@@ -70,8 +69,6 @@ In order. Full detail in spec §11.
       a chit number as staff; confirm the login flash is gone. Also: confirm the
       outlet-code prefix on repair numbers (`KMT-54279`) or switch to the bare
       chit number; decide on removing 2 leftover signature images in storage.
-- [ ] **Repair customer copy, then phone signing** — in progress, two PRs;
-      needs one migration and the `customer-sign` Edge Function deployed.
 - [ ] **"View as user"** for IT Admin (spec §4.3) — specified, not built.
 - [ ] **Small code fixes found in review:** admin function does not check its
       audit-log writes succeeded; nothing stops an admin deactivating their own
@@ -97,6 +94,14 @@ In order. Full detail in spec §11.
 
 ## Done
 
+- **Repair customer copy and signing on the customer's phone** (PR #13). The
+  QR status page shows the intake record (text only, never phone, fee or
+  deposit), with a "Send copy on WhatsApp" button after saving. At collection
+  with no chit, staff send a one-time signing link (15 minutes, single use) or
+  show a QR; the customer signs at `/sign`. Both SQL files run
+  (`repair_customer_copy.sql`, `repair_remote_signing.sql`) — confirmed in the
+  live database: `sign_requests` and `get_intake_record_by_token` exist. No
+  Edge Function needed. Followed by phone-fit layout passes (PRs #15, #16).
 - **Meeting Agenda rebuilt for the Manager** (`/dashboard/agenda`, Manager only).
   Runs entirely in the browser; ported from the latest Python generator and
   checked cell-for-cell against it on the Jan–Sep 2025/2026 exports (details in

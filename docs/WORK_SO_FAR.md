@@ -224,7 +224,7 @@ only changes that need SQL wait for the owner to run it.
   (the alternative is the bare chit number). Not yet tested signed in as
   staff.
 
-## 15. Repair customer copy and signing on the customer's phone — In progress
+## 15. Repair customer copy and signing on the customer's phone — Done (PR #13, SQL run)
 
 Plan: `/mnt/project-files/plans/repair-intake-photos-and-remote-signing.md`
 in the project files. Being built in two PRs.
