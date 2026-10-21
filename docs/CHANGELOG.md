@@ -21,7 +21,8 @@ Format:
 - `admin-users` Edge Function now checks its audit-log writes. The account or
   reset still goes through (it already happened), but the response carries
   `audit_error` and the console shows it in red instead of silently leaving a
-  gap in the log. **Repo updated; the deployed function still needs redeploying.**
+  gap in the log. Deployed (version 4); deployed code checked against the repo,
+  and a call with no signed-in user is still refused (401).
 - An IT Admin can no longer disable their own account or change their own role.
   The console greys out their own Disable button, and a new trigger refuses it
   in the database (`supabase/migrations/admin_no_self_lockout.sql`, **to run in
