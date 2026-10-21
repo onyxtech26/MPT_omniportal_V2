@@ -90,15 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    supabase.auth.getSession().then(async ({ data: { session: initial } }) => {
-      if (cancelled) return;
-      setSession(initial);
-      await loadProfile(initial);
-      if (!cancelled) setLoading(false);
-    });
-
-    // Fires on sign-in, sign-out, and token refresh — keeps the profile in
-    // sync with the session for the whole life of the tab, not just on load.
+    // Fires once on subscribe with the stored session (INITIAL_SESSION), then
+    // on sign-in, sign-out, and token refresh — keeps the profile in sync with
+    // the session for the whole life of the tab, not just on load. This is
+    // the only startup path: a separate getSession() call alongside it loaded
+    // the profile twice on every page load.
     // PASSWORD_RECOVERY is its own event, distinct from a normal sign-in —
     // Supabase's client detects the recovery link's token in the URL on
     // whichever page it lands on and fires this automatically. Recorded here,
@@ -115,6 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loadProfile(next).finally(() => { if (!cancelled) setLoading(false); });
       } else {
         loadProfile(next);
+        // Nobody signed in on first load: nothing to wait for.
+        if (event === 'INITIAL_SESSION') setLoading(false);
       }
       if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
     });

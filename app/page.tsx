@@ -58,9 +58,10 @@ export default function LoginPage() {
       redirectTo: `${window.location.origin}/change-password`,
     });
     setForgotBusy(false);
-    // Deliberately shown on success AND on failure alike (aside from a truly
-    // empty email, caught above) — confirming whether an email exists would
-    // let anyone probe which addresses have accounts.
+    // Supabase answers "sent" whether or not the address has an account, so
+    // the success message never reveals which addresses exist. An error here
+    // is something else going wrong (e.g. the email rate limit), so it is
+    // shown as it is.
     if (resetError) setForgotError(resetError.message);
     else setForgotSent(true);
   };

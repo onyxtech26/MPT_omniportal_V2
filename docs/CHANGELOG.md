@@ -17,6 +17,25 @@ Format:
 
 ---
 
+## Small fixes found in review
+- `admin-users` Edge Function now checks its audit-log writes. The account or
+  reset still goes through (it already happened), but the response carries
+  `audit_error` and the console shows it in red instead of silently leaving a
+  gap in the log. **Repo updated; the deployed function still needs redeploying.**
+- An IT Admin can no longer disable their own account or change their own role.
+  The console greys out their own Disable button, and a new trigger refuses it
+  in the database (`supabase/migrations/admin_no_self_lockout.sql`, **to run in
+  the SQL Editor**). Another admin can still disable the account.
+- The profile no longer loads twice at startup: `lib/auth-context.tsx` dropped
+  its separate `getSession()` call and relies on the `INITIAL_SESSION` event
+  the auth listener already receives.
+- Corrected the comment in the forgot-password handler (`app/page.tsx`): it
+  claimed errors were hidden to stop address probing, but they are shown;
+  Supabase's own "sent" reply is what keeps addresses private.
+- Lint: the 9 errors listed in review were already gone; `eslint .` reports 0
+  errors (1 `<img>` warning in `BrandImage.tsx`, left as is).
+- Type check and production build pass. Not tried in a browser.
+
 ## Phone-friendly screens, second pass
 - Owner's request: make the whole system mobile responsive. Every screen was
   checked at 360, 390 and 430px with sample data; none scrolls sideways now.

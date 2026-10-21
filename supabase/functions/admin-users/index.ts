@@ -117,12 +117,15 @@ Deno.serve(async (req: Request) => {
         return json({ error: profileInsertErr.message }, 400);
       }
 
-      await adminClient.from('admin_audit_log').insert({
+      // The account is real by now, so a failed audit write is reported back
+      // rather than undoing it — but never swallowed, or the log would look
+      // complete when it is not.
+      const { error: auditErr } = await adminClient.from('admin_audit_log').insert({
         actor: user.id, action: 'account_created', target_user_id: created.user.id,
         details: { email, role, branch_code: branch_code ?? null },
       });
 
-      return json({ email, password, user_id: created.user.id });
+      return json({ email, password, user_id: created.user.id, audit_error: auditErr?.message ?? null });
     }
 
     if (body.action === 'reset_password') {
@@ -142,11 +145,11 @@ Deno.serve(async (req: Request) => {
       });
       if (updateErr) return json({ error: updateErr.message }, 400);
 
-      await adminClient.from('admin_audit_log').insert({
+      const { error: auditErr } = await adminClient.from('admin_audit_log').insert({
         actor: user.id, action: 'password_reset', target_user_id: user_id, details: {},
       });
 
-      return json({ password });
+      return json({ password, audit_error: auditErr?.message ?? null });
     }
 
     return json({ error: `Unknown action: ${body.action}` }, 400);

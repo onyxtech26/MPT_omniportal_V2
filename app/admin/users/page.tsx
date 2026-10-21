@@ -7,8 +7,13 @@ import {
   type Profile, type Branch,
 } from '@/lib/admin';
 import { ROLE_LABELS, type Role } from '@/lib/roles';
+import { useAuth } from '@/lib/auth-context';
 
 export default function AdminUsersPage() {
+  // The signed-in admin's own Disable button is greyed out: one click would
+  // lock them out of this console. The database refuses it too
+  // (admin_no_self_lockout.sql); this just avoids offering it.
+  const { profile: me } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,8 +52,9 @@ export default function AdminUsersPage() {
     setBusyId(p.id);
     setError(null);
     try {
-      const { password } = await resetAccountPassword(p.id);
+      const { password, audit_error } = await resetAccountPassword(p.id);
       setRevealed({ email: p.email ?? p.display_name, password });
+      if (audit_error) setError(`Password reset, but it was not recorded in the audit log: ${audit_error}`);
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not reset the password.');
@@ -92,7 +98,8 @@ export default function AdminUsersPage() {
                   className="flex items-center justify-center gap-1.5 min-h-11 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 disabled:opacity-50">
                   <KeyRound size={15} /> Reset password
                 </button>
-                <button onClick={() => handleToggleActive(p)} disabled={busyId === p.id}
+                <button onClick={() => handleToggleActive(p)} disabled={busyId === p.id || p.id === me?.id}
+                  title={p.id === me?.id ? 'You cannot disable your own account' : undefined}
                   className={`flex items-center justify-center gap-1.5 min-h-11 rounded-xl border border-slate-200 text-sm font-medium disabled:opacity-50 ${p.is_active ? 'text-red-600' : 'text-emerald-600'}`}>
                   <Power size={15} /> {p.is_active ? 'Disable' : 'Re-enable'}
                 </button>
@@ -131,8 +138,8 @@ export default function AdminUsersPage() {
                           title="Reset password" className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-50">
                           <KeyRound size={15} />
                         </button>
-                        <button onClick={() => handleToggleActive(p)} disabled={busyId === p.id}
-                          title={p.is_active ? 'Disable account' : 'Re-enable account'}
+                        <button onClick={() => handleToggleActive(p)} disabled={busyId === p.id || p.id === me?.id}
+                          title={p.id === me?.id ? 'You cannot disable your own account' : p.is_active ? 'Disable account' : 'Re-enable account'}
                           className={`p-2 rounded-lg hover:bg-slate-100 disabled:opacity-50 ${p.is_active ? 'text-red-500' : 'text-emerald-600'}`}>
                           <Power size={15} />
                         </button>
@@ -149,7 +156,12 @@ export default function AdminUsersPage() {
 
       {showCreate && (
         <CreateAccountModal branches={branches} onClose={() => setShowCreate(false)}
-          onCreated={(result) => { setShowCreate(false); setRevealed({ email: result.email, password: result.password }); reload(); }} />
+          onCreated={(result) => {
+            setShowCreate(false);
+            setRevealed({ email: result.email, password: result.password });
+            if (result.audit_error) setError(`Account created, but it was not recorded in the audit log: ${result.audit_error}`);
+            reload();
+          }} />
       )}
 
       {revealed && <RevealPasswordModal email={revealed.email} password={revealed.password} onClose={() => setRevealed(null)} />}
@@ -159,7 +171,7 @@ export default function AdminUsersPage() {
 
 function CreateAccountModal({ branches, onClose, onCreated }: {
   branches: Branch[]; onClose: () => void;
-  onCreated: (result: { email: string; password: string }) => void;
+  onCreated: (result: { email: string; password: string; audit_error: string | null }) => void;
 }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('staff');
