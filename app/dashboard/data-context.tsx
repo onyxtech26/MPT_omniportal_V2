@@ -6,7 +6,7 @@ import {
   type OutletSummary, type SalesmanProfile, type Row,
 } from '@/lib/salesData';
 import {
-  saveCsv, loadCsv, clearCsv,
+  saveCsv, loadCsv, clearAllSalesData,
   saveReport, listReports, loadReport, deleteReport, type ReportMeta,
 } from '@/lib/csvStore';
 
@@ -33,7 +33,7 @@ interface DataContextType {
   setDateRange: (from: string | null, to: string | null) => void;
   /** Parse a user-picked CSV in-browser, show it, and remember it on this machine. */
   loadFromFile: (file: File) => Promise<void>;
-  /** Forget the stored CSV and return to the empty state. */
+  /** Forget the current file AND every saved report on this computer, and return to the empty state. */
   clearData: () => Promise<void>;
   /** Re-read the CSV currently held in the browser store. */
   refetch: () => void;
@@ -152,14 +152,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [refreshReports]);
 
   const clearData = useCallback(async () => {
-    try { await clearCsv(); } catch { /* ignore */ }
+    await clearAllSalesData();
+    await refreshReports();
     setRecords([]);
     setFileName(null);
     setLastUpdated(null);
     setDateFrom(null);
     setDateTo(null);
     setSystemStatus('No data loaded');
-  }, []);
+  }, [refreshReports]);
 
   return (
     <DataContext.Provider value={{

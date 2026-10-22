@@ -213,6 +213,37 @@ export async function deleteReport(id: number): Promise<void> {
   }
 }
 
+/**
+ * Forget every sales report this browser holds: the current file AND the
+ * history, in one transaction so it is all-or-nothing. Runs on every sign-out
+ * (see lib/auth-context.tsx) — the store is per browser, not per account, so
+ * without this the next person to sign in on the same machine saw the last
+ * upload. Never throws: storage that cannot be opened has nothing to clear.
+ */
+export async function clearAllSalesData(): Promise<void> {
+  let db: IDBDatabase;
+  try {
+    db = await openDb();
+  } catch {
+    return;
+  }
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction([STORE, META, DATA], 'readwrite');
+      tx.objectStore(STORE).delete(KEY);
+      tx.objectStore(META).clear();
+      tx.objectStore(DATA).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } catch {
+    /* nothing more to do from here; the caller is usually mid sign-out */
+  } finally {
+    db.close();
+  }
+}
+
 export async function clearReports(): Promise<void> {
   const db = await openDb();
   try {

@@ -90,6 +90,12 @@ In order. Full detail in spec §11.
 
 ## Done
 
+- **Sales data no longer survives sign-out.** The uploaded file lived in the
+  browser per website, not per account, so the next person to sign in on that
+  machine saw it (the Director did, on the Manager's upload). Every sign-out
+  now wipes the current file and all saved reports, and the clock menu has
+  "Remove all sales data from this computer". Tested in the browser with a
+  fake file.
 - **Small fixes found in review.** Admin function reports a failed audit-log
   write (`audit_error`) instead of ignoring it; an admin cannot disable their
   own account or change their own role (greyed-out button plus a database
@@ -402,6 +408,7 @@ In order. Full detail in spec §11.
 | **Director sees no branch data; Manager is view-only** | Owner's call: outlet staff do all input, the Manager watches status, the boss uses only the sales dashboard. Enforced in RLS (`boss_no_branch_ops.sql`, `manager_view_only.sql`), not just hidden buttons. |
 | **Chit number is the repair number, prefixed with the outlet code** | Owner's call: staff key the chit number first. The prefix (`KMT-54279`) stops two outlets' identical chit numbers clashing. Pending the owner's confirmation of the prefix. |
 | **No intake photos** | Owner is staying on Supabase free; photos would fill the 1 GB storage within about a month. Text observations are the condition record. |
+| **Sign-out wipes the uploaded sales data** | Browser storage belongs to the website, not the account, so without it a shared computer showed the last upload to whoever signed in next. Cost: re-upload after each sign-in. Chosen over keeping a copy per account, which still exposes the data when someone forgets to sign out. |
 | **Every update is merged straight away** | Owner's instruction. Changes that need SQL wait until the owner has run it in the Supabase SQL Editor. |
 
 ---

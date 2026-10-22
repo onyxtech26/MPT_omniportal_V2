@@ -17,6 +17,29 @@ Format:
 
 ---
 
+## Sales data wiped on sign-out, plus "Remove all sales data"
+- **Symptom:** the Director signed in on a computer where the sales file had
+  been uploaded under the Manager's account, and saw the data. Sign-out and a
+  different login made no difference.
+- **Root cause:** the uploaded file is kept in the browser's own storage
+  (IndexedDB), which belongs to the website in that browser, not to an
+  account. Sign-out only ended the Supabase login and never touched it, so the
+  dashboard reloaded the last upload for whoever signed in next. The bin in the
+  clock menu removed a report from the history only, not the current-file
+  slot, so the data still came back.
+- **Fix:** `clearAllSalesData()` (`lib/csvStore.ts`) empties the current file
+  and the whole history in one transaction. `lib/auth-context.tsx` runs it
+  before every sign-out (awaited) and again on Supabase's `SIGNED_OUT` event,
+  which also covers signing out in another tab and an expired login. The clock
+  menu gained "Remove all sales data from this computer" (with a confirm, does
+  not sign out) and now shows whenever any sales data is stored.
+- **Trade-off accepted:** the file has to be uploaded again after each sign-in.
+  Still not covered: someone who closes the browser without signing out stays
+  signed in, so shared machines still need the sign-out habit.
+- Tested in the browser as the Manager with a fake file: Remove all left the
+  store empty and kept the user signed in; signing out left the store empty.
+  Type check, lint and build pass.
+
 ## Small fixes found in review
 - `admin-users` Edge Function now checks its audit-log writes. The account or
   reset still goes through (it already happened), but the response carries

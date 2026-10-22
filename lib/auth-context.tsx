@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { Role } from './roles';
 import { toLoginEmail } from './login-identity';
+import { clearAllSalesData } from './csvStore';
 
 // The row from public.profiles for whoever is signed in. Supabase's own
 // session tells us WHO (an email, a user id); it says nothing about role or
@@ -115,6 +116,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === 'INITIAL_SESSION') setLoading(false);
       }
       if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
+      // The uploaded sales file is stored per browser, not per account, so a
+      // sign-out must take it with it or the next person on this machine sees
+      // it. Here as well as in signOut() so it also covers signing out in
+      // another tab and a session that expires on its own.
+      if (event === 'SIGNED_OUT') clearAllSalesData();
     });
 
     return () => {
@@ -131,6 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Wiped before signing out, and awaited, so navigating away straight
+    // after cannot cut it short. See the SIGNED_OUT handler above.
+    await clearAllSalesData();
     await supabase.auth.signOut();
   }, []);
 

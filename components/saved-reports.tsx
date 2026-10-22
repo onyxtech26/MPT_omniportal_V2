@@ -13,7 +13,7 @@ import { useData } from '@/app/dashboard/data-context';
  * is the same guarantee the rest of the app makes.
  */
 export function SavedReports() {
-  const { savedReports, openSavedReport, removeSavedReport, fileName } = useData();
+  const { savedReports, openSavedReport, removeSavedReport, fileName, hasData, clearData } = useData();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -27,7 +27,16 @@ export function SavedReports() {
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
-  if (savedReports.length === 0) return null;
+  // Shown whenever anything is stored, not just when the history has entries:
+  // the current file can exist on its own (e.g. a history write that hit the
+  // storage quota), and "Remove all" must stay reachable then too.
+  if (savedReports.length === 0 && !hasData) return null;
+
+  const handleRemoveAll = async () => {
+    if (!window.confirm('Remove all sales data from this computer? Every saved report goes too. This cannot be undone.')) return;
+    await clearData();
+    setOpen(false);
+  };
 
   const size = (bytes: number) => `${(bytes / 1_048_576).toFixed(1)} MB`;
 
@@ -80,8 +89,14 @@ export function SavedReports() {
               );
             })}
           </ul>
+          <button
+            onClick={handleRemoveAll}
+            className="mt-1 w-full flex items-center justify-center gap-1.5 min-h-10 max-sm:min-h-11 px-2 rounded-lg border-t border-slate-100 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+          >
+            <Trash2 size={14} /> Remove all sales data from this computer
+          </button>
           <p className="px-2 pt-2 pb-1 text-[11px] text-slate-400 border-t border-slate-100 mt-1">
-            Stored only in this browser. Never uploaded.
+            Stored only in this browser. Never uploaded. Signing out removes it too.
           </p>
         </div>
       )}
