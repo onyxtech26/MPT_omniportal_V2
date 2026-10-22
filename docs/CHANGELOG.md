@@ -39,6 +39,9 @@ Format:
 - Tested in the browser as the Manager with a fake file: Remove all left the
   store empty and kept the user signed in; signing out left the store empty.
   Type check, lint and build pass.
+- Phone check (375px): the clock menu fits with no sideways scroll; "Remove
+  all" is 44px tall; the per-report bin buttons were 38px and are now 44px on
+  phones (desktop unchanged at 30px).
 
 ## Small fixes found in review
 - `admin-users` Edge Function now checks its audit-log writes. The account or

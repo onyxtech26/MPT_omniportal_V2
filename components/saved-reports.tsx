@@ -81,7 +81,7 @@ export function SavedReports() {
                   <button
                     onClick={() => removeSavedReport(r.id)}
                     aria-label={`Forget ${r.fileName}`}
-                    className="p-2 max-sm:p-3 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    className="flex items-center justify-center p-2 max-sm:min-w-11 max-sm:min-h-11 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                   >
                     <Trash2 size={14} />
                   </button>
