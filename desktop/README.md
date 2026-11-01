@@ -1,12 +1,18 @@
-# MPT Meeting Agenda — offline Windows app
+# MPT OmniPortal Offline — Windows app for the Manager
 
-The Manager's desktop app: the Meeting Agenda on its own. No login, no roles,
-no repairs, no dashboard, and no internet — every http(s) request is blocked
-inside the app, so the POS reports it opens cannot leave the computer.
+The sales dashboard (Dashboard, Brands, Leaderboards, Explorer) and the
+Meeting Agenda, offline. No login, no roles, no repairs or Daily Report, and
+no internet — every http(s) request is blocked inside the app, so the sales
+reports it opens cannot leave the computer.
 
-It shows the website's own agenda screen (`app/dashboard/agenda/page.tsx` and
-`lib/agenda/`), so an agenda fix made for the website reaches this app on its
-next build. Nothing here touches the website or its Vercel deploys.
+Each screen is the website's own page (`app/dashboard/**`), so a fix made for
+the website reaches this app on its next build. Nothing here touches the
+website or its Vercel deploys.
+
+Loaded reports stay on the computer between sessions (there is no sign-out to
+clear them); the clock menu's "Remove all sales data" clears them. Brand logos
+come from the internet on the website, so here every brand shows the generic
+watch icon.
 
 ## Build the installer
 
@@ -18,7 +24,7 @@ npm --prefix desktop install     # Electron and the packager (once)
 npm run desktop:dist
 ```
 
-The installer lands in `desktop/dist/MPT Meeting Agenda Setup <version>.exe`
+The installer lands in `desktop/dist/MPT OmniPortal Offline Setup <version>.exe`
 (about 120 MB). Raise `version` in `desktop/package.json` before building a
 new release so Windows treats it as an update.
 
@@ -29,11 +35,12 @@ new release so Windows treats it as an update.
 
 | File | Job |
 |---|---|
-| `app/page.tsx` | Header plus the shared agenda screen |
+| `app/desktop-shell.tsx` | Top bar (tabs, history, Load Data), period filter, sales data store |
+| `app/page.tsx`, `app/<tab>/page.tsx` | One line each: re-export the website's page |
 | `app/layout.tsx`, `app/globals.css` | Font and styles; no `AuthProvider` |
-| `next.config.ts` | Static export; allows importing `../app` and `../lib` |
+| `next.config.ts` | Static export; allows importing `../app`, `../components`, `../lib` |
 | `scripts/prepare.mjs` | Copies the blank agenda template from `../public/agenda` |
-| `electron/main.mjs` | Window, the private `app://` scheme serving `out/`, the network block |
+| `electron/main.mjs` | Maximised window, the private `app://` scheme serving `out/`, the network block |
 | `package.json` | Electron, electron-builder and the installer settings |
 
 ## Installing on the Manager's PC

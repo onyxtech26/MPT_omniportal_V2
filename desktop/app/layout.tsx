@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
+import { DesktopShell } from './desktop-shell';
 
 // next/font downloads the font at BUILD time and bundles it, so the packaged
 // app needs no network to render it.
@@ -11,8 +12,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'MPT Meeting Agenda',
-  description: 'Monthly Meeting Agenda builder, offline',
+  title: 'MPT OmniPortal Offline',
+  description: 'Sales dashboard and Meeting Agenda, offline',
 };
 
 // No AuthProvider: this app has no login and no roles, by design.
@@ -20,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={plusJakartaSans.variable}>
       <body className="font-sans antialiased bg-slate-50 text-slate-900" suppressHydrationWarning>
-        {children}
+        <DesktopShell>{children}</DesktopShell>
       </body>
     </html>
   );

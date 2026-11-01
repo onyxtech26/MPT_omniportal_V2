@@ -1,8 +1,8 @@
 {
-  "name": "mpt-meeting-agenda",
-  "productName": "MPT Meeting Agenda",
-  "version": "1.0.0",
-  "description": "The Manager's offline Meeting Agenda builder",
+  "name": "mpt-omniportal-offline",
+  "productName": "MPT OmniPortal Offline",
+  "version": "1.1.0",
+  "description": "The Manager's offline sales dashboard and Meeting Agenda",
   "author": "Onyxx Tech Hub",
   "private": true,
   "main": "electron/main.mjs",
@@ -12,7 +12,7 @@
   },
   "build": {
     "appId": "com.mpt.meetingagenda",
-    "productName": "MPT Meeting Agenda",
+    "productName": "MPT OmniPortal Offline",
     "directories": {
       "output": "dist"
     },
@@ -30,7 +30,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "MPT Meeting Agenda",
+      "shortcutName": "MPT OmniPortal Offline",
       "installerIcon": "../assets/icon.ico",
       "uninstallerIcon": "../assets/icon.ico"
     }

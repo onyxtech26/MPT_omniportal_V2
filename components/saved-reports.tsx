@@ -12,7 +12,8 @@ import { useData } from '@/app/dashboard/data-context';
  * them. Everything stays in this browser's IndexedDB — nothing is uploaded, which
  * is the same guarantee the rest of the app makes.
  */
-export function SavedReports() {
+// `signOutClears` is false in the offline desktop app, which has no sign-out.
+export function SavedReports({ signOutClears = true }: { signOutClears?: boolean }) {
   const { savedReports, openSavedReport, removeSavedReport, fileName, hasData, clearData } = useData();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -96,7 +97,7 @@ export function SavedReports() {
             <Trash2 size={14} /> Remove all sales data from this computer
           </button>
           <p className="px-2 pt-2 pb-1 text-[11px] text-slate-400 border-t border-slate-100 mt-1">
-            Stored only in this browser. Never uploaded. Signing out removes it too.
+            Stored only in this browser. Never uploaded.{signOutClears && ' Signing out removes it too.'}
           </p>
         </div>
       )}

@@ -17,6 +17,27 @@ Format:
 
 ---
 
+## Offline app gains the sales dashboard (v1.1.0, "MPT OmniPortal Offline")
+- Owner's request: Dashboard, Brands, Leaderboards and Explorer in the
+  Manager's offline app as well as the agenda. Renamed from "MPT Meeting
+  Agenda" to "MPT OmniPortal Offline" since it is no longer agenda-only.
+- Each tab re-exports the website's page unchanged. `desktop/app/desktop-shell.tsx`
+  supplies the sales data store, the period filter and a top bar styled like
+  the website's; the website's `AppHeader` is built around the signed-in
+  profile, so it could not be reused without a login.
+- The website's "Load Data" button moved into `components/load-data-button.tsx`
+  so both apps share one copy; the website's behaviour is unchanged.
+  `SavedReports` gained `signOutClears` so the desktop app does not promise a
+  sign-out it does not have.
+- Window opens maximised: at 1280px the page is just under the width where
+  the tabs show their names.
+- Tested in the packaged app with the real Jan–Jul 2026 export: data loaded
+  (RM 5,511,299.89 across 14 outlets), every tab opened with the right content
+  and no page errors, and the report was still loaded after restarting the
+  app. Brand logos come from the internet, so offline they show the generic
+  watch icon. The website's dashboard after the button move was checked by
+  build, type check and lint, not in a browser.
+
 ## Offline Meeting Agenda app for Windows
 - Owner's request: an offline Windows app for the Manager with only the
   agenda — no repairs, no user roles.

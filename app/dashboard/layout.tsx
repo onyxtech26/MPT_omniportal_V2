@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Upload, Loader2, FileCheck2, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { DataProvider, useData } from './data-context';
 import { AppHeader } from '@/components/app-header';
 import { PeriodFilter } from '@/components/period-filter';
 import { SavedReports } from '@/components/saved-reports';
+import { LoadDataButton } from '@/components/load-data-button';
 import { canAccess, defaultRouteFor } from '@/lib/roles';
 import { useAuth } from '@/lib/auth-context';
 
@@ -19,37 +20,14 @@ import { useAuth } from '@/lib/auth-context';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { session, profile, loading: authLoading, isPasswordRecovery } = useAuth();
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { systemStatus, loadFromFile, hasData, fileName } = useData();
+  const { systemStatus, hasData, fileName } = useData();
 
   // Only a real problem is worth a word in the header. "No data loaded" used
   // to sit there as a green status pill; the Load Data button says the same
   // thing, and says what to do about it.
   const statusBad = Boolean(systemStatus?.includes('Error') || systemStatus?.includes('Offline'));
-
-  const handleUploadData = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-
-    setIsUploading(true);
-    setUploadMsg(null);
-    try {
-      // Parsed in the browser — the file never leaves this machine.
-      await loadFromFile(file);
-      setUploadMsg({ ok: true, text: 'Data loaded.' });
-    } catch (err) {
-      const text = err instanceof Error ? err.message : 'Could not read file.';
-      setUploadMsg({ ok: false, text });
-    } finally {
-      setIsUploading(false);
-      setTimeout(() => setUploadMsg(null), 5000);
-    }
-  };
 
   // Wait for the very first "is anyone signed in" check before deciding
   // anything — on load, "no session yet" and "signed out" look identical for
@@ -95,45 +73,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             {/* Upload sales data. Every role that reaches this layout already
                 passed canAccess (boss/manager only, see ROUTE_ACCESS), so no
                 further check is needed here. */}
-            {profile && (
-              <div className="flex items-center gap-2">
-                {uploadMsg && (
-                  <span className={`hidden min-[1700px]:inline text-xs font-medium whitespace-nowrap ${uploadMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {uploadMsg.text}
-                  </span>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={handleUploadData}
-                  className="hidden"
-                />
-                {/* Dark "Load Data" until a report is in; then a quiet button
-                    naming the loaded file, which still swaps it for another.
-                    Icon-only and a fixed 40px square on phones so the header
-                    keeps room for the profile avatar. */}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  title={hasData && fileName
-                    ? `Loaded: ${fileName}. Click to load a different report (stays on this computer).`
-                    : 'Load sales data (CSV) — stays on this computer'}
-                  className={`flex items-center justify-center gap-2 px-3 py-2 max-sm:w-10 max-sm:h-10 max-sm:px-0 rounded-xl text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-60 ${
-                    hasData
-                      ? 'border border-slate-200 text-slate-700 hover:bg-slate-50'
-                      : 'bg-slate-900 text-white hover:bg-slate-700'
-                  }`}
-                >
-                  {isUploading
-                    ? <Loader2 size={16} className="animate-spin" />
-                    : hasData ? <FileCheck2 size={16} className="text-emerald-600" /> : <Upload size={16} />}
-                  <span className="hidden md:inline lg:hidden xl:inline">
-                    {isUploading ? 'Loading…' : hasData ? 'Change Data' : 'Load Data'}
-                  </span>
-                </button>
-              </div>
-            )}
+            {profile && <LoadDataButton />}
           </>
         }
         mobileNote={

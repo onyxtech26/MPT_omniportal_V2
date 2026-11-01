@@ -1,8 +1,9 @@
-// Electron shell for the Manager's offline Meeting Agenda.
+// Electron shell for the Manager's offline app: the sales dashboard screens
+// and the Meeting Agenda.
 //
 // Serves the static export in ../out through a private app:// scheme (file://
-// would break the page's absolute paths, e.g. /agenda/Meeting_Agenda.xlsx),
-// and blocks every http(s) request, so the POS reports the Manager opens
+// would break the pages' absolute paths, e.g. /agenda/Meeting_Agenda.xlsx),
+// and blocks every http(s) request, so the sales reports the Manager opens
 // cannot leave this computer even by accident.
 import { app, BrowserWindow, Menu, net, protocol, session, shell } from 'electron';
 import { existsSync, statSync } from 'node:fs';
@@ -30,12 +31,17 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 860,
-    minWidth: 900,
+    // The top bar has no phone-style menu, so the window stays wide enough for it.
+    minWidth: 1024,
     minHeight: 600,
-    title: 'MPT Meeting Agenda',
+    title: 'MPT OmniPortal Offline',
     backgroundColor: '#f8fafc',
+    show: false,
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
+  // Opens maximised: the top bar shows its tab names from 1280px wide, and a
+  // 1280px window leaves the page just short of that.
+  win.once('ready-to-show', () => { win.maximize(); win.show(); });
   // Links (if any) open in the real browser rather than inside the app.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://')) shell.openExternal(url);

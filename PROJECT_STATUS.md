@@ -90,12 +90,13 @@ In order. Full detail in spec §11.
 
 ## Done
 
-- **Offline Meeting Agenda app for the Manager** (`desktop/`). A Windows
-  installer holding only the agenda: no login, no roles, no repairs, and every
-  internet request blocked. Reuses the website's agenda screen unchanged.
-  Packaged app driven end-to-end with the real Jan–Jul 2025/2026 exports:
-  agenda and WhatsApp messages generated. Not code-signed (SmartScreen
-  warning on first run). Build steps in `desktop/README.md`.
+- **Offline Windows app for the Manager: "MPT OmniPortal Offline"**
+  (`desktop/`, v1.1.0). Dashboard, Brands, Leaderboards, Explorer and the
+  Meeting Agenda; no login, no roles, no repairs, and every internet request
+  blocked. Reuses the website's pages unchanged. Packaged app tested with the
+  real Jan–Jul 2025/2026 exports: every tab works, agenda and WhatsApp
+  messages generated, data kept across restarts. Not code-signed
+  (SmartScreen warning on first run). Build steps in `desktop/README.md`.
 - **Sales data no longer survives sign-out.** The uploaded file lived in the
   browser per website, not per account, so the next person to sign in on that
   machine saw it (the Director did, on the Manager's upload). Every sign-out
