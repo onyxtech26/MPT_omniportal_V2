@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, Award, Trophy, Compass, FileSpreadsheet, Wrench, ClipboardList,
+  LayoutDashboard, Award, Trophy, Compass, GitCompareArrows, FileSpreadsheet, Wrench, ClipboardList,
   LogOut, Menu, X, ChevronDown, ArrowLeft,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -31,6 +31,7 @@ const NAV_GROUPS = [
     { name: 'Brands', href: '/dashboard/brands', icon: Award },
     { name: 'Leaderboards', href: '/dashboard/leaderboard', icon: Trophy },
     { name: 'Explorer', href: '/dashboard/explorer', icon: Compass },
+    { name: 'Compare', href: '/dashboard/compare', icon: GitCompareArrows },
   ],
   [
     { name: 'Agenda', href: '/dashboard/agenda', icon: FileSpreadsheet },

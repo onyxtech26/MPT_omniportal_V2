@@ -90,6 +90,11 @@ In order. Full detail in spec §11.
 
 ## Done
 
+- **Compare tab (website)** — `/dashboard/compare`: last year beside this year
+  over the same dates, for the network, every outlet, and each outlet's brands
+  and salespeople. Uses the reports already loaded through Load Data, one per
+  year. Figures match the Dashboard to the cent on the real 2025/2026 exports.
+  Not yet in the offline app; not yet opened signed in on the live site.
 - **Offline Windows app for the Manager: "MPT OmniPortal Offline"**
   (`desktop/`, v1.1.0). Dashboard, Brands, Leaderboards, Explorer and the
   Meeting Agenda; no login, no roles, no repairs, and every internet request

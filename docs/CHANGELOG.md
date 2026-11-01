@@ -17,6 +17,34 @@ Format:
 
 ---
 
+## Compare tab: last year beside this year (website)
+- Owner's request: compare the previous and current year — outlets, the brands
+  they sell, and salespeople. New tab `/dashboard/compare` for the Director and
+  Manager, after Explorer. Website only for now; the offline app gets it later.
+- No extra upload: the owner exports one file per year and loads each through
+  Load Data, which already saves it on the computer. `use-year-pool.ts` reads
+  the report on screen plus the saved ones, splits them by year, and picks the
+  newest year against the one before; either year can be switched.
+- Like with like: last year is cut to this year's dates (1 Jan to this year's
+  last sale date, or the Period filter's range), so a full-year file never
+  makes last year look bigger.
+- Shows: six network cards (sales, profit, margin, units, transactions,
+  average sale), an outlet chart and table (click an outlet to drill in), and
+  per outlet or all outlets the brands or salespeople with biggest gains and
+  drops, new this year, and no sales this year.
+- `lib/compare.ts` sums each year with the dashboard's own `aggregateRows`, so
+  the figures match the other tabs. Checked on the real Jan–Jul 2025/2026
+  exports: network and all 15 outlet totals equal the dashboard's to the cent
+  (RM 5,692,813.23 → RM 5,511,299.89). The Meeting Agenda uses the POS tool's
+  rules and can differ slightly; the screen says so.
+- The new/dropped brand lists also surface POS typos (e.g. "MNINI FOCUS") and
+  customer names keyed as brands — data issues already on the Brands tab.
+- Tested by running the same page in the offline app with both real exports:
+  every section filled, MRT salespeople drill-down correct, no page errors. At
+  360px no sideways scroll: chart labels turn vertical, and the brands table
+  becomes two columns with both years under the name. Not opened signed in on
+  the live website.
+
 ## Offline app gains the sales dashboard (v1.1.0, "MPT OmniPortal Offline")
 - Owner's request: Dashboard, Brands, Leaderboards and Explorer in the
   Manager's offline app as well as the agenda. Renamed from "MPT Meeting
