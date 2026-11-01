@@ -17,6 +17,13 @@ Format:
 
 ---
 
+## Offline app v1.2.0: Compare tab
+- The website's Compare page added to the offline app as its own tab, after
+  Explorer (`desktop/app/compare/page.tsx` re-exports it).
+- Tested in the packaged app: the tab opens, picks 2026 against 2025 from the
+  saved reports, and shows the same figures as the website (RM 5,692,813 →
+  RM 5,511,300, 15 outlets); internet still blocked, no page errors.
+
 ## Compare tab: last year beside this year (website)
 - Owner's request: compare the previous and current year — outlets, the brands
   they sell, and salespeople. New tab `/dashboard/compare` for the Director and

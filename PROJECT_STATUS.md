@@ -94,9 +94,9 @@ In order. Full detail in spec §11.
   over the same dates, for the network, every outlet, and each outlet's brands
   and salespeople. Uses the reports already loaded through Load Data, one per
   year. Figures match the Dashboard to the cent on the real 2025/2026 exports.
-  Not yet in the offline app; not yet opened signed in on the live site.
+  Also in the offline app (v1.2.0). Not yet opened signed in on the live site.
 - **Offline Windows app for the Manager: "MPT OmniPortal Offline"**
-  (`desktop/`, v1.1.0). Dashboard, Brands, Leaderboards, Explorer and the
+  (`desktop/`, v1.2.0). Dashboard, Brands, Leaderboards, Explorer, Compare and the
   Meeting Agenda; no login, no roles, no repairs, and every internet request
   blocked. Reuses the website's pages unchanged. Packaged app tested with the
   real Jan–Jul 2025/2026 exports: every tab works, agenda and WhatsApp

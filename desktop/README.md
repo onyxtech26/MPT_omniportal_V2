@@ -1,6 +1,6 @@
 # MPT OmniPortal Offline — Windows app for the Manager
 
-The sales dashboard (Dashboard, Brands, Leaderboards, Explorer) and the
+The sales dashboard (Dashboard, Brands, Leaderboards, Explorer, Compare) and the
 Meeting Agenda, offline. No login, no roles, no repairs or Daily Report, and
 no internet — every http(s) request is blocked inside the app, so the sales
 reports it opens cannot leave the computer.

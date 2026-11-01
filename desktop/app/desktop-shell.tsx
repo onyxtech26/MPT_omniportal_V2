@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Award, Trophy, Compass, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import { LayoutDashboard, Award, Trophy, Compass, GitCompareArrows, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { DataProvider, useData } from '@/app/dashboard/data-context';
 import { Logo } from '@/components/logo';
 import { PeriodFilter } from '@/components/period-filter';
@@ -19,6 +19,7 @@ const NAV_GROUPS = [
     { name: 'Brands', href: '/brands', icon: Award },
     { name: 'Leaderboards', href: '/leaderboard', icon: Trophy },
     { name: 'Explorer', href: '/explorer', icon: Compass },
+    { name: 'Compare', href: '/compare', icon: GitCompareArrows },
   ],
   [
     { name: 'Agenda', href: '/agenda', icon: FileSpreadsheet },
