@@ -17,6 +17,30 @@ Format:
 
 ---
 
+## Offline Meeting Agenda app for Windows
+- Owner's request: an offline Windows app for the Manager with only the
+  agenda — no repairs, no user roles.
+- `desktop/` is its own small Next.js project, built from the repo root with
+  `next build desktop` so it shares the root packages. Its one page renders the
+  website's `app/dashboard/agenda/page.tsx` unchanged, so there is a single
+  copy of the agenda logic. No `AuthProvider`, no Supabase: a scan of the build
+  found no Supabase code in it.
+- Electron shell (`desktop/electron/main.mjs`): serves the static export
+  through a private `app://` scheme (file:// broke the template's absolute
+  path), and cancels every http/https/ws request, so the app is offline by
+  construction rather than by habit.
+- Chose Electron over Tauri: Tauri's installer would be far smaller, but it
+  needs a Rust toolchain this machine does not have. Electron cost: a ~116 MB
+  installer.
+- Root `tsconfig.json` excludes `desktop/` (it has its own); the website build
+  and lint are unchanged.
+- Tested the packaged app, not just the code: it opens on the agenda with no
+  login form, loads the template from inside the app, blocks a test request
+  to the internet, can use the clipboard, and generated the July agenda and
+  WhatsApp messages from the real Jan–Jul 2025/2026 exports. The Save dialog
+  for the downloaded workbook was not clicked through.
+- Not code-signed: Windows SmartScreen warns on first run.
+
 ## Sales data wiped on sign-out, plus "Remove all sales data"
 - **Symptom:** the Director signed in on a computer where the sales file had
   been uploaded under the Manager's account, and saw the data. Sign-out and a

@@ -1,0 +1,42 @@
+{
+  "name": "mpt-meeting-agenda",
+  "productName": "MPT Meeting Agenda",
+  "version": "1.0.0",
+  "description": "The Manager's offline Meeting Agenda builder",
+  "author": "Onyxx Tech Hub",
+  "private": true,
+  "main": "electron/main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.mpt.meetingagenda",
+    "productName": "MPT Meeting Agenda",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "../assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MPT Meeting Agenda",
+      "installerIcon": "../assets/icon.ico",
+      "uninstallerIcon": "../assets/icon.ico"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0"
+  }
+}

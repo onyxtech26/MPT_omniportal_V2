@@ -90,6 +90,12 @@ In order. Full detail in spec §11.
 
 ## Done
 
+- **Offline Meeting Agenda app for the Manager** (`desktop/`). A Windows
+  installer holding only the agenda: no login, no roles, no repairs, and every
+  internet request blocked. Reuses the website's agenda screen unchanged.
+  Packaged app driven end-to-end with the real Jan–Jul 2025/2026 exports:
+  agenda and WhatsApp messages generated. Not code-signed (SmartScreen
+  warning on first run). Build steps in `desktop/README.md`.
 - **Sales data no longer survives sign-out.** The uploaded file lived in the
   browser per website, not per account, so the next person to sign in on that
   machine saw it (the Director did, on the Manager's upload). Every sign-out
@@ -415,9 +421,10 @@ In order. Full detail in spec §11.
 
 ## Watch out
 
-- **`backend/` must not be deleted.** It is the source of the Agenda logic the
-  Manager's desktop `.exe` depends on, and Electron packaging was already removed —
-  a new `.exe` cannot be built without restoring it from git history.
+- **`backend/` must not be deleted.** It is the Python original the browser
+  agenda (`lib/agenda/`) was ported from and checked against. The Manager's
+  desktop app no longer needs it: `desktop/` builds an agenda-only Windows app
+  from the TypeScript port (see `desktop/README.md`).
 - **Do not reintroduce `fetch` into the sales data path** (`lib/salesData.ts`,
   `lib/csvStore.ts`, `app/dashboard/data-context.tsx`). That silently breaks the
   core privacy guarantee.

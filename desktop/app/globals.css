@@ -1,0 +1,9 @@
+/* Only scan the files this app actually renders, not the whole repo. */
+@import "tailwindcss" source(none);
+@source "../app";
+@source "../../app/dashboard/agenda";
+@source "../../lib/agenda";
+
+@theme {
+  --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}

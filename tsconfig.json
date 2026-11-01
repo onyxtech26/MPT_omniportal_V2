@@ -28,5 +28,7 @@
   // specifiers, and its own separate dependency graph. It was never part of
   // this Next.js project and tsc has no business trying to check it, the
   // same way backend/'s Python is out of scope here.
-  "exclude": ["node_modules", "supabase/functions"]
+  // desktop/ is the Manager's offline agenda app: its own Next project with its
+  // own tsconfig, type-checked when it is built (npm run desktop:web).
+  "exclude": ["node_modules", "supabase/functions", "desktop"]
 }
