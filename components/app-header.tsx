@@ -67,17 +67,23 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
 
   // Tab names show only while they fit: the Manager has nine tabs, and at
   // fixed breakpoints the names ran under Load Data and the profile menu.
+  // When short of room, the wordmark and profile name go first ("tight"),
+  // the tab names only if that is still not enough ("compact").
   const navRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const nav = navRef.current;
-    if (!nav?.parentElement) return;
+    const header = nav?.parentElement;
+    if (!nav || !header) return;
+    const overflows = () => nav.scrollWidth > nav.clientWidth;
     const fit = () => {
-      delete nav.dataset.compact;          // measure with names shown
-      if (nav.scrollWidth > nav.clientWidth) nav.dataset.compact = '';
+      delete header.dataset.tight;         // measure with everything shown
+      delete nav.dataset.compact;
+      if (overflows()) header.dataset.tight = '';
+      if (overflows()) nav.dataset.compact = '';
     };
     fit();
     const ro = new ResizeObserver(fit);
-    ro.observe(nav.parentElement);
+    ro.observe(header);
     document.fonts?.ready.then(fit);
     return () => ro.disconnect();
   }, [profile?.role, actions]);
@@ -102,7 +108,7 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
   return (
     <>
       {/* no-print: keeps the app's chrome off the printed repair slip. */}
-      <header className="no-print fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] flex items-center gap-2 sm:gap-4 shadow-sm">
+      <header className="group/header no-print fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] flex items-center gap-2 sm:gap-4 shadow-sm">
         <button
           onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
           className="p-2 hover:bg-slate-100 rounded-lg lg:hidden text-slate-600 shrink-0"
@@ -112,7 +118,7 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
         </button>
 
         {/* The wordmark steps aside on mid-size screens so the nav labels fit on one line. */}
-        <Logo className="min-w-0 shrink-0" textClassName={`text-base sm:text-xl truncate lg:max-[1439px]:hidden ${crowded ? 'max-sm:hidden' : ''}`} />
+        <Logo className="min-w-0 shrink-0" textClassName={`text-base sm:text-xl truncate lg:max-[1439px]:hidden lg:group-data-[tight]/header:hidden ${crowded ? 'max-sm:hidden' : ''}`} />
 
         {/* IT Admin has no sales screens; it arrives from its own console. */}
         {profile?.role === 'admin' && (
@@ -137,7 +143,8 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
                     key={item.name}
                     href={item.href}
                     title={item.name}
-                    className={`flex items-center gap-2 px-3 xl:max-[1439px]:px-2.5 py-2 rounded-xl text-sm whitespace-nowrap transition-all duration-200 ${
+                    // transition-colors, not -all: an animated padding change made the fit check above measure mid-animation.
+                    className={`flex items-center gap-2 px-3 xl:max-[1439px]:px-2.5 py-2 rounded-xl text-sm whitespace-nowrap transition-colors duration-200 ${
                       active
                         ? 'bg-[#0f172a] text-white font-semibold shadow-sm'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium'
@@ -164,11 +171,11 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
               <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-medium text-sm shadow-sm">
                 {profile?.display_name ? profile.display_name.substring(0, 2).toUpperCase() : 'U'}
               </div>
-              <div className="hidden md:block lg:hidden 2xl:block text-left mr-1">
+              <div className="hidden md:block lg:hidden 2xl:block 2xl:group-data-[tight]/header:hidden text-left mr-1">
                 <p className="text-sm font-bold text-slate-900 leading-tight">{profile?.display_name || 'User'}</p>
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{roleLine}</p>
               </div>
-              <ChevronDown size={16} className="text-slate-400 hidden md:block lg:hidden 2xl:block" />
+              <ChevronDown size={16} className="text-slate-400 hidden md:block lg:hidden 2xl:block 2xl:group-data-[tight]/header:hidden" />
             </button>
 
             {/* Invisible click-away layer: a tap anywhere else closes the menu. */}

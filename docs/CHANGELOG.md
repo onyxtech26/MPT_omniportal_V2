@@ -35,8 +35,12 @@ Format:
   hover, only when the names do not fit.
 - Tested in the offline app with the real 2025/2026 exports through Compare's
   own boxes: same figures as before, swapped-years warning shown, no errors.
-  The website's top bar fix was checked by build and lint only: it needs a
-  signed-in Manager in a browser.
+- Top bar checked signed in as the Manager at 1100–1920px. Two follow-ups
+  from that check: the tabs' `transition-all` animated their padding when the
+  width changed, so the fit check measured mid-animation and let names overlap
+  by 2px at 1440px (now `transition-colors`); and the wordmark and profile
+  name now give way before the tab names do. Result: no overlap at any width,
+  tab names from 1366px, wordmark and profile name from 1680px.
 - Offline app rebuilt as v1.3.0 with the same Compare.
 
 ## Offline app v1.2.0: Compare tab
