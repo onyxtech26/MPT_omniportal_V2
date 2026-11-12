@@ -17,6 +17,17 @@ Format:
 
 ---
 
+## Load Data only where it applies
+- Owner's feedback: Load Data in the top bar felt irrelevant. It only feeds
+  Dashboard, Brands, Leaderboards and Explorer; Compare and the Agenda take
+  their own files. On those two pages the top bar now has no Load Data, no
+  saved-reports clock, and no period bar (`app/dashboard/layout.tsx`).
+- The top bar's fit check now re-runs only when those buttons appear or go,
+  not on every render.
+- Checked signed in as the Manager at 1440px: Load Data on Dashboard, gone on
+  Compare and Agenda, no overlap. Website only; the offline app was not
+  touched or rebuilt (owner's call).
+
 ## Compare takes its own two reports; top bar no longer overlaps
 - Owner's report: Compare was hard to use (nothing told you it needed two
   files loaded through the dashboard's Load Data), and the top bar's tab names

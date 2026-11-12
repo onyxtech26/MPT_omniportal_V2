@@ -70,6 +70,7 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
   // When short of room, the wordmark and profile name go first ("tight"),
   // the tab names only if that is still not enough ("compact").
   const navRef = useRef<HTMLElement>(null);
+  const hasActions = Boolean(actions);
   useLayoutEffect(() => {
     const nav = navRef.current;
     const header = nav?.parentElement;
@@ -86,7 +87,7 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
     ro.observe(header);
     document.fonts?.ready.then(fit);
     return () => ro.disconnect();
-  }, [profile?.role, actions]);
+  }, [profile?.role, hasActions]);
 
   const navGroups = NAV_GROUPS
     .map((group) => group.filter((item) => canAccess(profile?.role, item.href)))

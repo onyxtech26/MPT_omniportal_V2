@@ -28,6 +28,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // to sit there as a green status pill; the Load Data button says the same
   // thing, and says what to do about it.
   const statusBad = Boolean(systemStatus?.includes('Error') || systemStatus?.includes('Offline'));
+  // Compare and the Agenda pick their own reports, so the loaded report's
+  // Load Data, history and period bar mean nothing there.
+  const ownFiles = /^\/dashboard\/(compare|agenda)/.test(pathname);
 
   // Wait for the very first "is anyone signed in" check before deciding
   // anything — on load, "no session yet" and "signed out" look identical for
@@ -57,7 +60,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       <AppHeader
-        actions={
+        actions={ownFiles ? undefined : (
           <>
             {/* Shown only when stored data could not be read. */}
             {statusBad && (
@@ -75,19 +78,18 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                 further check is needed here. */}
             {profile && <LoadDataButton />}
           </>
-        }
-        mobileNote={
+        )}
+        mobileNote={ownFiles ? undefined : (
           <p className={`mt-2 pt-3 border-t border-slate-100 px-4 pb-1 text-xs font-medium truncate ${statusBad ? 'text-red-600' : 'text-slate-500'}`}>
             {statusBad ? 'Stored data could not be read' : hasData && fileName ? `Report: ${fileName}` : 'No sales report loaded yet'}
           </p>
-        }
+        )}
       />
 
       {/* Main Content */}
       <main className="pt-16 min-h-screen">
         {/* One period choice, shared by every page via the data context. */}
-        {/* Compare takes its own two reports, so the loaded report's period does not apply. */}
-        {!pathname.startsWith('/dashboard/compare') && <PeriodFilter />}
+        {!ownFiles && <PeriodFilter />}
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
           {children}
         </div>
