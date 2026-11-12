@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -65,6 +65,23 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
     router.push('/');
   };
 
+  // Tab names show only while they fit: the Manager has nine tabs, and at
+  // fixed breakpoints the names ran under Load Data and the profile menu.
+  const navRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav?.parentElement) return;
+    const fit = () => {
+      delete nav.dataset.compact;          // measure with names shown
+      if (nav.scrollWidth > nav.clientWidth) nav.dataset.compact = '';
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(nav.parentElement);
+    document.fonts?.ready.then(fit);
+    return () => ro.disconnect();
+  }, [profile?.role, actions]);
+
   const navGroups = NAV_GROUPS
     .map((group) => group.filter((item) => canAccess(profile?.role, item.href)))
     .filter((group) => group.length > 0);
@@ -109,7 +126,7 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
         )}
 
         {/* Desktop horizontal nav: icons only until there is room for labels. */}
-        <nav className="hidden lg:flex items-center gap-0.5 ml-2 xl:ml-4 min-w-0">
+        <nav ref={navRef} className="group/nav hidden lg:flex items-center gap-0.5 ml-2 xl:ml-4 min-w-0">
           {navGroups.map((group, gi) => (
             <div key={gi} className="flex items-center gap-0.5">
               {gi > 0 && <span aria-hidden className="w-px h-6 bg-slate-200 mx-1.5" />}
@@ -127,7 +144,7 @@ export function AppHeader({ actions, mobileNote }: AppHeaderProps) {
                     }`}
                   >
                     <item.icon size={18} className={`shrink-0 ${active ? 'text-white' : 'text-slate-400'}`} />
-                    <span className="hidden xl:inline">{item.name}</span>
+                    <span className="hidden xl:inline group-data-[compact]/nav:hidden">{item.name}</span>
                   </Link>
                 );
               })}

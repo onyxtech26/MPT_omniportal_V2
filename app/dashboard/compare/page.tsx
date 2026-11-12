@@ -1,13 +1,14 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
-import { GitCompareArrows, Upload, Loader2, TrendingUp, TrendingDown, Sparkles, CircleSlash } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { GitCompareArrows, TrendingUp, TrendingDown, Sparkles, CircleSlash } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import { useData } from '../data-context';
-import { useYearPool } from './use-year-pool';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { FileSlot } from '@/components/file-slot';
+import { listReports, loadReport, type ReportMeta } from '@/lib/csvStore';
+import { missingColumns, normalizeRecords, parseCsvRecords, type Row } from '@/lib/salesData';
 import {
-  compareYears, compareBreakdown, revenueChange, pctChange, marginPct, avgSale, profit,
+  compareYears, compareBreakdown, revenueChange, pctChange, marginPct, avgSale, profit, yearsIn,
   type Breakdown, type Pair, type LineTotals,
 } from '@/lib/compare';
 
@@ -15,17 +16,42 @@ import {
  * Compare — last year beside this year: the network, every outlet, and each
  * outlet's brands and salespeople.
  *
- * Both years come from reports already loaded through Load Data (see
- * use-year-pool.ts). Totals come from the same code as the other dashboard
- * tabs (lib/compare.ts), so the figures match them. The Meeting Agenda follows
- * the POS tool's own rules and can differ slightly.
+ * Takes its own two reports, picked here, and never touches the dashboard's
+ * loaded one, so the two features cannot get in each other's way. Totals come
+ * from the same code as the other dashboard tabs (lib/compare.ts), so the
+ * figures match them. The Meeting Agenda follows the POS tool's own rules and
+ * can differ slightly.
  */
+
+type Slot = 'prev' | 'curr';
+interface Picked { name: string; rows: Row[]; year: string; detail: string }
 
 const money = (n: number) => `RM ${Math.round(n).toLocaleString('en-MY')}`;
 const signedMoney = (n: number) => `${n >= 0 ? '+' : '−'}RM ${Math.abs(Math.round(n)).toLocaleString('en-MY')}`;
 const count = (n: number) => Math.round(n).toLocaleString('en-MY');
 const fmtDate = (d: string) =>
   new Date(`${d}T00:00:00`).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
+const monthName = (m: string) => new Date(`${m}-01T00:00:00`).toLocaleDateString('en-MY', { month: 'short' });
+
+/** Parse one POS export into rows; the year is the latest one it covers. */
+function readReport(name: string, text: string): Picked {
+  const records = parseCsvRecords(text);
+  const missing = missingColumns(Object.keys(records[0] ?? {}));
+  if (missing.length) throw new Error(`not a POS sales export (missing ${missing.join(', ')}).`);
+  const rows = normalizeRecords(records);
+  const years = yearsIn(rows);
+  if (!years.length) throw new Error('no dated sales lines in this file.');
+  const year = years[years.length - 1];
+  const months = rows.filter((r) => r.month?.startsWith(year)).map((r) => r.month!).sort();
+  const outlets = new Set(rows.map((r) => r.com_unit)).size;
+  return {
+    name, rows, year,
+    detail: `${year} · ${monthName(months[0])}–${monthName(months[months.length - 1])} · ${outlets} outlets`,
+  };
+}
+
+/** Lets the spinner paint before a long synchronous parse. */
+const nextFrame = () => new Promise((r) => setTimeout(r, 30));
 
 function ChangeBadge({ prev, curr, points = false }: { prev: number | null | undefined; curr: number | null | undefined; points?: boolean }) {
   if (points) {
@@ -61,23 +87,62 @@ function StatCard({ label, prev, curr, format, points = false }: {
 }
 
 export default function ComparePage() {
-  const { hasData, dateFrom, dateTo } = useData();
-  const { years, loading } = useYearPool();
   const isMobile = useIsMobile();
-  const available = useMemo(() => [...years.keys()].sort().reverse(), [years]);
+  const [files, setFiles] = useState<Record<Slot, Picked | null>>({ prev: null, curr: null });
+  const [busy, setBusy] = useState<Record<Slot, boolean>>({ prev: false, curr: false });
+  const [slotError, setSlotError] = useState<Record<Slot, string>>({ prev: '', curr: '' });
+  const [saved, setSaved] = useState<ReportMeta[]>([]);
 
-  // Default: the newest year against the one before it.
-  const [currYear, setCurrYear] = useState<string | null>(null);
-  const [prevYear, setPrevYear] = useState<string | null>(null);
-  const curr = currYear && years.has(currYear) ? currYear : available[0] ?? null;
-  const prev = prevYear && years.has(prevYear) && prevYear !== curr
-    ? prevYear
-    : available.find((y) => curr && Number(y) === Number(curr) - 1) ?? available.find((y) => y !== curr) ?? null;
+  useEffect(() => {
+    listReports().then(setSaved).catch(() => setSaved([]));
+  }, []);
+
+  const readInto = async (slot: Slot, name: string, getText: () => Promise<string | null>) => {
+    setBusy((b) => ({ ...b, [slot]: true }));
+    setSlotError((e) => ({ ...e, [slot]: '' }));
+    await nextFrame();
+    try {
+      const text = await getText();
+      if (text == null) throw new Error('that saved report is no longer on this computer.');
+      const picked = readReport(name, text);
+      setFiles((f) => ({ ...f, [slot]: picked }));
+    } catch (err) {
+      setFiles((f) => ({ ...f, [slot]: null }));
+      setSlotError((e) => ({ ...e, [slot]: `${name}: ${err instanceof Error ? err.message : 'could not be read.'}` }));
+    } finally {
+      setBusy((b) => ({ ...b, [slot]: false }));
+    }
+  };
+
+  const slotProps = (slot: Slot) => ({
+    accept: '.csv',
+    allowSaved: true,
+    saved,
+    loaded: files[slot] && { name: files[slot].name, detail: files[slot].detail },
+    busy: busy[slot],
+    error: slotError[slot],
+    onFile: (f: File) => {
+      if (!f.name.toLowerCase().endsWith('.csv')) {
+        setSlotError((e) => ({ ...e, [slot]: `${f.name}: choose the CSV export from the POS.` }));
+        return;
+      }
+      readInto(slot, f.name, () => f.text());
+    },
+    onSaved: (id: number) => {
+      const meta = saved.find((r) => r.id === id);
+      readInto(slot, meta?.fileName ?? 'Saved report', async () => (await loadReport(id))?.text ?? null);
+    },
+    onClear: () => { setFiles((f) => ({ ...f, [slot]: null })); setSlotError((e) => ({ ...e, [slot]: '' })); },
+  });
+
+  const prev = files.prev?.year ?? '';
+  const curr = files.curr?.year ?? '';
+  const yearsLookWrong = Boolean(prev && curr && prev >= curr);
 
   const cmp = useMemo(() => {
-    if (!curr || !prev) return null;
-    return compareYears(years.get(prev)!.rows, years.get(curr)!.rows, prev, curr, { dateFrom, dateTo });
-  }, [years, curr, prev, dateFrom, dateTo]);
+    if (!files.prev || !files.curr || yearsLookWrong) return null;
+    return compareYears(files.prev.rows, files.curr.rows, prev, curr);
+  }, [files, prev, curr, yearsLookWrong]);
 
   const [kind, setKindState] = useState<Breakdown>('brand');
   const [scope, setScopeState] = useState<string>('ALL');
@@ -96,43 +161,9 @@ export default function ComparePage() {
     [cmp, kind, scope],
   );
 
-  if (loading && !cmp) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-slate-500">
-        <Loader2 size={32} className="animate-spin" />
-        <p className="font-medium">Reading the reports saved on this computer…</p>
-      </div>
-    );
-  }
-
-  if (!hasData && available.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-        <div className="bg-slate-100 p-6 rounded-full mb-4"><Upload size={48} className="text-slate-400" /></div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">No sales data loaded</h2>
-        <p className="text-slate-500 max-w-md">
-          Load this year&apos;s and last year&apos;s reports with <b>Load Data</b> (top right), one after the other.
-          Both stay saved on this computer, and Compare puts them side by side.
-        </p>
-      </div>
-    );
-  }
-
-  if (!cmp || !curr || !prev) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-        <div className="bg-slate-100 p-6 rounded-full mb-4"><GitCompareArrows size={48} className="text-slate-400" /></div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">One more year needed</h2>
-        <p className="text-slate-500 max-w-md">
-          Only {available[0] ?? 'one year'} is loaded. Load the other year&apos;s report with <b>Load Data</b> (top right);
-          it is saved alongside this one and Compare picks it up.
-        </p>
-      </div>
-    );
-  }
-
-  const net = cmp.network;
-  const chartData = [...cmp.outlets]
+  const net = cmp?.network;
+  const chartData = (cmp?.outlets ?? [])
+    .slice()
     .sort((a, b) => (b.curr?.revenue ?? 0) - (a.curr?.revenue ?? 0))
     .map((o) => ({ outlet: o.key, [prev]: Math.round(o.prev?.revenue ?? 0), [curr]: Math.round(o.curr?.revenue ?? 0) }));
   const gains = lines.filter((l) => revenueChange(l) > 0).slice(0, 5);
@@ -156,35 +187,31 @@ export default function ComparePage() {
           Compare
         </h1>
         <p className="text-slate-500 font-medium mt-1">
-          Last year beside this year, over the same dates: the network, each outlet, and its brands and salespeople.
+          Pick last year&apos;s and this year&apos;s POS reports to see them side by side over the same dates: the network,
+          each outlet, and its brands and salespeople. The reports are read on this computer and never uploaded.
         </p>
       </header>
 
-      {/* Which years, and the window */}
-      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 md:p-6 flex flex-wrap items-end gap-x-8 gap-y-4">
-        {([['This year', curr, setCurrYear], ['Compared with', prev, setPrevYear]] as const).map(([label, value, set]) => (
-          <div key={label}>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">{label}</label>
-            <select
-              value={value}
-              onChange={(e) => set(e.target.value)}
-              className="px-4 py-2 max-sm:py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f172a]/20 cursor-pointer"
-            >
-              {available.filter((y) => label === 'This year' || y !== curr).map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <p className="text-xs text-slate-400 font-medium mt-1 max-w-[16rem] truncate" title={years.get(value)?.fileName}>
-              {years.get(value)?.fileName}
-            </p>
-          </div>
-        ))}
-        <div className="ml-auto max-md:ml-0">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Same dates both years</p>
-          <p className="text-sm font-semibold text-slate-900">
-            {fmtDate(cmp.currWindow.from)} – {fmtDate(cmp.currWindow.to)}
-          </p>
-          <p className="text-xs text-slate-400 font-medium mt-1">Narrow it with the Period filter above.</p>
+      {/* The two reports, and the window they are compared over */}
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-5 md:p-6 space-y-4">
+        <div className="grid md:grid-cols-2 gap-5">
+          <FileSlot label="Last year's report" hint="POS export (CSV) for last year." required {...slotProps('prev')} />
+          <FileSlot label="This year's report" hint="POS export (CSV) for this year." required {...slotProps('curr')} />
         </div>
+        {yearsLookWrong && (
+          <p className="text-sm font-medium text-rose-600">
+            Last year&apos;s report is {prev} and this year&apos;s is {curr}. Put the older year on the left.
+          </p>
+        )}
+        {cmp && (
+          <p className="text-sm text-slate-500 font-medium">
+            Comparing <b className="text-slate-900">{fmtDate(cmp.currWindow.from)} – {fmtDate(cmp.currWindow.to)}</b> in
+            both years: last year is cut to this year&apos;s dates.
+          </p>
+        )}
       </div>
+
+      {cmp && net && (<>
 
       {/* Network */}
       <section className="space-y-3">
@@ -353,6 +380,7 @@ export default function ComparePage() {
           Figures match the Dashboard, Brands and Leaderboards tabs. The Meeting Agenda follows the POS tool&apos;s own rules, so its outlet totals can differ slightly.
         </p>
       </section>
+      </>)}
     </div>
   );
 }

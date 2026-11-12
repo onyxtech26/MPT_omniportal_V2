@@ -17,6 +17,28 @@ Format:
 
 ---
 
+## Compare takes its own two reports; top bar no longer overlaps
+- Owner's report: Compare was hard to use (nothing told you it needed two
+  files loaded through the dashboard's Load Data), and the top bar's tab names
+  ran under Load Data and the profile menu.
+- Compare is now separate from the dashboard: two boxes on the page, "Last
+  year's report" and "This year's report", each taking a file or a report
+  already saved on the computer. It no longer reads the dashboard's loaded
+  file, and the dashboard's period bar is hidden on this page. Deleted
+  `use-year-pool.ts` and the period hook-up in `lib/compare.ts`; files in the
+  wrong boxes get a warning.
+- The Agenda's file box moved to `components/file-slot.tsx` so Agenda and
+  Compare share one copy; the Agenda behaves as before.
+- Top bar: the Manager has nine tabs, and fixed width breakpoints could not
+  fit their names beside Load Data and the profile menu, so the bar now
+  measures itself (`components/app-header.tsx`) and drops to icons, names on
+  hover, only when the names do not fit.
+- Tested in the offline app with the real 2025/2026 exports through Compare's
+  own boxes: same figures as before, swapped-years warning shown, no errors.
+  The website's top bar fix was checked by build and lint only: it needs a
+  signed-in Manager in a browser.
+- Offline app rebuilt as v1.3.0 with the same Compare.
+
 ## Offline app v1.2.0: Compare tab
 - The website's Compare page added to the offline app as its own tab, after
   Explorer (`desktop/app/compare/page.tsx` re-exports it).

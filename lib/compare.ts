@@ -64,22 +64,15 @@ function inYear(date: string, year: string): string {
 }
 
 /**
- * The window to compare. By default this year from 1 January to its last sale
- * date; a period chosen in the dashboard's period filter narrows it. Last year
- * gets the same dates one year earlier.
+ * The window to compare: this year from 1 January to its last sale date. Last
+ * year gets the same dates one year earlier.
  */
 export function compareWindows(
   currRows: Row[], currYear: string, prevYear: string,
-  period?: { dateFrom?: string | null; dateTo?: string | null },
 ): { prev: Window; curr: Window } {
-  let last = `${currYear}-01-01`;
-  for (const r of currRows) if (r.day && r.day.startsWith(currYear) && r.day > last) last = r.day;
-
-  let from = `${currYear}-01-01`;
-  let to = last;
-  // Only a period inside this year means anything here; elsewhere it is ignored.
-  if (period?.dateFrom?.startsWith(currYear) && period.dateFrom > from) from = period.dateFrom;
-  if (period?.dateTo?.startsWith(currYear) && period.dateTo < to) to = period.dateTo;
+  const from = `${currYear}-01-01`;
+  let to = from;
+  for (const r of currRows) if (r.day && r.day.startsWith(currYear) && r.day > to) to = r.day;
 
   return {
     curr: { from, to },
@@ -103,9 +96,8 @@ function sumTotals(list: Totals[]): Totals {
 
 export function compareYears(
   prevRows: Row[], currRows: Row[], prevYear: string, currYear: string,
-  period?: { dateFrom?: string | null; dateTo?: string | null },
 ): YearComparison {
-  const windows = compareWindows(currRows, currYear, prevYear, period);
+  const windows = compareWindows(currRows, currYear, prevYear);
   const prevSum = aggregateRows(applyFilters(prevRows, { dateFrom: windows.prev.from, dateTo: windows.prev.to }));
   const currSum = aggregateRows(applyFilters(currRows, { dateFrom: windows.curr.from, dateTo: windows.curr.to }));
 

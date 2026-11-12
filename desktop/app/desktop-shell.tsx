@@ -81,7 +81,8 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       <main className="pt-16 min-h-screen">
         {/* One period choice, shared by every screen, as on the website. */}
-        <PeriodFilter />
+        {/* Compare takes its own two reports, so the loaded report's period does not apply. */}
+        {!pathname.startsWith('/compare') && <PeriodFilter />}
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
           {children}
         </div>
